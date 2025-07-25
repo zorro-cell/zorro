@@ -1,8 +1,0 @@
-#!name=RevenueCat合集解锁插件
-#!desc=适配超50款App，包括Structured/星垂/倒数鸭/AnkiPro等
-#!author=Yu9191
-#!type=http-response
-#!pattern=^https://(api\.revenuecat\.com|api\.rc-backup\.com)/.+/(receipts$|subscribers/[^/]+$)
-#!script=https://raw.githubusercontent.com/Yu9191/Rewrite/main/Revenuecat.js
-#!bodyRequired=true
-#!mitm=api.revenuecat.com, api.rc-backup.com
