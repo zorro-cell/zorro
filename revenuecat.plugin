@@ -6,5 +6,5 @@
 #!script=Revenuecat.js
 #!bodyRequired=true
 #!type=response
-#!pattern=^https:\/\/api\.revenuecat\.com\/v1\/(receipts|subscribers\/[^\/]+)$
+#!pattern=^https://api\.revenuecat\.com\/v1\/(receipts|subscribers\/[^\/]+)$
 #!mitm=api.revenuecat.com
