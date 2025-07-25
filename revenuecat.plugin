@@ -1,7 +1,7 @@
-#!name=Revenuecat解锁订阅
-#!desc=模拟 RevenueCat 订阅返回，适用于 Loon 解锁 App 内订阅
-#!script=Revenuecat.js
+#!name=RevenueCat 解锁合集
+#!desc=模拟 RevenueCat 解锁，支持多个 App
+#!script=https://raw.githubusercontent.com/Yu9191/Rewrite/main/Revenuecat.js
+#!type=http-response
+#!pattern=^https://(api\.revenuecat\.com|api\.rc-backup\.com)/.+/(receipts$|subscribers/[^/]+$)
 #!bodyRequired=true
-#!type=response
-#!pattern=^https://api.revenuecat.com/v1/(receipts|subscribers/[^/]+)$
-#!mitm=api.revenuecat.com
+#!mitm=api.revenuecat.com, api.rc-backup.com
