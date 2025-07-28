@@ -1,0 +1,65 @@
+function fetchWeibo(callback) {
+  const url = "https://weibo.com/ajax/side/hotSearch";
+  const headers = {
+    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X)"
+  };
+  $httpClient.get({ url, headers }, (err, resp, data) => {
+    console.log("🔍 微博接口状态码:", resp?.status || '无');
+    if (err || !data) {
+      console.log("❌ 微博请求错误:", err);
+      return callback(["微博热搜获取失败"]);
+    }
+    try {
+      console.log("📄 微博返回数据预览:", data.slice(0, 100));
+      const json = JSON.parse(data);
+      const list = json.data.realtime.slice(0, 5);
+      const result = list.map((x, i) => `${i + 1}. 微博热搜：${x.word}`);
+      callback(result);
+    } catch (e) {
+      console.log("❌ 微博解析失败:", e.message);
+      callback([`微博热搜解析失败：${e.message}`]);
+    }
+  });
+}
+
+function fetchBing(callback) {
+  const url = "https://www.bing.com/news/search?q=world+news&format=rss&count=5";
+  const headers = {
+    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X)"
+  };
+  $httpClient.get({ url, headers }, (err, resp, data) => {
+    console.log("🔍 Bing 接口状态码:", resp?.status || '无');
+    if (err || !data) {
+      console.log("❌ Bing 请求错误:", err);
+      return callback(["国际新闻获取失败"]);
+    }
+    try {
+      console.log("📄 Bing 返回数据预览:", data.slice(0, 100));
+      const items = data.match(/<title>([^<]+)<\/title>/g)?.slice(1, 6) || [];
+      const result = items.map((t, i) => `${i + 6}. 国际新闻：${t.replace(/<\/?title>/g, "")}`);
+      callback(result);
+    } catch (e) {
+      console.log("❌ Bing 解析失败:", e.message);
+      callback([`国际新闻解析失败：${e.message}`]);
+    }
+  });
+}
+
+fetchWeibo((wbList) => {
+  fetchBing((bnList) => {
+    const lines = wbList.concat(bnList).slice(0, 10);
+    const msg = lines.join("\n");
+    console.log("✅ 最终简讯：\n" + msg);
+    $notification.post("📰 每日简讯", "微博热搜 + 国际头条", msg);
+    $done({ body: JSON.stringify({ list: lines }) });
+  });
+});
+
+[Script]
+http-response ^https:\/\/daily\.news\.proxy\/news script-path=https://raw.githubusercontent.com/你的用户名/你的仓库名/main/daily_digest.js, requires-body=0, max-size=0, timeout=20, tag=daily_digest
+
+[Cron]
+0 8 * * * script-path=https://raw.githubusercontent.com/zorro-cell/zorro/main/daily_digest.js, timeout=20, tag=daily_digest_cron
+
+[MITM]
+hostname = daily.news.proxy
