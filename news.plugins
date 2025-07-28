@@ -1,216 +1,95 @@
 [General]
-# 基础设置
-loglevel = info
 script-enabled = true
-allow-wifi-access = true
-dns-server = 223.5.5.5, 119.29.29.29
-proxy-test-url = http://www.gstatic.com/generate_204
-test-timeout = 8
+loglevel = debug
 
 [Script]
-# 微博热搜与国际新闻获取脚本（内联完整代码）
-schedule script-content="$(cat <<EOF
-// == 配置常量 ==
-const CONFIG = {
-    WEIBO_API: "https://v2.xxapi.cn/api/weibohot",
-    BING_API: "https://www.bing.com/news/search?q=world+news&nv%20aug=%5Bnews%20vertical+category%3D%22rt_world%22%5D&form=nsba",
-    USER_AGENT: "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1",
-    MAX_RETRIES: 1,
-    TIMEOUT: 5000,
-    WEIBO_LIMIT: 5,
-    BING_LIMIT: 5
-};
-
-// == 工具函数 ==
-function log(message) {
-    console.log(\`[\${new Date().toLocaleTimeString()}] \${message}\`);
-}
-
-function showNotification(title, subtitle, body) {
-    \$notification.post(title, subtitle, body);
-}
-
-// == 微博热搜获取函数 ==
-function fetchWeibo(callback) {
-    const startTime = Date.now();
-    log("开始获取微博热搜...");
-
-    const timeoutId = setTimeout(() => {
-        log("微博请求超时");
-        callback(["微博热搜获取失败：请求超时"]);
-    }, CONFIG.TIMEOUT);
-
-    \$httpClient.get({
-        url: CONFIG.WEIBO_API,
+# 微博热搜与国际新闻获取（极简版）
+script-content = "function fetchWeibo(callback) {
+    $httpClient.get({
+        url: 'https://v2.xxapi.cn/api/weibohot',
         headers: {
-            "User-Agent": CONFIG.USER_AGENT,
-            "Accept": "application/json"
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X)'
         }
     }, (err, resp, data) => {
-        clearTimeout(timeoutId);
-        const duration = Date.now() - startTime;
-        log(\`微博请求耗时: \${duration}ms\`);
-
         if (err) {
-            log(\`微博请求错误: \${JSON.stringify(err)}\`);
-            callback(["微博热搜获取失败：网络错误"]);
+            console.log('微博请求错误:', err);
+            callback([]);
             return;
         }
-
         try {
             const json = JSON.parse(data);
-            
-            if (!json || json.code !== 200 || !json.data || !Array.isArray(json.data)) {
-                log(\`微博API返回异常: \${JSON.stringify(json)}\`);
-                callback(["微博热搜获取失败：API返回异常"]);
+            if (json.code !== 200) {
+                console.log('微博API错误:', json.msg);
+                callback([]);
                 return;
             }
-
-            const hotItems = json.data.slice(0, CONFIG.WEIBO_LIMIT);
-            const result = hotItems.map((item, index) => 
-                \`\${index + 1}. 微博热搜：\${item.title} (\${item.hot || '未知热度'})\`
+            const result = json.data.slice(0, 5).map((item, i) => 
+                `${i+1}. ${item.title} (${item.hot})`
             );
-            
-            log(\`微博热搜获取成功，共\${result.length}条\`);
             callback(result);
         } catch (e) {
-            log(\`微博数据解析失败: \${e.message}\`);
-            callback([\`微博热搜解析失败：\${e.message}\`]);
+            console.log('微博解析失败:', e);
+            callback([]);
         }
     });
 }
 
-// == 国际新闻获取函数 ==
 function fetchBing(callback) {
-    const startTime = Date.now();
-    log("开始获取国际新闻...");
-
-    const timeoutId = setTimeout(() => {
-        log("Bing请求超时");
-        callback(["国际新闻获取失败：请求超时"]);
-    }, CONFIG.TIMEOUT);
-
-    \$httpClient.get({
-        url: CONFIG.BING_API,
+    $httpClient.get({
+        url: 'https://www.bing.com/news/search?q=world+news&format=rss',
         headers: {
-            "User-Agent": CONFIG.USER_AGENT,
-            "Accept": "application/rss+xml, application/xml"
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X)'
         }
     }, (err, resp, data) => {
-        clearTimeout(timeoutId);
-        const duration = Date.now() - startTime;
-        log(\`Bing请求耗时: \${duration}ms\`);
-
         if (err) {
-            log(\`Bing请求错误: \${JSON.stringify(err)}\`);
-            callback(["国际新闻获取失败：网络错误"]);
+            console.log('Bing请求错误:', err);
+            callback([]);
             return;
         }
-
         try {
-            const titleRegex = /<title[^>]*>([\s\S]*?)<\/title>/gi;
-            const matches = [];
-            let match;
-            
-            while ((match = titleRegex.exec(data)) !== null) {
-                const title = match[1].replace(/\s+/g, ' ').trim();
-                if (title && title.length > 5) {
-                    matches.push(title);
-                }
-            }
-            
-            if (!matches || matches.length < 2) {
-                log("未找到足够的标题匹配项");
-                callback(["国际新闻解析失败：未找到标题"]);
-                return;
-            }
-
-            const newsTitles = matches.slice(1, CONFIG.BING_LIMIT + 1);
-            const result = newsTitles.map((title, index) => 
-                \`\${index + CONFIG.WEIBO_LIMIT + 1}. 国际新闻：\${title}\`
+            const titles = data.match(/<title>([^<]+)<\/title>/g) || [];
+            const result = titles.slice(1, 6).map((title, i) => 
+                `${i+6}. ${title.replace(/<\/?title>/g, '')}`
             );
-            
-            log(\`国际新闻获取成功，共\${result.length}条\`);
             callback(result);
         } catch (e) {
-            log(\`国际新闻解析失败: \${e.message}\`);
-            callback([\`国际新闻解析失败：\${e.message}\`]);
+            console.log('Bing解析失败:', e);
+            callback([]);
         }
     });
 }
 
-// == 主执行流程 ==
+// 主函数
 function main() {
-    const executionId = Date.now().toString().slice(-6);
-    log(\`===== 开始执行新闻获取任务 [ID: \${executionId}] =====\`);
-
-    let retryCount = 0;
-    
-    function execute() {
-        fetchWeibo((wbList) => {
-            fetchBing((bnList) => {
-                const allItems = [...wbList, ...bnList];
-                const validItems = allItems.filter(item => !item.includes("失败"));
-                const lines = validItems.slice(0, CONFIG.WEIBO_LIMIT + CONFIG.BING_LIMIT);
-
-                log(\`结果统计: 总条目=\${allItems.length}, 有效条目=\${validItems.length}\`);
-                
-                if (lines.length === 0 && retryCount < CONFIG.MAX_RETRIES) {
-                    retryCount++;
-                    log(\`所有新闻源获取失败，正在进行第\${retryCount}次重试...\`);
-                    setTimeout(execute, 2000);
-                    return;
-                }
-
-                if (lines.length === 0) {
-                    log("❌ 所有新闻源获取失败");
-                    showNotification("📰 新闻获取失败", "无法获取内容", "请检查网络连接或API可用性");
-                    \$done({ status: "error", message: "所有新闻源获取失败" });
-                    return;
-                }
-
-                const msg = lines.join("\n");
-                const successMsg = \`成功获取\${lines.length}条新闻\`;
-                
-                log("✅ 任务执行成功:\n" + msg);
-                showNotification("📰 新闻更新", successMsg, msg.substring(0, 100) + "...");
-                
-                \$done({ status: "success", count: lines.length });
-            });
+    console.log('===== 新闻脚本开始执行 =====');
+    fetchWeibo(weibo => {
+        fetchBing(bing => {
+            const news = [...weibo, ...bing];
+            if (news.length > 0) {
+                $notification.post('📰 新闻更新', `共${news.length}条`, news.join('\\n'));
+                console.log('新闻获取成功:', news);
+            } else {
+                $notification.post('📰 新闻获取失败', '无有效内容', '请检查网络');
+                console.log('未获取到任何新闻内容');
+            }
+            $done();
         });
-    }
-
-    execute();
+    });
 }
 
-// 启动主流程
-main();
-EOF
-)", tag=news_auto_fetch, interval=120
+// 立即执行
+main();"
+tag = news_minimal
+enabled = true
 
 [Cron]
-# 双重定时保障：每2分钟执行一次
-*/2 * * * * script-content="$(cat <<EOF
-// 仅用于触发主脚本执行
-\$httpClient.get("http://localhost:7890/__loon_news_trigger", (err, resp, data) => {
-    \$done();
-});
-EOF
-)", timeout=30, tag=news_cron_trigger
+# 每2分钟执行一次（简化版）
+*/2 * * * * script-tag=news_minimal, timeout=30
 
 [MITM]
-# HTTPS解密配置
-hostname = v2.xxapi.cn, www.bing.com, api.vvhan.com
+hostname = v2.xxapi.cn, www.bing.com
 enable = true
-ca-certificate = loon_ca
 
-[Rule]
-# 确保脚本相关域名直连
-DOMAIN-SUFFIX,xxapi.cn,DIRECT
-DOMAIN-SUFFIX,bing.com,DIRECT
-DOMAIN-SUFFIX,vvhan.com,DIRECT
-DOMAIN,raw.githubusercontent.com,DIRECT
-
-[Proxy Group]
-# 默认策略组（保持默认配置）
-DEFAULT = DIRECT
+[Log]
+script-log-level = debug
+console-output = true
