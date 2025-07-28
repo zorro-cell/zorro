@@ -1,95 +1,16 @@
-[General]
-script-enabled = true
-loglevel = debug
+#!name= 📰 每日简讯插件
+#!desc= 微博热搜 + 国际头条，每日推送
+#!author= ChatGPT
+#!homepage= https://github.com/zorro-cell/zorro
+#!icon= https://raw.githubusercontent.com/zorro-cell/zorro/main/icon.png
+#!version=1.0.0
+#!date=2025-07-29
 
 [Script]
-# 微博热搜与国际新闻获取（极简版）
-script-content = "function fetchWeibo(callback) {
-    $httpClient.get({
-        url: 'https://v2.xxapi.cn/api/weibohot',
-        headers: {
-            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X)'
-        }
-    }, (err, resp, data) => {
-        if (err) {
-            console.log('微博请求错误:', err);
-            callback([]);
-            return;
-        }
-        try {
-            const json = JSON.parse(data);
-            if (json.code !== 200) {
-                console.log('微博API错误:', json.msg);
-                callback([]);
-                return;
-            }
-            const result = json.data.slice(0, 5).map((item, i) => 
-                `${i+1}. ${item.title} (${item.hot})`
-            );
-            callback(result);
-        } catch (e) {
-            console.log('微博解析失败:', e);
-            callback([]);
-        }
-    });
-}
-
-function fetchBing(callback) {
-    $httpClient.get({
-        url: 'https://www.bing.com/news/search?q=world+news&format=rss',
-        headers: {
-            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X)'
-        }
-    }, (err, resp, data) => {
-        if (err) {
-            console.log('Bing请求错误:', err);
-            callback([]);
-            return;
-        }
-        try {
-            const titles = data.match(/<title>([^<]+)<\/title>/g) || [];
-            const result = titles.slice(1, 6).map((title, i) => 
-                `${i+6}. ${title.replace(/<\/?title>/g, '')}`
-            );
-            callback(result);
-        } catch (e) {
-            console.log('Bing解析失败:', e);
-            callback([]);
-        }
-    });
-}
-
-// 主函数
-function main() {
-    console.log('===== 新闻脚本开始执行 =====');
-    fetchWeibo(weibo => {
-        fetchBing(bing => {
-            const news = [...weibo, ...bing];
-            if (news.length > 0) {
-                $notification.post('📰 新闻更新', `共${news.length}条`, news.join('\\n'));
-                console.log('新闻获取成功:', news);
-            } else {
-                $notification.post('📰 新闻获取失败', '无有效内容', '请检查网络');
-                console.log('未获取到任何新闻内容');
-            }
-            $done();
-        });
-    });
-}
-
-// 立即执行
-main();"
-tag = news_minimal
-enabled = true
+http-response ^https:\/\/daily\.news\.proxy\/news script-path=https://raw.githubusercontent.com/zorro-cell/zorro/refs/heads/main/newsa.js, requires-body=0, max-size=0, timeout=20, tag=daily_digest
 
 [Cron]
-# 每2分钟执行一次（简化版）
-*/2 * * * * script-tag=news_minimal, timeout=30
+0 8 * * * script-path=https://raw.githubusercontent.com/zorro-cell/zorro/refs/heads/main/newsa.js, timeout=20, tag=daily_digest_cron
 
 [MITM]
-hostname = v2.xxapi.cn, www.bing.com
-enable = true
-
-[Log]
-script-log-level = debug
-console-output = true
+hostname = daily.news.proxy
