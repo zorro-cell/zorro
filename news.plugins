@@ -138,7 +138,7 @@ Loon 配置说明
 plaintext
 [Script]
 # 微博热搜与国际新闻脚本
-http-response ^https:\/\/daily\.news\.proxy\/news script-path=https://raw.githubusercontent.com/你的用户名/你的仓库名/main/loon_news_script.js, requires-body=0, max-size=0, timeout=20, tag=news_digest
+http-response ^https://raw.githubusercontent.com/zorro-cell/zorro/refs/heads/main/newsa.js, requires-body=0, max-size=0, timeout=20, tag=news_digest
 
 2. 定时任务配置
 
@@ -146,7 +146,7 @@ http-response ^https:\/\/daily\.news\.proxy\/news script-path=https://raw.github
 plaintext
 [Cron]
 # 每天早上8点执行
-0 8 * * * script-path=https://gist.githubusercontent.com/zorro-cell/17d40c9d37799667534163c37d4cfe49/raw/3af4110013981f6557dc4644f99d072bcf307701/%25E6%25AF%258F%25E6%2597%25A5%25E7%25AE%2580%25E8%25AE%25AF, timeout=20, tag=news_cron
+0 8 * * * script-path=https://raw.githubusercontent.com/zorro-cell/zorro/refs/heads/main/newsa.js, timeout=20, tag=news_cron
 
 3. MITM 配置
 
@@ -159,10 +159,10 @@ plaintext
 hostname = v2.xxapi.cn, www.bing.com, api.vvhan.com
 
 [Script]
-http-response ^https:\/\/daily\.news\.proxy\/news script-path=https://raw.githubusercontent.com/你的用户名/你的仓库名/main/daily_digest.js, requires-body=0, max-size=0, timeout=20, tag=daily_digest
+http-response ^https:\/\/daily\.news\.proxy\/news script-path=https://raw.githubusercontent.com/zorro-cell/zorro/refs/heads/main/newsa.js, requires-body=0, max-size=0, timeout=20, tag=daily_digest
 
 [Cron]
-0 8 * * * script-path=https://raw.githubusercontent.com/zorro-cell/zorro/main/daily_digest.js, timeout=20, tag=daily_digest_cron
+0 8 * * * script-path=https://raw.githubusercontent.com/zorro-cell/zorro/refs/heads/main/newsa.js, timeout=20, tag=daily_digest_cron
 
 [MITM]
 hostname = daily.news.proxy
