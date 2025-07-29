@@ -1,14 +1,14 @@
-#!name= 📈 每日热榜简讯（可自定义时间）
-#!desc= 微博 + 抖音各 5 条热榜；点通知不跳日志；推送小时可在脚本行的 argument 修改
-#!author= 心事全是脸上
-#!version=1.2.1
-#!homepage= https://github.com/zorro-cell/zorro
+#!name= 📈 每日热榜简讯
+#!desc= 微博 + 抖音各 5 条热榜；点击通知不跳日志；推送小时可在本页修改
+#!author= 心事全在脸上
+#!version=1.3.0
+#!homepage= https://t.me/Santiagocell
 #!icon= https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Apple_News.png
 
-#!argument=time|推送小时(逗号)|8,12,20   ;TestFlight 用于渲染 UI，可忽略
+#!argument=time|推送小时 (24h，用逗号分隔)|8,12,20
 
 [Script]
-cron "0 * * * *" script-path=https://raw.githubusercontent.com/zorro-cell/zorro/refs/heads/main/redianxinwen.js, timeout=15, argument=time=$time, tag=daily_hot_separate
+cron "0 * * * *" script-path=https://raw.githubusercontent.com/zorro-cell/zorro/main/redianxinwen.js, timeout=15, argument=time=$time, tag=daily_hot_separate
 
 [MITM]
 hostname = api.vvhan.com, api.istero.com
