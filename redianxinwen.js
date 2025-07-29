@@ -1,53 +1,71 @@
-function fetchWeibo(callback) {
-    const url = "https://api.vvhan.com/api/hotlist/all";
-    const headers = {
-        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X)"
-    };
+/*
+ * @PluginName     每日微博 + 抖音 热榜简讯
+ * @Author         梦田 / ChatGPT联合编写
+ * @ScriptType     cron
+ * @Cron           0 8,12,20 * * *
+ * @UpdateTime     2025-07-29
+ * @UseFor         Loon Plugins 定时通知展示
+ */
+
+const WB_API = "https://api.vvhan.com/api/hotlist/wbHot";
+const DY_API = "https://api.istero.com/resource/v1/douyin/top?token=RQofNsxcAgWNEhPEigHNQHRfYOBvoIjX";
+
+// 添加 User-Agent 增强兼容性
+const headers = {
+  "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
+};
+
+Promise.all([
+  httpGet(WB_API, headers),
+  httpGet(DY_API, headers)
+]).then(([wbList, dyList]) => {
+  const list = [];
+  if (wbList.length > 0) {
+    wbList.slice(0, 5).forEach((item, i) => list.push(`${i + 1}. 微博：${item.title}`));
+  } else {
+    list.push("微博热榜 ❌ 获取失败");
+  }
+
+  if (dyList.length > 0) {
+    dyList.slice(0, 5).forEach((item, i) => list.push(`${i + 6}. 抖音：${item.title}`));
+  } else {
+    list.push("抖音热榜 ❌ 获取失败");
+  }
+
+  const notifyBody = list.join("\n");
+  $notification.post("📌 每日热榜简讯", "微博 + 抖音 Top10", notifyBody);
+  $done();
+}).catch(error => {
+  console.log("请求异常:", error);
+  $notification.post("热榜获取失败", "", error.toString());
+  $done();
+});
+
+function httpGet(url, headers) {
+  return new Promise(resolve => {
     $httpClient.get({ url, headers }, (err, resp, data) => {
-        if (err || !data) return callback(["微博热搜请求失败"]);
-        try {
-            const json = JSON.parse(data);
-            const wb = json?.data?.weibo?.slice(0, 5) || [];
-            const weibo = wb.map((item, i) => `${i + 1}. 微博：${item.title}`);
-            callback(weibo);
-        } catch (e) {
-            callback([`微博热搜解析失败：${e.message}`]);
+      if (err) {
+        console.log(`请求失败: ${url}`);
+        resolve([]);
+        return;
+      }
+      try {
+        const obj = JSON.parse(data);
+        if (url.includes("douyin")) {
+          // 抖音热榜数据格式
+          const topList = obj?.data?.topList || [];
+          resolve(topList.map(item => ({ title: item.title || item.name || "-" })));
+        } else if (url.includes("wbHot")) {
+          // 微博热榜数据格式
+          const topList = obj?.data || [];
+          resolve(topList.map(item => ({ title: item.title || "-" })));
+        } else {
+          resolve([]);
         }
+      } catch (e) {
+        console.log("解析失败:", e);
+        resolve([]);
+      }
     });
+  });
 }
-
-function fetchDouyin(callback) {
-    const url = "https://api.istero.com/resource/v1/douyin/top?token=RQofNsxcAgWNEhPEigHNQHRfYOBvoIjX";
-    const headers = {
-        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X)"
-    };
-    $httpClient.get({ url, headers }, (err, resp, data) => {
-        if (err || !data) return callback(["抖音热榜请求失败"]);
-        try {
-            const json = JSON.parse(data);
-            const dy = json?.data?.slice(0, 5) || [];
-            const douyin = dy.map((item, i) => `${i + 6}. 抖音：${item.title}`);
-            callback(douyin);
-        } catch (e) {
-            callback([`抖音热榜解析失败：${e.message}`]);
-        }
-    });
-}
-
-function main() {
-    fetchWeibo((wbList) => {
-        fetchDouyin((dyList) => {
-            const all = wbList.concat(dyList);
-            const msg = all.join("\n");
-            const hasError = all.some(x => x.includes("失败"));
-            if (hasError) {
-                $notification.post("📉 热榜拉取失败", "部分内容失败", msg);
-            } else {
-                $notification.post("📈 每日热榜简讯", "微博 + 抖音 Top10", msg);
-            }
-            $done({ body: JSON.stringify({ list: all }) });
-        });
-    });
-}
-
-main();
