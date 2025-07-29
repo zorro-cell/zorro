@@ -6,21 +6,23 @@ function fetchHot(callback) {
     console.log("🔍 开始获取微博 + 抖音热榜...");
     $httpClient.get({ url, headers }, (err, resp, data) => {
         if (err || !data) {
-            console.log("❌ 热榜请求失败:", err);
-            return callback(["热榜请求失败：网络错误"]);
+            console.log("❌ 请求失败:", err);
+            return callback(["🔥 热榜获取失败：网络错误"]);
         }
         try {
             const json = JSON.parse(data);
-            const wbList = json?.data?.weibo?.slice(0, 5) || [];
-            const dyList = json?.data?.douyin?.slice(0, 5) || [];
+            const wb = json?.data?.weibo?.slice(0, 5) || [];
+            const dy = json?.data?.douyin?.slice(0, 5) || [];
 
-            const weibo = wbList.map((item, i) => `${i + 1}. 微博热搜：${item.title}`);
-            const douyin = dyList.map((item, i) => `${i + 6}. 抖音热榜：${item.title}`);
-            console.log("✅ 微博 + 抖音获取成功");
+            if (wb.length === 0 && dy.length === 0) {
+                return callback(["🔥 接口数据为空：可能被限流"]);
+            }
+
+            const weibo = wb.map((item, i) => `${i + 1}. 微博：${item.title}`);
+            const douyin = dy.map((item, i) => `${i + 6}. 抖音：${item.title}`);
             callback([...weibo, ...douyin]);
         } catch (e) {
-            console.log("❌ 热榜解析失败:", e.message);
-            callback([`热榜解析失败：${e.message}`]);
+            callback([`🔥 JSON 解析失败：${e.message}`]);
         }
     });
 }
@@ -28,10 +30,12 @@ function fetchHot(callback) {
 function main() {
     fetchHot((list) => {
         const msg = list.join("\n");
-        console.log("📢 简讯内容：\n" + msg);
-        $notification.post("📈 每日热榜简讯", "微博 + 抖音 Top10", msg);
+        if (list.length === 0 || list[0].includes("失败") || list[0].includes("为空")) {
+            $notification.post("📉 热榜拉取失败", "可能是接口被限流或数据结构变更", list[0]);
+        } else {
+            $notification.post("📈 每日热榜简讯", "微博 + 抖音 Top10", msg);
+        }
         $done({ body: JSON.stringify({ list }) });
     });
 }
-
 main();
