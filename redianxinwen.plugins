@@ -1,16 +1,11 @@
 #!name= 📈 每日热榜简讯
 #!desc= 微博 + 抖音 Top10 热榜
 #!author= 心事全是脸上
-#!version=1.0.0
-#!homepage= https://news-api.kikiapi.top
-#!icon= https://raw.githubusercontent.com/ddgksf2013/Scripts/main/icon/Hot.png
+#!homepage= https://github.com/zorro-cell/zorro
+#!icon= https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Apple_News.png
 
 [Script]
-http-response ^https:\/\/daily\.news\.proxy\/news script-path=https://news-api.kikiapi.top/plugin/hot.js, requires-body=0, max-size=0, timeout=10, tag=daily_hot
-
-[Cron]
-0 8,12,20 * * * script-path=https://news-api.kikiapi.top/plugin/hot.js, timeout=10, tag=daily_hot_cron
+cron 0 8,12,20 * * * script-path=https://raw.githubusercontent.com/zorro-cell/zorro/refs/heads/main/redianxinwen.js, timeout=15, tag=daily_hot_separate
 
 [MITM]
-hostname = news-api.kikiapi.top
-
+hostname = api.vvhan.com, api.istero.com
