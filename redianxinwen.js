@@ -21,20 +21,22 @@ if (!hours.includes(nowH)) {
 
 // 主流程：微博 + 抖音通知，并跳转 App
 Promise.all([getWB(), getDY()]).then(([wb, dy]) => {
-  // 微博热榜跳转链接 - 使用更标准的热榜页面链接
+  // 微博热榜 - 使用Loon特定的跳转参数
   $notification.post("📰 微博热搜 Top5", "", wb, {
-    "open-url": "sinaweibo://hotsearch"
+    "url": "sinaweibo://hotsearch",  // Loon中使用"url"参数而非"open-url"
+    "open-with-app": true            // 强制使用应用打开
   });
   
-  // 抖音热榜跳转链接 - 使用标准的热榜页面链接
+  // 抖音热榜 - 使用Loon特定的跳转参数
   $notification.post("🎵 抖音热榜 Top5", "", dy, {
-    "open-url": "snssdk1128://hotsearch"
+    "url": "snssdk1128://hotsearch",
+    "open-with-app": true
   });
   
   $done();
 }).catch(e => {
   $notification.post("热榜脚本异常", "", String(e), {
-    "open-url": ""
+    "url": ""
   });
   $done();
 });
@@ -43,7 +45,7 @@ Promise.all([getWB(), getDY()]).then(([wb, dy]) => {
 function getWB() {
   return new Promise(res => {
     $httpClient.get({ url: WB_API, headers: UA }, (err, _, data) => {
-      if (err || !data) return res("微博微博接口请求失败");
+      if (err || !data) return res("微博接口请求失败");
       try {
         const list = JSON.parse(data).data.slice(0, 5)
           .map((x, i) => `${i + 1}. ${x.title}`);
