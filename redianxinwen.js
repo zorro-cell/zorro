@@ -1,4 +1,3 @@
-// == 热榜主脚本 ==
 function fetchWeibo(callback) {
     const url = "https://api.vvhan.com/api/hotlist/all";
     const headers = {
@@ -20,7 +19,7 @@ function fetchWeibo(callback) {
 }
 
 function fetchDouyin(callback) {
-    const url = "https://api.istero.com/resource/v1/douyin/top?token=0c17bf1b49ca7333483ffcbebe201d4a";
+    const url = "https://api.istero.com/resource/v1/douyin/top?token=RQofNsxcAgWNEhPEigHNQHRfYOBvoIjX";
     const headers = {
         "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X)"
     };
@@ -44,17 +43,6 @@ function main() {
         fetchDouyin((dyList) => {
             const all = wbList.concat(dyList);
             const msg = all.join("\n");
-
             const hasError = all.some(x => x.includes("失败"));
-
             if (hasError) {
-                $notification.post("📉 热榜拉取失败", "部分内容获取失败", msg);
-            } else {
-                $notification.post("📈 每日热榜简讯", "微博 + 抖音 Top10", msg);
-            }
-
-            $done({ body: JSON.stringify({ list: all }) });
-        });
-    });
-}
-main();
+                $notifica
