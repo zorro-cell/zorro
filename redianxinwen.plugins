@@ -1,14 +1,16 @@
 #!name= 📈 每日热榜简讯
-#!desc= 抖音 + 微博 Top5，各 5 条；推送时间由 argument=time 控制（逗号隔开）
+#!desc= 微博 + 抖音 top5
 #!author= 心事全在脸上
-#!version=2025-07-30
+#!version=1.4.0
+#!date=2025-07-30 02:00:00      ← 版本日期
 #!homepage= https://t.me/Santiagocell
 #!icon= https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Apple_News.png
-#!argument=time|推送小时(24h,逗号分隔)|8,12,20
+#!loon_version = 3.2.4
+
+#!argument=time|推送小时（24h，英文逗号分隔）|8,12,20
 
 [Script]
-cron "0 * * * *" script-path=https://raw.githubusercontent.com/zorro-cell/zorro/refs/heads/main/redianxinwen.js, timeout=20, argument=time=$time, tag=daily_hot_separate
+cron "0 * * * *" script-path=https://raw.githubusercontent.com/zorro-cell/zorro/refs/heads/main/redianxinwen.js, timeout=60, argument=time=$time, tag=daily_hot_separate
 
 [MITM]
 hostname = api.vvhan.com, api.istero.com
-
