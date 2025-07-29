@@ -11,38 +11,58 @@ const UA = { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS)" };
 const WB_API = "https://api.vvhan.com/api/hotlist/wbHot";
 const DY_API = "https://api.istero.com/resource/v1/douyin/top?token=RQofNsxcAgWNEhPEigHNQHRfYOBvoIjX";
 
-// 读取 argument 格式
-let arg = typeof $argument === "string" ? $argument.trim() : "";
-arg = arg.replace(/^time=/,"").replace(/，/g,",");
-const hours = arg.split(",").map(h=>parseInt(h,10)).filter(h=>!isNaN(h)&&h>=0&&h<24);
-if (hours.length === 0) hours.push(8,12,20);
-const nowH = new Date().getHours();
-console。log(`已设推送小时: [${hours}]; 当前小时: ${nowH}`);
+/*
+ * redianxinwen.js   — 微博 + 抖音各 5 条
+ * Cron 固定整点 0 * * * * ，脚本内部比对 hour 是否在用户设置
+ */
+
+const UA      = { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)" };
+const WB_API  = "https://api.vvhan.com/api/hotlist/wbHot";
+const DY_API  = "https://api.istero.com/resource/v1/douyin/top?token=RQofNsxcAgWNEhPEigHNQHRfYOBvoIjX";
+
+/* ------- 读取用户设定小时 (默认 8,12,20) ------- */
+const arg     = typeof $argument === "object" && $argument.time ? $argument.time : "8,12,20";
+const hours   = arg.replace(/，/g,",").split(",")
+                   .map(h => parseInt(h.trim(), 10))
+                   .filter(h => !Number.isNaN(h) && h >= 0 && h < 24);
+const nowH    = new Date().getHours();
 if (!hours.includes(nowH)) {
-  console.log(`⏰ 当前 ${nowH} 点，不在推送时段 [${hours}]`);
+  console.log(`⏰ 当前 ${nowH} 点，不在推送时段 ${hours}`);
   $done(); return;
 }
 
-Promise。all([fetchWB(), fetchDY()]).then(([wb, dy]) => {
-  $notification.post("📰 微博热搜 Top5", "", wb, { "open-url": "about:blank" });
-  $notification.post("📱 抖音热榜 Top5", "", dy, { "open-url": "about:blank" });
+/* -------------- 主流程 -------------- */
+Promise.all([getWB(), getDY()]).then(([wb, dy]) => {
+  $notification.post("📰 微博热搜 Top5", "", wb, { "open-url": "about:blank" });
+  $notification.post("🎶 抖音热榜 Top5", "", dy, { "open-url": "about:blank" });
   $done();
-})。catch(e=>{
+}).catch(e => {
   $notification.post("热榜脚本异常", "", String(e), { "open-url": "about:blank" });
   $done();
 });
 
-function fetchWB(){ return new Promise(r=>{
-  $httpClient.get({url:WB_API,headers:UA},(e,_,d)=>{
-    if(e||!d) return r("微博请求失败");
-    try{ const list=JSON.parse(d).data.slice(0,5).map((x,i)=>`${i+1}. ${x.title}`); r(list.join("\n")||"微博无数据") }
-    catch{ r("微博解析异常") }
+/* -------------- 请求函数 -------------- */
+function getWB() {
+  return new Promise(res => {
+    $httpClient.get({ url: WB_API, headers: UA }, (err, _, data) => {
+      if (err || !data) return res("微博接口请求失败");
+      try {
+        const list = JSON.parse(data).data.slice(0, 5)
+                     .map((x, i) => `${i + 1}. ${x.title}`);
+        res(list.join("\n") || "微博列表为空");
+      } catch { res("微博数据解析失败"); }
+    });
   });
-});}
-function fetchDY(){ return new Promise(r=>{
-  $httpClient.get({url:DY_API,headers:UA},(e,_,d)=>{
-    if(e||!d) return r("抖音请求失败");
-    try{ const list=JSON.parse(d).data.slice(0,5).map((x,i)=>`${i+1}. ${x.title||x.name}`); r(list.join("\n")||"抖音无数据") }
-    catch{ r("抖音解析异常") }
+}
+function getDY() {
+  return new Promise(res => {
+    $httpClient.get({ url: DY_API, headers: UA }, (err, _, data) => {
+      if (err || !data) return res("抖音接口请求失败");
+      try {
+        const list = JSON.parse(data).data.slice(0, 5)
+                     .map((x, i) => `${i + 1}. ${x.title || x.name}`);
+        res(list.join("\n") || "抖音列表为空");
+      } catch { res("抖音数据解析失败"); }
+    });
   });
-});}
+}
