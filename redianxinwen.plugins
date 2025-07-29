@@ -1,13 +1,14 @@
 #!name= 📈 每日热榜简讯
-#!desc= 抖音+微博各 5 条热榜，时间可在插件页面改
-#!author= 心事全是脸上
-#!version=1.1.0
+#!desc= 抖音+微博各5条热榜，点通知不跳转；推送小时可在此页面修改
+#!author= 心事全在脸上
+#!version=1.2.0
 #!homepage= https://t.me/Santiagocell
 #!icon= https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Apple_News.png
 
+#!argument=time|推送时间（24h，用逗号分隔）|8,12,20
+
 [Script]
-cron "0 * * * *" script-path=https://raw.githubusercontent.com/zorro-cell/zorro/refs/heads/main/redianxinwen.js, timeout=15, argument=time=8,12,20, tag=daily_hot_separate
+cron "0 * * * *" script-path=https://raw.githubusercontent.com/zorro-cell/zorro/main/hot_separate_arg.js, timeout=15, argument=time=$time, tag=daily_hot_separate
 
 [MITM]
 hostname = api.vvhan.com, api.istero.com
-
