@@ -1,58 +1,38 @@
 /*  hot_separate_arg.js
- *  根据 argument=time=8,12,20 推送
- *  建议 Cron “0 * * * *” 每小时检查一次
+ *  微博 + 抖音热榜各 5 条；推送小时由 argument=time=8,12,20 决定
+ *  Cron 固定 0 * * * *   (整点运行，内部判断是否在设定小时)
  */
-
 const UA = { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)" };
 const WB_API = "https://api.vvhan.com/api/hotlist/wbHot";
 const DY_API = "https://api.istero.com/resource/v1/douyin/top?token=RQofNsxcAgWNEhPEigHNQHRfYOBvoIjX";
 
-const arg = typeof $argument === "string" ? $argument : "";     // Loon 会把 argument= 后面的内容放到 $argument
-const hours = (arg.match(/time=([0-9,]+)/)?.[1] || "8,12,20")
-               .split(",").map(x => parseInt(x.trim(), 10));
-const nowHour = new Date().getHours();
+const argStr = typeof $argument === "string" ? $argument : "";
+const hours  = (argStr.match(/time=([^&]+)/)?.[1] || "8,12,20")
+               .split(",").map(h => parseInt(h, 10));
+const nowH   = new Date().getHours();
 
-if (!hours.includes(nowHour)) {          // 如果当前小时不在设定列表 → 直接结束
-  console.log(`当前 ${nowHour} 点不在推送时间 ${hours}`);
-  $done();
-  return;
-}
+if (!hours.includes(nowH)) { console.log(`⏰ ${nowH} 点不在推送时间 ${hours}`); $done(); return; }
 
-Promise.all([getWB(), getDY()]).then(([wbMsg, dyMsg]) => {
-  $notification.post("📰 微博热搜 Top5", "", wbMsg, { "open-url": "about:blank" });
-  $notification.post("🎵 抖音热榜 Top5", "", dyMsg, { "open-url": "about:blank" });
+Promise.all([getWB(), getDY()]).then(([wb, dy]) => {
+  $notification.post("📰 微博热搜 Top5", "", wb, { "open-url": "about:blank" });
+  $notification.post("🎵 抖音热榜 Top5", "", dy, { "open-url": "about:blank" });
   $done();
 }).catch(e => {
   $notification.post("热榜脚本异常", "", String(e), { "open-url": "about:blank" });
   $done();
 });
 
-/* --- 请求函数 --- */
-function getWB() {
-  return new Promise(res => {
-    $httpClient.get({ url: WB_API, headers: UA }, (e, _, d) => {
-      if (e || !d) return res("微博接口请求失败");
-      try {
-        const list = JSON.parse(d).data.slice(0, 5).map((x,i)=>`${i+1}. ${x.title}`);
-        res(list.join("\n") || "微博列表为空");
-      } catch { res("微博解析失败"); }
-    });
+function getWB() { return new Promise(res=>{
+  $httpClient.get({ url: WB_API, headers: UA }, (e,_,d)=>{
+    if(e||!d) return res("微博接口请求失败");
+    try{ const l=JSON.parse(d).data.slice(0,5).map((x,i)=>`${i+1}. ${x.title}`);res(l.join("\n")); }
+    catch{ res("微博解析失败"); }
   });
-}
-function getDY() {
-  return new Promise(res => {
-    $httpClient.get({ url: DY_API, headers: UA }, (e, _, d) => {
-      if (e || !d) return res("抖音接口请求失败");
-      try {
-        const list = JSON.parse(d).data.slice(0, 5).map((x,i)=>`${i+1}. ${x.title||x.name}`);
-        res(list.join("\n") || "抖音列表为空");
-      } catch { res("抖音解析失败"); }
-    });
+});}
+function getDY() { return new Promise(res=>{
+  $httpClient.get({ url: DY_API, headers: UA }, (e,_,d)=>{
+    if(e||!d) return res("抖音接口请求失败");
+    try{ const l=JSON.parse(d).data.slice(0,5).map((x,i)=>`${i+1}. ${x.title||x.name}`);res(l.join("\n")); }
+    catch{ res("抖音解析失败"); }
   });
-}
-
-        res("抖音数据解析失败");
-      }
-    });
-  });
-}
+});}
