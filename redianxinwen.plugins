@@ -1,11 +1,11 @@
 #!name= 📈 每日热榜简讯
-#!desc= 抖音+微博各5条热榜，点通知不跳转；推送小时可在此页面修改
+#!desc= 微博 + 抖音各 5 条热榜；
 #!author= 心事全在脸上
-#!version=1.2.0
+#!version=1.2.1
 #!homepage= https://t.me/Santiagocell
 #!icon= https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Apple_News.png
 
-#!argument=time|推送时间（24h，用逗号分隔）|8,12,20
+#!argument=time|推送小时(逗号)|8,12,20   ;TestFlight 用于渲染 UI，可忽略
 
 [Script]
 cron "0 * * * *" script-path=https://raw.githubusercontent.com/zorro-cell/zorro/refs/heads/main/redianxinwen.js, timeout=15, argument=time=$time, tag=daily_hot_separate
