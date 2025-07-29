@@ -1,11 +1,11 @@
 #!name= 📈 每日热榜简讯
-#!desc= 微博 + 抖音各 5 条；点击通知不跳日志；推送小时可在本页修改
+#!desc= 微博 + 抖音各 5 条热榜；点击通知不跳日志；推送小时可在本页修改
 #!author= 心事全在脸上
-#!version=1.3.2
+#!version=1.3.3
 #!homepage= https://t.me/Santiagocell
 #!icon= https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Apple_News.png
 
-#!argument time|推送小时 (逗号分隔，24h)|8,12,20
+#!argument=time|推送小时 (逗号分隔，24h)|8,12,20   ; ← 这里一定要有 “=”
 
 [Script]
 cron "0 * * * *" script-path=https://raw.githubusercontent.com/zorro-cell/zorro/refs/heads/main/redianxinwen.js, timeout=15, argument=time=$time, tag=daily_hot_separate
