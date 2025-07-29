@@ -4,9 +4,7 @@ function fetchWeibo(callback) {
         "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X)"
     };
     $httpClient.get({ url, headers }, (err, resp, data) => {
-        if (err || !data) {
-            return callback(["微博热搜请求失败"]);
-        }
+        if (err || !data) return callback(["微博热搜请求失败"]);
         try {
             const json = JSON.parse(data);
             const wb = json?.data?.weibo?.slice(0, 5) || [];
@@ -24,9 +22,7 @@ function fetchDouyin(callback) {
         "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X)"
     };
     $httpClient.get({ url, headers }, (err, resp, data) => {
-        if (err || !data) {
-            return callback(["抖音热榜请求失败"]);
-        }
+        if (err || !data) return callback(["抖音热榜请求失败"]);
         try {
             const json = JSON.parse(data);
             const dy = json?.data?.slice(0, 5) || [];
@@ -45,4 +41,13 @@ function main() {
             const msg = all.join("\n");
             const hasError = all.some(x => x.includes("失败"));
             if (hasError) {
-                $notifica
+                $notification.post("📉 热榜拉取失败", "部分内容失败", msg);
+            } else {
+                $notification.post("📈 每日热榜简讯", "微博 + 抖音 Top10", msg);
+            }
+            $done({ body: JSON.stringify({ list: all }) });
+        });
+    });
+}
+
+main();
