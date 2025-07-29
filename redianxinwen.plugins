@@ -1,8 +1,10 @@
 #!name= 📈 每日热榜简讯
-#!desc= 微博 + 抖音 Top10 热榜
-#!author= 心事全是脸上
-#!homepage= https://github.com/zorro-cell/zorro
+#!desc= 抖音+微博 Top5 热榜
+#!author= 心事全在脸上
+#!homepage= https://t.me/Santiagocell
 #!icon= https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Apple_News.png
+#!version=1.0.0
+#!date=2025-07-29
 
 [Script]
 cron "0 8,12,20 * * *" script-path=https://raw.githubusercontent.com/zorro-cell/zorro/main/redianxinwen.js, timeout=15, tag=daily_hot_separate
