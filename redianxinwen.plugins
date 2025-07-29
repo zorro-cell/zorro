@@ -4,11 +4,13 @@
 #!version=1.3.5  
 #!homepage= https://t.me/Santiagocell  
 #!icon= https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Apple_News.png  
+#!loon_version = 3.2.4(787)
 
-#!argument=time|推送小时（24h，逗号分隔）|8,12,20  
+[Argument]
+time = input,"8,12,20",tag=推送小时,desc=输入推送的小时（24h，用英文逗号分隔）
 
-[Script]  
-cron "0 * * * *" script-path=https://raw.githubusercontent.com/zorro-cell/zorro/main/redianxinwen.js, timeout=15, argument=time={time}, tag=daily_hot_separate  
+[Script]
+cron "0 * * * *" script-path=https://raw.githubusercontent.com/zorro-cell/zorro/main/redianxinwen.js, timeout=60, argument=[{time}], tag=daily_hot_separate
 
-[MITM]  
-hostname = api.vvhan.com, api.istero.com  
+[MITM]
+hostname = api.vvhan.com, api.istero.com
