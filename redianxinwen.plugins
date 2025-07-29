@@ -6,7 +6,7 @@
 #!icon= https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Apple_News.png
 
 [Script]
-cron "0 * * * *" script-path=https://raw.githubusercontent.com/zorro-cell/zorro/main/hot_separate_arg.js, timeout=15, argument=time=8,12,20, tag=daily_hot_separate
+cron "0 * * * *" script-path=https://raw.githubusercontent.com/zorro-cell/zorro/refs/heads/main/redianxinwen.js, timeout=15, argument=time=8,12,20, tag=daily_hot_separate
 
 [MITM]
 hostname = api.vvhan.com, api.istero.com
