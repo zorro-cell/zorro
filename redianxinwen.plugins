@@ -1,0 +1,18 @@
+
+：
+
+#!name= 📈 每日热榜
+#!desc= 微博 + 抖音热榜，每日推送简讯通知
+#!author= 心事全在脸上
+#!version=1.1.0
+#!icon= https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Apple_News.png
+#!homepage= https://github.com/zorro-cell/zorro
+
+[Script]
+http-response ^https:\/\/daily\.news\.proxy\/news script-path=https://raw.githubusercontent.com/zorro-cell/zorro/refs/heads/main/redianxinwen.js, requires-body=0, max-size=0, timeout=20, tag=daily_digest
+
+[Cron]
+0 0/5 * * * ? script-path=https://raw.githubusercontent.com/zorro-cell/zorro/refs/heads/main/redianxinwen.js, timeout=20, tag=daily_digest_cron
+
+[MITM]
+hostname = daily.news.proxy
