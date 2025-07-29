@@ -8,7 +8,7 @@
 #!argument=time|推送时间（24h，用逗号分隔）|8,12,20
 
 [Script]
-cron "0 * * * *" script-path=https://raw.githubusercontent.com/zorro-cell/zorro/main/hot_separate_arg.js, timeout=15, argument=time=$time, tag=daily_hot_separate
+cron "0 * * * *" script-path=https://raw.githubusercontent.com/zorro-cell/zorro/refs/heads/main/redianxinwen.js, timeout=15, argument=time=$time, tag=daily_hot_separate
 
 [MITM]
 hostname = api.vvhan.com, api.istero.com
