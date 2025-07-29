@@ -5,7 +5,6 @@
 const UA = { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)" };
 
 const WB_API = "https://api.vvhan.com/api/hotlist/wbHot";
-
 const DY_API = "https://api.istero.com/resource/v1/douyin/top?token=RQofNsxcAgWNEhPEigHNQHRfYOBvoIjX";
 
 // 读取用户设置小时参数
@@ -22,36 +21,20 @@ if (!hours.includes(nowH)) {
 
 // 主流程：微博 + 抖音通知，并跳转 App
 Promise.all([getWB(), getDY()]).then(([wb, dy]) => {
+  // 微博热榜跳转链接 - 使用更标准的热榜页面链接
   $notification.post("📰 微博热搜 Top5", "", wb, {
-    // 微博跳转设置：
-    // 请根据你的设备和微博版本，选择一个可以正常跳转的 Scheme。
-    // 尝试顺序建议：1 -> 2
-    
-    // 1. 尝试跳转微博首页（你原来的设置，通常有效）
-    "open-url": "sinaweibo://gotohome" 
-    
-    // 2. 更通用的微博 App Scheme，可能跳转到App主页
-    // "open-url": "weibo://" 
+    "open-url": "sinaweibo://hotsearch"
   });
-
+  
+  // 抖音热榜跳转链接 - 使用标准的热榜页面链接
   $notification.post("🎵 抖音热榜 Top5", "", dy, {
-    // 抖音跳转设置：
-    // 请根据你的设备和抖音版本，选择一个可以正常跳转的 Scheme。
-    // 尝试顺序建议：1 -> 2 -> 3
-    
-    // 1. 尝试跳转抖音热榜（你原来的设置，可能不兼容新版本）
-    "open-url": "snssdk1128://search/trending" 
-    
-    // 2. 尝试跳转抖音热点/推荐页
-    // "open-url": "snssdk1128://hotsoon/feed" 
-    
-    // 3. 最通用的抖音 App Scheme，通常跳转到App主页
-    // "open-url": "snssdk1128://" 
+    "open-url": "snssdk1128://hotsearch"
   });
+  
   $done();
 }).catch(e => {
   $notification.post("热榜脚本异常", "", String(e), {
-    "open-url": "" // 异常情况不跳转
+    "open-url": ""
   });
   $done();
 });
@@ -60,7 +43,7 @@ Promise.all([getWB(), getDY()]).then(([wb, dy]) => {
 function getWB() {
   return new Promise(res => {
     $httpClient.get({ url: WB_API, headers: UA }, (err, _, data) => {
-      if (err || !data) return res("微博接口请求失败");
+      if (err || !data) return res("微博微博接口请求失败");
       try {
         const list = JSON.parse(data).data.slice(0, 5)
           .map((x, i) => `${i + 1}. ${x.title}`);
