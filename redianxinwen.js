@@ -14,29 +14,40 @@ const hours = arg.replace(/，/g, ",").split(",")
 const nowH = new Date().getHours();
 
 if (!hours.includes(nowH)) {
-  console.log(`⏰ 当前 ${nowH} 点，不在推送时段 [${hours.join(",")}]`);
+  console.log(`⏰ 当前 ${nowH} 点，不在推送推送时段 [${hours.join(",")}]`);
   $done();
   return;
 }
 
 // 主流程：微博 + 抖音通知，并跳转 App
 Promise.all([getWB(), getDY()]).then(([wb, dy]) => {
-  // 微博热榜 - 使用Loon特定的跳转参数
-  $notification.post("📰 微博热搜 Top5", "", wb, {
-    "url": "sinaweibo://hotsearch",  // Loon中使用"url"参数而非"open-url"
-    "open-with-app": true            // 强制使用应用打开
-  });
+  // 微博热榜通知 - 使用Loon推荐的通知格式
+  const wbNotification = {
+    title: "📰 微博热搜 Top5",
+    subtitle: "",
+    body: wb,
+    url: "sinaweibo://hotsearch",  // 微博热榜页面
+    shouldOpenApp: true            // Loon专用参数，强制打开应用
+  };
+  $notification.post(wbNotification);
   
-  // 抖音热榜 - 使用Loon特定的跳转参数
-  $notification.post("🎵 抖音热榜 Top5", "", dy, {
-    "url": "snssdk1128://hotsearch",
-    "open-with-app": true
-  });
+  // 抖音热榜通知 - 使用Loon推荐的通知格式
+  const dyNotification = {
+    title: "🎵 抖音热榜 Top5",
+    subtitle: "",
+    body: dy,
+    url: "douyin://hotsearch",      // 抖音热榜页面
+    shouldOpenApp: true             // Loon专用参数，强制打开应用
+  };
+  $notification.post(dyNotification);
   
   $done();
 }).catch(e => {
-  $notification.post("热榜脚本异常", "", String(e), {
-    "url": ""
+  $notification.post({
+    title: "热榜脚本异常",
+    subtitle: "",
+    body: String(e),
+    url: ""
   });
   $done();
 });
