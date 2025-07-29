@@ -1,14 +1,14 @@
 #!name= 📈 每日热榜简讯
-#!desc= 抖音热搜 + 微博热搜 每日推送
+#!desc= 抖音热搜 + 微博热搜 每日推送，点击通知不跳日志，推送时间可调
 #!author= 心事全在脸上
 #!version=1.4.0
 #!date=2025-07-30 02:00:00
 #!homepage= https://t.me/Santiagocell
 #!icon= https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Apple_News.png
-#!loon_version = 3.2.4
+#!loon_version = 3.3.3
 
 [Argument]
-time = input,"8,12,20",tag=推送小时,desc=输入推送的小时（24h，用英文逗号分隔）
+time = input,"8,12,20",tag=推送小时,desc=输入推送的小时（24‑h，用英文逗号分隔）
 
 [Script]
 cron "0 * * * *" script-path=https://raw.githubusercontent.com/zorro-cell/zorro/main/redianxinwen.js, timeout=60, argument=[{time}], tag=daily_hot_separate
