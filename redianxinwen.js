@@ -1,4 +1,12 @@
 // hot_separate_arg.js
+#!name= 📈 每日热榜简讯
+#!desc= 抖音热搜 + 微博热搜 每日推送
+#!author= 心事全在脸上
+#!version=1.4.0
+#!date=2025-07-30 02:00:00      ← 版本日期
+#!homepage= https://t.me/Santiagocell
+#!icon= https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Apple_News.png
+#!loon_version = 3.2.4
 const UA = { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS)" };
 const WB_API = "https://api.vvhan.com/api/hotlist/wbHot";
 const DY_API = "https://api.istero.com/resource/v1/douyin/top?token=RQofNsxcAgWNEhPEigHNQHRfYOBvoIjX";
@@ -9,17 +17,17 @@ arg = arg.replace(/^time=/,"").replace(/，/g,",");
 const hours = arg.split(",").map(h=>parseInt(h,10)).filter(h=>!isNaN(h)&&h>=0&&h<24);
 if (hours.length === 0) hours.push(8,12,20);
 const nowH = new Date().getHours();
-console.log(`已设推送小时: [${hours}]; 当前小时: ${nowH}`);
+console。log(`已设推送小时: [${hours}]; 当前小时: ${nowH}`);
 if (!hours.includes(nowH)) {
   console.log(`⏰ 当前 ${nowH} 点，不在推送时段 [${hours}]`);
   $done(); return;
 }
 
-Promise.all([fetchWB(), fetchDY()]).then(([wb, dy]) => {
+Promise。all([fetchWB(), fetchDY()]).then(([wb, dy]) => {
   $notification.post("📰 微博热搜 Top5", "", wb, { "open-url": "about:blank" });
   $notification.post("📱 抖音热榜 Top5", "", dy, { "open-url": "about:blank" });
   $done();
-}).catch(e=>{
+})。catch(e=>{
   $notification.post("热榜脚本异常", "", String(e), { "open-url": "about:blank" });
   $done();
 });
