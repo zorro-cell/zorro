@@ -1,5 +1,5 @@
-// 微博+抖音热榜通知（稳定版）
-const UA = { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)" };
+// 微博+抖音热榜通知（精准匹配版）
+const UA = { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1" };
 const WB_API = "https://api.vvhan.com/api/hotlist/wbHot";
 const DY_API = "https://api.istero.com/resource/v1/douyin/top?token=RQofNsxcAgWNEhPEigHNQHRfYOBvoIjX";
 
@@ -8,16 +8,16 @@ const arg = (typeof $argument === "object" && $argument.time) ? $argument.time :
 const hours = arg.replace(/，/g, ",").split(",").map(h => parseInt(h.trim(), 10)).filter(h => !isNaN(h) && h >= 0 && h < 24);
 const nowH = new Date().getHours();
 if (!hours.includes(nowH)) {
-  console.log(`⏰ 当前 ${nowH} 点，不在在推送时段 [${hours.join.join(",")}]`);
+  console.log(`⏰ 当前 ${nowH} 点，不在推送时段 [${hours.join(",")}]`);
   $done();
   return;
 }
 
 // 主流程
 Promise.all([getWB(), getDY()]).then(([wb, dy]) => {
-  // 微博热榜（使用已验证可打开的网页链接）
+  // 微博热榜（与你的热榜首页地址精准匹配）
   $notification.post("📰 微博热搜 Top5", "", wb, {
-    "openUrl": "https://s.weibo.com/top/summary"
+    "openUrl": "sinaweibo://weibo.com/p/106003type=25&t=3&disable_hot=1&filter_type=realtimehot"
   });
   
   // 抖音热榜（已正常工作）
