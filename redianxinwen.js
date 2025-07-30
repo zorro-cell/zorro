@@ -18,15 +18,16 @@ if (!hours.includes(nowH)) {
 
 // 主流程
 Promise.all([getWB(), getDY()]).then(([wb, dy]) => {
-  // 微博热榜通知 - 尝试网页跳转方式（兼容性更好）
+  // 微博热榜通知 - 使用稳定的网页版热搜链接
   const wbAttach = {
-    // 以下链接请逐个测试，找到可用的一个
-    "openUrl": "sinaweibo://browser?url=https%3A%2F%2Fm.weibo.cn%2Fhotsearch%2Fhome"
-    // 备选1: "openUrl": "weibo://https://m.weibo.cn/hotsearch"
-    // 备选2: "openUrl": "sinaweibo://webview?url=https://s.weibo.com/top/summary"
-    // 备选3: "openUrl": "weibo://page/100808543233cdf5c8925105a0d34a914"
-    // 备选4: "openUrl": "sinaweibo://deeplink?id=hotsearch"
+    // 微博官方热搜网页，通过App内浏览器打开（最稳定方案）
+    "openUrl": "sinaweibo://webview?url=https://s.weibo.com/top/summary?cate=realtimehot"
   };
+  
+  // 备选链接（如果上面的仍空白，尝试下面的）
+  // "openUrl": "weibo://webview?url=https://m.weibo.cn/p/index?containerid=231583"
+  // "openUrl": "sinaweibo://browser?url=https://m.weibo.cn/hotsearch?tt_from=copy_link"
+  
   $notification.post("📰 微博热搜 Top5", "", wb, wbAttach);
   
   // 抖音热榜通知 - 已确认可跳转
@@ -75,4 +76,3 @@ function getDY() {
     });
   });
 }
-
