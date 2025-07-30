@@ -18,13 +18,13 @@ if (!hours.includes(nowH)) {
 
 // 主流程
 Promise.all([getWB(), getDY()]).then(([wb, dy]) => {
-  // 微博热榜通知 - 已确认可正常跳转
+  // 微博热榜通知 - 精确跳转至热搜页面
   const wbAttach = {
-    "openUrl": "sinaweibo://hotsearch"
+    "openUrl": "sinaweibo://searchall?containerid=106003type%3D1"  // 微博热搜专属容器ID
   };
   $notification.post("📰 微博热搜 Top5", "", wb, wbAttach);
   
-  // 抖音热榜通知 - 更新为snssdk1128://search/trending
+  // 抖音热榜通知 - 已确认可跳转
   const dyAttach = {
     "openUrl": "snssdk1128://search/trending"
   };
