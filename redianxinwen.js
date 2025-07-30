@@ -11,23 +11,22 @@ const hours = arg.replace(/，/g, ",").split(",")
 const nowH = new Date().getHours();
 
 if (!hours.includes(nowH)) {
-  console.log(`⏰ 当前 ${nowH} 点，不在推送时段 [${hours.join(",")}]`);
+  console.log(`� 当前 ${nowH} 点，不在推送时段 [${hours.join(",")}]`);
   $done();
   return;
 }
 
 // 主流程
 Promise.all([getWB(), getDY()]).then(([wb, dy]) => {
-  // 微博热榜通知 - 尝试多个版本专属热榜Scheme
+  // 微博热榜通知 - 基于API对应的页面路径
   const wbAttach = {
-    // 最新版微博热榜专用（推荐优先测试）
-    "openUrl": "sinaweibo://hotsearchdetail"
+    // 对应https://weibo.com/ajax/side/hotSearch接口的页面Scheme
+    "openUrl": "sinaweibo://page/100808?containerid=231583"
   };
   
-  // 按顺序测试以下备选链接（注释掉当前的，启用下面的）
-  // "openUrl": "sinaweibo://page/100808"  // 热榜页面固定ID
-  // "openUrl": "weibo://menu?go=hotsearch"  // 通过菜单直接进入
-  // "openUrl": "sinaweibo://searchall?containerid=231583"  // 另一组热榜容器ID
+  // 备选链接（基于API路径的不同表达方式）
+  // "openUrl": "weibo://https://weibo.com/side/hotSearch"
+  // "openUrl": "sinaweibo://browser?url=https://weibo.com/side/hotSearch"
   
   $notification.post("📰 微博热搜 Top5", "", wb, wbAttach);
   
