@@ -18,15 +18,15 @@ if (!hours.includes(nowH)) {
 
 // 主流程
 Promise.all([getWB(), getDY()]).then(([wb, dy]) => {
-  // 微博热榜通知 - 使用开发者指定的openUrl参数
+  // 微博热榜通知 - 已确认可正常跳转
   const wbAttach = {
-    "openUrl": "sinaweibo://hotsearch"  // 微博热榜链接
+    "openUrl": "sinaweibo://hotsearch"
   };
   $notification.post("📰 微博热搜 Top5", "", wb, wbAttach);
   
-  // 抖音热榜通知 - 使用开发者指定的openUrl参数
+  // 抖音热榜通知 - 更新为snssdk1128://search/trending
   const dyAttach = {
-    "openUrl": "aweme://hotsearch"  // 抖音热榜链接
+    "openUrl": "snssdk1128://search/trending"
   };
   $notification.post("🎵 抖音热榜 Top5", "", dy, dyAttach);
   
