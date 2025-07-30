@@ -11,16 +11,21 @@ const hours = arg.replace(/，/g, ",").split(",")
 const nowH = new Date().getHours();
 
 if (!hours.includes(nowH)) {
-  console.log(`⏰ 当前 ${nowH} 点，不在推送时段时段 [${hours.join(",")}]`);
+  console.log(`⏰ 当前 ${nowH} 点，不在推送时段 [${hours.join(",")}]`);
   $done();
   return;
 }
 
 // 主流程
 Promise.all([getWB(), getDY()]).then(([wb, dy]) => {
-  // 微博热榜通知 - 使用sinaweibo://hotweibo
+  // 微博热榜通知 - 尝试网页跳转方式（兼容性更好）
   const wbAttach = {
-    "openUrl": "sinaweibo://hotweibo"  // 尝试此Scheme直达达热榜
+    // 以下链接请逐个测试，找到可用的一个
+    "openUrl": "sinaweibo://browser?url=https%3A%2F%2Fm.weibo.cn%2Fhotsearch%2Fhome"
+    // 备选1: "openUrl": "weibo://https://m.weibo.cn/hotsearch"
+    // 备选2: "openUrl": "sinaweibo://webview?url=https://s.weibo.com/top/summary"
+    // 备选3: "openUrl": "weibo://page/100808543233cdf5c8925105a0d34a914"
+    // 备选4: "openUrl": "sinaweibo://deeplink?id=hotsearch"
   };
   $notification.post("📰 微博热搜 Top5", "", wb, wbAttach);
   
@@ -70,3 +75,4 @@ function getDY() {
     });
   });
 }
+
