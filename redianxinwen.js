@@ -1,4 +1,4 @@
-// redianxinwen.js — 微博 + 抖音热榜通知，点击跳转对应对应App热榜页
+// redianxinwen.js — 微博 + 抖音热榜通知，点击跳转对应App热榜页
 
 const UA = { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)" };
 const WB_API = "https://api.vvhan.com/api/hotlist/wbHot";
@@ -11,23 +11,17 @@ const hours = arg.replace(/，/g, ",").split(",")
 const nowH = new Date().getHours();
 
 if (!hours.includes(nowH)) {
-  console.log(`⏰ 当前 ${nowH} 点，不在推送时段 [${hours.join(",")}]`);
+  console.log(`⏰ 当前 ${nowH} 点，不在在推送时段 [${hours.join(",")}]`);
   $done();
   return;
 }
 
 // 主流程
 Promise.all([getWB(), getDY()]).then(([wb, dy]) => {
-  // 微博热榜通知 - 最基础的热搜链接
+  // 微博热榜通知 - 使用微博官方热榜专属Scheme
   const wbAttach = {
-    // 直接使用微博热搜主页，无额外参数，稳定性最高
-    "openUrl": "https://s.weibo.com/top/summary"
+    "openUrl": "sinaweibo://searchall?containerid=106003type%3D1"
   };
-  
-  // 备选链接（按优先级尝试）
-  // "openUrl": "https://m.weibo.cn/hotsearch"
-  // "openUrl": "weibo://https://s.weibo.com/top/summary"
-  
   $notification.post("📰 微博热搜 Top5", "", wb, wbAttach);
   
   // 抖音热榜通知 - 已确认可跳转
