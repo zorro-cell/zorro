@@ -18,19 +18,24 @@ if (!hours.includes(nowH)) {
 
 // 主流程
 Promise.all([getWB(), getDY()]).then(([wb, dy]) => {
-  // 微博热榜通知
-  $notification.post("📰 微博热搜 Top5", "", wb, {
-    url: "sinaweibo://hotsearch"  // 微博热榜标准链接
-  });
+  // 微博热榜通知 - 使用开发者指定的openUrl参数
+  const wbAttach = {
+    "openUrl": "sinaweibo://hotsearch"  // 微博热榜链接
+  };
+  $notification.post("📰 微博热搜 Top5", "", wb, wbAttach);
   
-  // 抖音热榜通知 - 使用aweme://hotsearch
-  $notification.post("🎵 抖音热榜 Top5", "", dy, {
-    url: "aweme://hotsearch"  // 抖音官方常用的热榜跳转链接
-  });
+  // 抖音热榜通知 - 使用开发者指定的openUrl参数
+  const dyAttach = {
+    "openUrl": "aweme://hotsearch"  // 抖音热榜链接
+  };
+  $notification.post("🎵 抖音热榜 Top5", "", dy, dyAttach);
   
   $done();
 }).catch(e => {
-  $notification.post("热榜脚本异常", "", String(e), { url: "" });
+  const errorAttach = {
+    "openUrl": ""
+  };
+  $notification.post("热榜脚本异常", "", String(e), errorAttach);
   $done();
 });
 
