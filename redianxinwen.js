@@ -1,4 +1,4 @@
-// 微博+抖音热榜通知脚本（修正版）
+// 微博+抖音热榜通知（稳定版）
 const UA = { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)" };
 const WB_API = "https://api.vvhan.com/api/hotlist/wbHot";
 const DY_API = "https://api.istero.com/resource/v1/douyin/top?token=RQofNsxcAgWNEhPEigHNQHRfYOBvoIjX";
@@ -8,16 +8,16 @@ const arg = (typeof $argument === "object" && $argument.time) ? $argument.time :
 const hours = arg.replace(/，/g, ",").split(",").map(h => parseInt(h.trim(), 10)).filter(h => !isNaN(h) && h >= 0 && h < 24);
 const nowH = new Date().getHours();
 if (!hours.includes(nowH)) {
-  console.log(`⏰ 当前 ${nowH} 点，不在推送时段 [${hours.join(",")}]`);
+  console.log(`⏰ 当前 ${nowH} 点，不在在推送时段 [${hours.join.join(",")}]`);
   $done();
   return;
 }
 
 // 主流程
 Promise.all([getWB(), getDY()]).then(([wb, dy]) => {
-  // 微博热榜（修正跳转链接）
+  // 微博热榜（使用已验证可打开的网页链接）
   $notification.post("📰 微博热搜 Top5", "", wb, {
-    "openUrl": "sinaweibo://m.weibo.cn/p/index?containerid=106003type%3D25%26t%3D3%26disable_hot%3D1%26filter_type%3Drealtimehot"
+    "openUrl": "https://s.weibo.com/top/summary"
   });
   
   // 抖音热榜（已正常工作）
