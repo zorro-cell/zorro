@@ -1,6 +1,6 @@
-// 微博+抖音热榜通知（最新接口版）
+// 微博+抖音热榜通知（更新接口版）
 const UA = { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1" };
-// 替换为新的微博热榜接口
+// 已替换为新的微博接口
 const WB_API = "https://api.lbbb.cc/api/weibors";
 const DY_API = "https://api.istero.com/resource/v1/douyin/top?token=RQofNsxcAgWNEhPEigHNQHRfYOBvoIjX";
 
@@ -16,9 +16,9 @@ if (!hours.includes(nowH)) {
 
 // 主流程
 Promise.all([getWB(), getDY()]).then(([wb, dy]) => {
-  // 微博热榜跳转链接（iOS编码优化版）
+  // 微博热榜（与你的热榜首页地址精准匹配）
   $notification.post("📰 微博热搜 Top5", "", wb, {
-    "openUrl": "sinaweibo://weibo.com/p/106003type=25%26t=3%26disable_hot=1%26filter_type=realtimehot"
+    "openUrl": "sinaweibo://weibo.com/p/106003type=25&t=3&disable_hot=1&filter_type=realtimehot"
   });
   
   // 抖音热榜（已正常工作）
@@ -39,18 +39,16 @@ function getWB() {
       if (err || !data) return res("微博接口请求失败");
       try {
         const result = JSON.parse(data);
-        
-        // 通用解析逻辑：自动适配常见的热榜数据结构
-        // 尝试从不同可能的字段中获取热榜列表
-        const hotList = result.list || result.data || result.hotList || [];
+        // 适配新接口的数据结构（假设返回格式为 { list: [...] }）
+        const hotList = result.list || [];
         
         if (!Array.isArray(hotList) || hotList.length === 0) {
           return res("微博接口无有效数据");
         }
         
-        // 提取Top5热榜，兼容不同的标题字段名
+        // 提取Top5热榜，兼容新接口的字段名
         const list = hotList.slice(0, 5).map((item, i) => {
-          const title = item.title || item.name || item.content || "未知标题";
+          const title = item.title || item.name || "未知标题";
           return `${i + 1}. ${title}`;
         });
         
@@ -62,7 +60,7 @@ function getWB() {
   });
 }
 
-// 获取抖音Top5（保持不变）
+// 获取抖音Top5
 function getDY() {
   return new Promise(res => {
     $httpClient.get({ url: DY_API, headers: UA }, (err, _, data) => {
