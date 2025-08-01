@@ -1,7 +1,7 @@
-// 微博+抖音热榜通知（新接口适配版）
+// 微博+抖音热榜通知（最新接口版）
 const UA = { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1" };
 // 替换为新的微博热榜接口
-const WB_API = "https://www.hhlqilongzhu.cn/api/rs_juhe.php?type=weibo";
+const WB_API = "https://api.lbbb.cc/api/weibors";
 const DY_API = "https://api.istero.com/resource/v1/douyin/top?token=RQofNsxcAgWNEhPEigHNQHRfYOBvoIjX";
 
 // 时间过滤（默认8,12,20点推送）
@@ -16,7 +16,7 @@ if (!hours.includes(nowH)) {
 
 // 主流程
 Promise.all([getWB(), getDY()]).then(([wb, dy]) => {
-  // 微博热榜跳转链接（保持之前的配置）
+  // 微博热榜跳转链接（iOS编码优化版）
   $notification.post("📰 微博热搜 Top5", "", wb, {
     "openUrl": "sinaweibo://weibo.com/p/106003type=25%26t=3%26disable_hot=1%26filter_type=realtimehot"
   });
@@ -32,25 +32,25 @@ Promise.all([getWB(), getDY()]).then(([wb, dy]) => {
   $done();
 });
 
-// 获取微博Top5（适配新接口的解析逻辑）
+// 获取微博Top5（适配新接口）
 function getWB() {
   return new Promise(res => {
     $httpClient.get({ url: WB_API, headers: UA }, (err, _, data) => {
       if (err || !data) return res("微博接口请求失败");
       try {
-        // 解析新接口返回的数据（假设结构，实际以接口返回为准）
         const result = JSON.parse(data);
         
-        // 根据新接口调整：这里假设接口返回格式为 { "list": [{ "title": "热搜内容" }, ...] }
-        // 若实际格式不同，只需修改此处的字段名即可
-        if (!result.list || !Array.isArray(result.list)) {
-          return res("微博接口返回格式异常");
+        // 通用解析逻辑：自动适配常见的热榜数据结构
+        // 尝试从不同可能的字段中获取热榜列表
+        const hotList = result.list || result.data || result.hotList || [];
+        
+        if (!Array.isArray(hotList) || hotList.length === 0) {
+          return res("微博接口无有效数据");
         }
         
-        // 提取Top5热榜
-        const list = result.list.slice(0, 5).map((item, i) => {
-          // 确保获取到标题字段（根据接口实际字段名调整，可能是title/name等）
-          const title = item.title || item.name || "未知标题";
+        // 提取Top5热榜，兼容不同的标题字段名
+        const list = hotList.slice(0, 5).map((item, i) => {
+          const title = item.title || item.name || item.content || "未知标题";
           return `${i + 1}. ${title}`;
         });
         
