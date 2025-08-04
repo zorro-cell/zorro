@@ -4,9 +4,9 @@ const WB_API = "https://api.lbbb.cc/api/weibors";
 const DY_API = "https://api.istero.com/resource/v1/douyin/top?token=RQofNsxcAgWNEhPEigHNQHRfYOBvoIjX";
 
 // 主流程（已取消时间过滤，可随时触发）
-Promise。全部([getWB()， getDY()])。键，然后(([wb， dy]) => {
+Promise.all([getWB(), getDY()]).then(([wb, dy]) => {
   // 微博热榜
-  $notification。post("📰 微博热搜 Top5"， ""， wb， {
+  $notification.post("📰 微博热搜 Top5", "", wb, {
     "openUrl": "sinaweibo://weibo.com/p/106003type=25%26t=3%26disable_hot=1%26filter_type=realtimehot"
   });
   
@@ -16,8 +16,8 @@ Promise。全部([getWB()， getDY()])。键，然后(([wb， dy]) => {
   });
   
   $done();
-})。catch(e => {
-  $notification。post("热榜脚本异常"， ""， String(e), { "openUrl": "" });
+}).catch(e => {
+  $notification.post("热榜脚本异常", "", String(e), { "openUrl": "" });
   $done();
 });
 
@@ -40,18 +40,18 @@ function getWB() {
         });
         
         // 3. 提取Top5并格式化
-        if (hotLines。length === 0) {
+        if (hotLines.length === 0) {
           return res("未找到微博热榜数据");
         }
         
-        const list = hotLines.slice(0， 5).map((line， i) => {
+        const list = hotLines.slice(0, 5).map((line, i) => {
           // 移除行首的数字和符号（如"1、"）
-          const title = line.替换(/^\d+[、,.]\s*/， "").trim();
+          const title = line.replace(/^\d+[、,.]\s*/, "").trim();
           // 移除热度信息（如"【热度：752.7万】"）
           return `${i + 1}. ${title.replace(/【热度：.*?】/, "").trim()}`;
         });
         
-        res(list。join("\n") || "微博列表为空");
+        res(list.join("\n") || "微博列表为空");
       } catch (e) {
         res(`微博数据处理失败：${e.message}\n原始数据预览：${data.slice(0, 100)}`);
       }
