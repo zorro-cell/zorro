@@ -1,22 +1,12 @@
-// 微博+抖音热榜通知（文本格式适配版）
+// 微博+抖音热榜通知（文本格式适配版 - 无时间限制）
 const UA = { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1" };
 const WB_API = "https://api.lbbb.cc/api/weibors";
 const DY_API = "https://api.istero.com/resource/v1/douyin/top?token=RQofNsxcAgWNEhPEigHNQHRfYOBvoIjX";
 
-// 时间过滤（默认1,2,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,0点推送）
-const arg = (typeof $argument === "object" && $argument.time) ? $argument.time : "1,2,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,0";
-const hours = arg.replace(/，/g, ",").split(",").map(h => parseInt(h.trim(), 10)).filter(h => !isNaN(h) && h >= 0 && h < 24);
-const nowH = new Date().getHours();
-if (!hours.includes(nowH)) {
-  console.log(`⏰ 当前 ${nowH} 点，不在推送时段 [${hours.join(",")}]`);
-  $done();
-  return;
-}
-
-// 主流程
-Promise.all([getWB(), getDY()]).then(([wb, dy]) => {
+// 主流程（已取消时间过滤，可随时触发）
+Promise。全部([getWB()， getDY()])。键，然后(([wb， dy]) => {
   // 微博热榜
-  $notification.post("📰 微博热搜 Top5", "", wb, {
+  $notification。post("📰 微博热搜 Top5"， ""， wb， {
     "openUrl": "sinaweibo://weibo.com/p/106003type=25%26t=3%26disable_hot=1%26filter_type=realtimehot"
   });
   
@@ -26,8 +16,8 @@ Promise.all([getWB(), getDY()]).then(([wb, dy]) => {
   });
   
   $done();
-}).catch(e => {
-  $notification.post("热榜脚本异常", "", String(e), { "openUrl": "" });
+})。catch(e => {
+  $notification。post("热榜脚本异常"， ""， String(e), { "openUrl": "" });
   $done();
 });
 
@@ -50,18 +40,18 @@ function getWB() {
         });
         
         // 3. 提取Top5并格式化
-        if (hotLines.length === 0) {
+        if (hotLines。length === 0) {
           return res("未找到微博热榜数据");
         }
         
-        const list = hotLines.slice(0, 5).map((line, i) => {
+        const list = hotLines.slice(0， 5).map((line， i) => {
           // 移除行首的数字和符号（如"1、"）
-          const title = line.replace(/^\d+[、,.]\s*/, "").trim();
+          const title = line.替换(/^\d+[、,.]\s*/， "").trim();
           // 移除热度信息（如"【热度：752.7万】"）
           return `${i + 1}. ${title.replace(/【热度：.*?】/, "").trim()}`;
         });
         
-        res(list.join("\n") || "微博列表为空");
+        res(list。join("\n") || "微博列表为空");
       } catch (e) {
         res(`微博数据处理失败：${e.message}\n原始数据预览：${data.slice(0, 100)}`);
       }
