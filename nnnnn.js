@@ -28,26 +28,18 @@ function getWB() {
       if (err || !data) return res("微博接口请求失败");
       
       try {
-        // 直接处理文本格式（不再解析为JSON）
-        // 1. 按行分割内容
         const lines = data.split(/[\n\r]+/).filter(line => line.trim() !== "");
-        
-        // 2. 过滤掉标题行（如"------微博-热搜榜----一•"）
         const hotLines = lines.filter(line => {
           const trimmed = line.trim();
-          // 匹配以数字开头的行（如"1、武大回应图书馆事件..."）
           return /^\d+[、,.]/.test(trimmed);
         });
         
-        // 3. 提取Top5并格式化
         if (hotLines.length === 0) {
           return res("未找到微博热榜数据");
         }
         
         const list = hotLines.slice(0, 5).map((line, i) => {
-          // 移除行首的数字和符号（如"1、"）
           const title = line.replace(/^\d+[、,.]\s*/, "").trim();
-          // 移除热度信息（如"【热度：752.7万】"）
           return `${i + 1}. ${title.replace(/【热度：.*?】/, "").trim()}`;
         });
         
