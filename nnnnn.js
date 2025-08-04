@@ -2,6 +2,16 @@ const UA = { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS 
 const WB_API = "https://api.lbbb.cc/api/weibors";
 const DY_API = "https://api.istero.com/resource/v1/douyin/top?token=RQofNsxcAgWNEhPEigHNQHRfYOBvoIjX";
 
+// 时间过滤（默认全天候推送）
+const arg = "0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23";
+const hours = arg.split(",").map(h => parseInt(h.trim(), 10)).filter(h => !isNaN(h) && h >= 0 && h < 24);
+const nowH = new Date().getHours();
+if (!hours.includes(nowH)) {
+  console.log(`⏰ 当前 ${nowH} 点，不在推送时段 [${hours.join(",")}]`);
+  $done();
+  return;
+}
+
 // 主流程
 Promise.all([getWB(), getDY()]).then(([wb, dy]) => {
   // 微博热榜
