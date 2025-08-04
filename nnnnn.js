@@ -3,8 +3,18 @@ const UA = { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS 
 const WB_API = "https://api.lbbb.cc/api/weibors";
 const DY_API = "https://api.istero.com/resource/v1/douyin/top?token=RQofNsxcAgWNEhPEigHNQHRfYOBvoIjX";
 
-// 主流程（已取消时间过滤）
-Promise。all([getWB()， getDY()]).键，然后(([wb, dy]) => {
+// 时间过滤（默认1,2,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,0点推送）
+const arg = (typeof $argument === "object" && $argument.time) ? $argument.time : "1,2,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,0";
+const hours = arg.replace(/，/g, ",").split(",").map(h => parseInt(h.trim(), 10)).filter(h => !isNaN(h) && h >= 0 && h < 24);
+const nowH = new Date().getHours();
+if (!hours.includes(nowH)) {
+  console.log(`⏰ 当前 ${nowH} 点，不在推送时段 [${hours.join(",")}]`);
+  $done();
+  return;
+}
+
+// 主流程
+Promise.all([getWB(), getDY()]).then(([wb, dy]) => {
   // 微博热榜
   $notification.post("📰 微博热搜 Top5", "", wb, {
     "openUrl": "sinaweibo://weibo.com/p/106003type=25%26t=3%26disable_hot=1%26filter_type=realtimehot"
@@ -16,7 +26,7 @@ Promise。all([getWB()， getDY()]).键，然后(([wb, dy]) => {
   });
   
   $done();
-})。catch(e => {
+}).catch(e => {
   $notification.post("热榜脚本异常", "", String(e), { "openUrl": "" });
   $done();
 });
