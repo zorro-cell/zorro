@@ -1,3 +1,4 @@
+const UA = { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1" };
 const WB_API = "https://api.lbbb.cc/api/weibors";
 const DY_API = "https://api.istero.com/resource/v1/douyin/top?token=RQofNsxcAgWNEhPEigHNQHRfYOBvoIjX";
 
@@ -22,7 +23,7 @@ Promise.all([getWB(), getDY()]).then(([wb, dy]) => {
 // 获取微博Top5（修改为文本解析逻辑）
 function getWB() {
   return new Promise(res => {
-    $httpClient.get({ url: WB_API }, (err, _, data) => {
+    $httpClient.get({ url: WB_API, headers: UA }, (err, _, data) => {
       if (err || !data) return res("微博接口请求失败");
       
       try {
@@ -60,7 +61,7 @@ function getWB() {
 // 获取抖音Top5
 function getDY() {
   return new Promise(res => {
-    $httpClient.get({ url: DY_API }, (err, _, data) => {
+    $httpClient.get({ url: DY_API, headers: UA }, (err, _, data) => {
       if (err || !data) return res("抖音接口请求失败");
       try {
         const list = JSON.parse(data).data.slice(0, 5).map((x, i) => `${i + 1}. ${x.title || x.name}`);
