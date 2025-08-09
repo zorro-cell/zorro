@@ -1,0 +1,23 @@
+#  Quantumult X 版 TestFlight 自动加入脚本
+#  作者：DecoAri / xream，由 Quantumult X 用户整合
+#  用法：Quantumult X → 配置文件 → 编辑 → 粘贴本文件内容 → 保存 → 重新加载
+
+[general]
+# 如需 MITM over HTTP/2，请手动在「其他设置」中开启
+
+[dns]
+
+[rewrite_local]
+# 1) 抓取 TestFlight 账户令牌（token）
+^https:\/\/testflight\.apple\.com\/v3\/accounts\/.*\/apps$ url script-request-header https://raw.githubusercontent.com/DecoAri/JavaScript/main/Surge/TF_keys.js
+
+# 2) 自动收集 TestFlight 邀请链接里的 APP_ID
+^https:\/\/testflight\.apple\.com\/join\/(.*) url script-request-header https://raw.githubusercontent.com/DecoAri/JavaScript/main/Surge/TF_keys.js
+
+[task_local]
+# 3) 每小时整点自动尝试加入 TestFlight
+0 * * * * https://raw.githubusercontent.com/DecoAri/JavaScript/main/Surge/Auto_join_TF.js, tag=AutoTF, img-url=https://raw.githubusercontent.com/luestr/IconResource/main/App_icon/120px/TestFlight.png, enabled=true
+
+[mitm]
+# 追加 hostname 即可，不要新增整行
+hostname = %APPEND% testflight.apple.com
