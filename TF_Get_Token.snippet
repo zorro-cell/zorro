@@ -1,0 +1,10 @@
+#!name=获取TF令牌
+#!desc=开启此开关后，打开TestFlight即可获取Token。获取成功后请关闭此开关。
+#!author=fmz200 & zorro
+
+[rewrite_local]
+^https:\/\/testflight\.apple\.com\/v3\/accounts\/.*\/apps$ url script-request-header https://raw.githubusercontent.com/zorro-cell/zorro/refs/heads/main/TF_keys.js
+^https:\/\/testflight\.apple\.com\/join\/.* url script-request-header https://raw.githubusercontent.com/zorro-cell/zorro/refs/heads/main/TF_keys.js
+
+[mitm]
+hostname = testflight.apple.com
