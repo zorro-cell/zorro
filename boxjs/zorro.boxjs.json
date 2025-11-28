@@ -1,0 +1,224 @@
+{
+  "id": "zorro.sub",
+  "name": "zorro 应用订阅",
+  "author": "@veyna + GPT",
+  "icon": "star",
+  "apps": [
+    {
+      "id": "zorro.hotsearch",
+      "name": "热门监控（新接口版）",
+      "keys": [
+        "hot_keywords",
+        "hot_weibo_enable",
+        "hot_weibo_ignore",
+        "hot_weibo_count",
+        "hot_zhihu_enable",
+        "hot_zhihu_ignore",
+        "hot_zhihu_count",
+        "hot_baidu_enable",
+        "hot_baidu_ignore",
+        "hot_baidu_count",
+        "hot_bilibili_enable",
+        "hot_bilibili_ignore",
+        "hot_bilibili_count",
+        "hot_douyin_enable",
+        "hot_douyin_ignore",
+        "hot_douyin_count",
+        "hot_36kr_enable",
+        "hot_36kr_ignore",
+        "hot_36kr_count"
+      ],
+      "settings": [
+        {
+          "id": "hot_keywords",
+          "name": "监控关键词（每行一个）",
+          "val": "",
+          "type": "textarea",
+          "rows": 6,
+          "placeholder": "例：\n香港大火\n雷军 小米汽车\n刘亦菲 素颜"
+        },
+
+        {
+          "id": "hot_weibo_enable",
+          "name": "开启 微博热搜",
+          "val": true,
+          "type": "boolean"
+        },
+        {
+          "id": "hot_weibo_ignore",
+          "name": "微博：未命中关键词时推送最新内容",
+          "val": true,
+          "type": "boolean"
+        },
+        {
+          "id": "hot_weibo_count",
+          "name": "微博：推送条数",
+          "val": "3",
+          "type": "text",
+          "placeholder": "默认 3"
+        },
+
+        {
+          "id": "hot_zhihu_enable",
+          "name": "开启 知乎热榜",
+          "val": false,
+          "type": "boolean"
+        },
+        {
+          "id": "hot_zhihu_ignore",
+          "name": "知乎：未命中关键词时推送最新内容",
+          "val": false,
+          "type": "boolean"
+        },
+        {
+          "id": "hot_zhihu_count",
+          "name": "知乎：推送条数",
+          "val": "3",
+          "type": "text"
+        },
+
+        {
+          "id": "hot_baidu_enable",
+          "name": "开启 百度热搜",
+          "val": true,
+          "type": "boolean"
+        },
+        {
+          "id": "hot_baidu_ignore",
+          "name": "百度：未命中关键词时推送最新内容",
+          "val": true,
+          "type": "boolean"
+        },
+        {
+          "id": "hot_baidu_count",
+          "name": "百度：推送条数",
+          "val": "3",
+          "type": "text"
+        },
+
+        {
+          "id": "hot_bilibili_enable",
+          "name": "开启 B站热门",
+          "val": false,
+          "type": "boolean"
+        },
+        {
+          "id": "hot_bilibili_ignore",
+          "name": "B站：未命中关键词时推送最新内容",
+          "val": false,
+          "type": "boolean"
+        },
+        {
+          "id": "hot_bilibili_count",
+          "name": "B站：推送条数",
+          "val": "3",
+          "type": "text"
+        },
+
+        {
+          "id": "hot_douyin_enable",
+          "name": "开启 抖音热榜",
+          "val": true,
+          "type": "boolean"
+        },
+        {
+          "id": "hot_douyin_ignore",
+          "name": "抖音：未命中关键词时推送最新内容",
+          "val": true,
+          "type": "boolean"
+        },
+        {
+          "id": "hot_douyin_count",
+          "name": "抖音：推送条数",
+          "val": "3",
+          "type": "text"
+        },
+
+        {
+          "id": "hot_36kr_enable",
+          "name": "开启 36氪热榜",
+          "val": true,
+          "type": "boolean"
+        },
+        {
+          "id": "hot_36kr_ignore",
+          "name": "36氪：未命中关键词时推送最新内容",
+          "val": true,
+          "type": "boolean"
+        },
+        {
+          "id": "hot_36kr_count",
+          "name": "36氪：推送条数",
+          "val": "3",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "id": "zorro.seek",
+      "name": "Seek 多站关键词搜索",
+      "keys": [
+        "seek_keywords",
+        "seek_enable_douyin",
+        "seek_enable_kuaishou",
+        "seek_enable_xhs",
+        "seek_enable_weibo",
+        "seek_enable_bilibili",
+        "seek_enable_zhihu",
+        "seek_enable_toutiao"
+      ],
+      "settings": [
+        {
+          "id": "seek_keywords",
+          "name": "关键词列表（每行一个）",
+          "val": "",
+          "type": "textarea",
+          "rows": 6,
+          "placeholder": "例：\n香港大火\n雷军 小米汽车\n刘亦菲 素颜\n陈震 道歉"
+        },
+        {
+          "id": "seek_enable_douyin",
+          "name": "启用 抖音 搜索",
+          "val": true,
+          "type": "boolean"
+        },
+        {
+          "id": "seek_enable_kuaishou",
+          "name": "启用 快手 搜索",
+          "val": true,
+          "type": "boolean"
+        },
+        {
+          "id": "seek_enable_xhs",
+          "name": "启用 小红书 搜索",
+          "val": true,
+          "type": "boolean"
+        },
+        {
+          "id": "seek_enable_weibo",
+          "name": "启用 微博 搜索",
+          "val": true,
+          "type": "boolean"
+        },
+        {
+          "id": "seek_enable_bilibili",
+          "name": "启用 B站 搜索",
+          "val": true,
+          "type": "boolean"
+        },
+        {
+          "id": "seek_enable_zhihu",
+          "name": "启用 知乎 搜索",
+          "val": true,
+          "type": "boolean"
+        },
+        {
+          "id": "seek_enable_toutiao",
+          "name": "启用 今日头条 搜索",
+          "val": true,
+          "type": "boolean"
+        }
+      ]
+    }
+  ]
+}
