@@ -345,7 +345,7 @@ async function fetch36Kr() {
       throw new Error(json.msg || json.message || "接口返回格式异常");
     }
 
-    // 这里会利用上面改过的 pickTitle，从 templateMaterial.widgetTitle 里拿标题
+    // 利用上面改过的 pickTitle，从 templateMaterial.widgetTitle 里拿标题
     const used = selectItems(name, json.data, cfg);
     if (!used) return { ok: false, title: name, skip: true };
 
@@ -362,13 +362,18 @@ async function fetch36Kr() {
       ok: true,
       title: `${name} Top${used.length}`,
       text: lines.join("\n"),
-      openUrl: "https://36kr.com/hot-list/catalog",
+      // ✅ 这里改成一个稳定的 36 氪热榜页面（今日热榜的 36kr Tab）
+      openUrl: "https://rebang.today/?tab=36kr"
+
+      // 如果你更想直接看 36 氪官网首页，也可以自己改成：
+      // openUrl: "https://m.36kr.com/"
     };
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
     return { ok: false, title: name, err: e.message || String(e) };
   }
 }
+
 
 // 5. 知乎热榜（今日热榜 / PearAPI）
 async function fetchZhihu() {
