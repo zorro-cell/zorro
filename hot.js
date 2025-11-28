@@ -1,492 +1,407 @@
-/*******************************
- * 多平台热榜 - hot.js（xxapi + 今日热榜 + BoxJs）
- * 支持的榜单：
- *  - 微博热搜
- *  - 知乎热榜
- *  - 百度热搜
- *  - B站热门
- *  - 抖音热榜
- *  - 36氪热榜（已修复标题为 JSON 的问题）
- *
- * BoxJs 配套 keys：
- *  - hot_keywords                     全局关键词（逗号/空格/换行分隔）
- *  - hot_weibo_enable / hot_weibo_ignore / hot_weibo_count
- *  - hot_zhihu_enable / hot_zhihu_ignore / hot_zhihu_count
- *  - hot_baidu_enable / hot_baidu_ignore / hot_baidu_count
- *  - hot_bilibili_enable / hot_bilibili_ignore / hot_bilibili_count
- *  - hot_douyin_enable / hot_douyin_ignore / hot_douyin_count
- *  - hot_36kr_enable / hot_36kr_ignore / hot_36kr_count
- *******************************/
-
-// ========== 通用存储读写（兼容 Quantumult X / Surge） ==========
-
-function readStore(key, defVal = "") {
-  try {
-    if (typeof $prefs !== "undefined") {
-      const v = $prefs.valueForKey(key);
-      return v === undefined || v === null ? defVal : v;
-    }
-    if (typeof $persistentStore !== "undefined") {
-      const v = $persistentStore.read(key);
-      return v === undefined || v === null ? defVal : v;
-    }
-  } catch (e) {}
-  return defVal;
-}
-
-function readBool(key, defVal = false) {
-  const v = readStore(key, defVal ? "true" : "false");
-  if (typeof v === "boolean") return v;
-  const s = String(v).toLowerCase();
-  return s === "true" || s === "1" || s === "on";
-}
-
-function readInt(key, defVal = 3) {
-  const v = parseInt(readStore(key, String(defVal)), 10);
-  return isNaN(v) ? defVal : v;
-}
-
-// ========== 全局配置 ==========
-
-// 关键词：支持中文逗号、英文逗号、空格、换行分隔
-const KEYWORD_STRING = readStore("hot_keywords", "");
-const KEYWORDS = KEYWORD_STRING.split(/[,，\s\n]/)
-  .map((x) => x.trim())
-  .filter(Boolean);
-
-// 每个榜单的 BoxJs 配置
-const CFG = {
-  weibo: {
-    enable: readBool("hot_weibo_enable", true),
-    ignorePushLatest: readBool("hot_weibo_ignore", true),
-    count: readInt("hot_weibo_count", 3),
-  },
-  zhihu: {
-    enable: readBool("hot_zhihu_enable", false),
-    ignorePushLatest: readBool("hot_zhihu_ignore", false),
-    count: readInt("hot_zhihu_count", 3),
-  },
-  baidu: {
-    enable: readBool("hot_baidu_enable", true),
-    ignorePushLatest: readBool("hot_baidu_ignore", true),
-    count: readInt("hot_baidu_count", 3),
-  },
-  bilibili: {
-    enable: readBool("hot_bilibili_enable", false),
-    ignorePushLatest: readBool("hot_bilibili_ignore", false),
-    count: readInt("hot_bilibili_count", 3),
-  },
-  douyin: {
-    enable: readBool("hot_douyin_enable", true),
-    ignorePushLatest: readBool("hot_douyin_ignore", true),
-    count: readInt("hot_douyin_count", 3),
-  },
-  kr36: {
-    enable: readBool("hot_36kr_enable", false),
-    ignorePushLatest: readBool("hot_36kr_ignore", false),
-    count: readInt("hot_36kr_count", 3),
-  },
-};
-
-// 是否输出日志
-const DEBUG_LOG = true;
-function log(msg) {
-  if (DEBUG_LOG) console.log(`[HotSearch] ${msg}`);
-}
-
-// 通用 UA
-const UA = {
-  "User-Agent":
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1",
-};
-
-// ========== 公共函数 ==========
-
-// 安全 JSON 解析（防止接口返回 HTML）
-function parseJSON(body, label) {
-  if (!body) throw new Error(`${label} 返回为空`);
-  if (typeof body !== "string") return body;
-
-  const trimmed = body.trim();
-  if (!trimmed) throw new Error(`${label} 返回空字符串`);
-
-  // 很多免费 API 出错时会直接返回 HTML
-  if (trimmed[0] === "<") {
-    throw new Error(`${label} 返回的是 HTML（疑似 403/404/安全验证页）`);
-  }
-
-  try {
-    return JSON.parse(trimmed);
-  } catch (e) {
-    throw new Error(`${label} JSON 解析失败：${e.message || e}`);
-  }
-}
-
-// 把一条记录转成“标题字符串”
-// 已经兼容 36 氪的 templateMaterial.widgetTitle
-function pickTitle(item) {
-  if (!item) return "";
-
-  // 本身是字符串
-  if (typeof item === "string") return item.trim();
-
-  if (typeof item !== "object") {
-    try {
-      return String(item);
-    } catch (e) {
-      return "";
-    }
-  }
-
-  // 通用字段
-  const keys = [
-    "title",
-    "word",
-    "name",
-    "hot_word",
-    "keyword",
-    "note",
-    "desc",
-    "summary",
-    "content",
-  ];
-  for (const k of keys) {
-    if (item[k] && typeof item[k] === "string") return item[k].trim();
-  }
-
-  // ✅ 兼容 36 氪：标题在 templateMaterial.widgetTitle
-  if (
-    item.templateMaterial &&
-    typeof item.templateMaterial.widgetTitle === "string"
-  ) {
-    return item.templateMaterial.widgetTitle.trim();
-  }
-
-  // 再不行就把整条 JSON 截一下当标题（防止通知里是一大坨）
-  try {
-    return JSON.stringify(item).slice(0, 80);
-  } catch (e) {
-    return "";
-  }
-}
-
-// 根据关键词 & 配置，从原始列表中选出要推送的条目
-function selectItems(boardName, rawList, cfg) {
-  if (!Array.isArray(rawList) || rawList.length === 0) return null;
-
-  const count = Math.max(1, cfg.count || 3);
-  const list = rawList.slice(); // 拷贝一份
-
-  // 没设置任何关键词
-  if (KEYWORDS.length === 0) {
-    if (!cfg.ignorePushLatest) {
-      log(
-        `${boardName}：未设置关键词且未开启“忽略关键词推送最新内容”，跳过`
-      );
-      return null;
-    }
-    log(`${boardName}：未设置关键词，直接推最新 ${count} 条`);
-    return list.slice(0, count);
-  }
-
-  // 有关键词：先过滤命中的
-  const matched = list.filter((item) => {
-    const title = pickTitle(item);
-    return title && KEYWORDS.some((k) => title.includes(k));
-  });
-
-  if (matched.length > 0) {
-    log(`${boardName}：命中关键词 ${matched.length} 条，取前 ${count} 条`);
-    return matched.slice(0, count);
-  }
-
-  // 没命中关键词
-  if (cfg.ignorePushLatest) {
-    log(`${boardName}：未命中关键词，改为推最新 ${count} 条`);
-    return list.slice(0, count);
-  }
-
-  log(
-    `${boardName}：未命中关键词且未开启“忽略关键词推送最新内容”，跳过`
-  );
-  return null;
-}
-
-// 简单封装 GET
-function httpGet(url, headers = UA) {
-  return $task.fetch({
-    url,
-    method: "GET",
-    headers,
-  });
-}
-
-// ========== 各平台获取函数 ==========
-
-// 1. 微博热搜（xxapi）
-async function fetchWeibo() {
-  const name = "微博热搜";
-  const cfg = CFG.weibo;
-  log(`开始获取  ${name}…`);
-
-  try {
-    const resp = await httpGet("https://v2.xxapi.cn/api/weibohot");
-    const json = parseJSON(resp.body, name);
-
-    if (json.code !== 200 || !Array.isArray(json.data)) {
-      throw new Error(json.msg || json.message || "接口返回格式异常");
-    }
-
-    const used = selectItems(name, json.data, cfg);
-    if (!used) return { ok: false, title: name, skip: true };
-
-    const lines = used.map((item, idx) => {
-      const title = pickTitle(item) || "无标题";
-      // 有的接口会给热度 hot / hotValue 等，这里尽量兼容
-      const hot = item.hot || item.hotValue || item.hot_value;
-      const hotStr = hot ? `【热度：${hot}】` : "";
-      return `${idx + 1}. ${title}${hotStr}`;
-    });
-
-    return {
-      ok: true,
-      title: `${name} Top${used.length}`,
-      text: lines.join("\n"),
-      // 这个链接可能因客户端版本有差异，如果不生效最多就是打开微博首页
-      openUrl:
-        "sinaweibo://pageinfo?containerid=106003type%3D25%26t%3D3%26disable_hot%3D1%26filter_type%3Drealtimehot",
-    };
-  } catch (e) {
-    log(`${name} 获取失败：${e.message || e}`);
-    return { ok: false, title: name, err: e.message || String(e) };
-  }
-}
-
-// 2. 抖音热榜（xxapi）
-async function fetchDouyin() {
-  const name = "抖音热榜";
-  const cfg = CFG.douyin;
-  log(`开始获取  ${name}…`);
-
-  try {
-    const resp = await httpGet("https://v2.xxapi.cn/api/douyinhot");
-    const json = parseJSON(resp.body, name);
-
-    if (json.code !== 200 || !Array.isArray(json.data)) {
-      throw new Error(json.msg || json.message || "接口返回格式异常");
-    }
-
-    const used = selectItems(name, json.data, cfg);
-    if (!used) return { ok: false, title: name, skip: true };
-
-    const lines = used.map((item, idx) => {
-      const title = pickTitle(item) || "无标题";
-      return `${idx + 1}. ${title}`;
-    });
-
-    return {
-      ok: true,
-      title: `${name} Top${used.length}`,
-      text: lines.join("\n"),
-      // 抖音热搜页
-      openUrl: "snssdk1128://search/trending",
-    };
-  } catch (e) {
-    log(`${name} 获取失败：${e.message || e}`);
-    return { ok: false, title: name, err: e.message || String(e) };
-  }
-}
-
-// 3. 百度热搜（xxapi）
-async function fetchBaidu() {
-  const name = "百度热搜";
-  const cfg = CFG.baidu;
-  log(`开始获取  ${name}…`);
-
-  try {
-    const resp = await httpGet("https://v2.xxapi.cn/api/baiduhot");
-    const json = parseJSON(resp.body, name);
-
-    if (json.code !== 200 || !Array.isArray(json.data)) {
-      throw new Error(json.msg || json.message || "接口返回格式异常");
-    }
-
-    const used = selectItems(name, json.data, cfg);
-    if (!used) return { ok: false, title: name, skip: true };
-
-    const lines = used.map((item, idx) => {
-      const title = pickTitle(item) || "无标题";
-      return `${idx + 1}. ${title}`;
-    });
-
-    return {
-      ok: true,
-      title: `${name} Top${used.length}`,
-      text: lines.join("\n"),
-      openUrl: "https://top.baidu.com/board?tab=realtime",
-    };
-  } catch (e) {
-    log(`${name} 获取失败：${e.message || e}`);
-    return { ok: false, title: name, err: e.message || String(e) };
-  }
-}
-
-// 4. 36 氪热榜（xxapi）
-async function fetch36Kr() {
-  const name = "36 氪热榜";
-  const cfg = CFG.kr36;
-  log(`开始获取  ${name}…`);
-
-  try {
-    const resp = await httpGet("https://v2.xxapi.cn/api/hot36kr");
-    const json = parseJSON(resp.body, name);
-
-    if (json.code !== 200 || !Array.isArray(json.data)) {
-      throw new Error(json.msg || json.message || "接口返回格式异常");
-    }
-
-    // 利用上面改过的 pickTitle，从 templateMaterial.widgetTitle 里拿标题
-    const used = selectItems(name, json.data, cfg);
-    if (!used) return { ok: false, title: name, skip: true };
-
-    const lines = used.map((item, idx) => {
-      const title = pickTitle(item) || "无标题";
-      const author =
-        item.templateMaterial && item.templateMaterial.authorName
-          ? `（${item.templateMaterial.authorName}）`
-          : "";
-      return `${idx + 1}. ${title}${author}`;
-    });
-
-    return {
-      ok: true,
-      title: `${name} Top${used.length}`,
-      text: lines.join("\n"),
-      // ✅ 这里改成一个稳定的 36 氪热榜页面（今日热榜的 36kr Tab）
-      openUrl: "https://rebang.today/?tab=36kr"
-
-      // 如果你更想直接看 36 氪官网首页，也可以自己改成：
-      // openUrl: "https://m.36kr.com/"
-    };
-  } catch (e) {
-    log(`${name} 获取失败：${e.message || e}`);
-    return { ok: false, title: name, err: e.message || String(e) };
-  }
-}
-
-
-// 5. 知乎热榜（今日热榜 / PearAPI）
-async function fetchZhihu() {
-  const name = "知乎热榜";
-  const cfg = CFG.zhihu;
-  log(`开始获取  ${name}…`);
-
-  try {
-    const url =
-      "https://api.pearktrue.cn/api/dailyhot/?title=" +
-      encodeURIComponent("知乎");
-    const resp = await httpGet(url);
-    const json = parseJSON(resp.body, name);
-
-    // PearAPI 的 dailyhot：code=200, data 为数组
-    const data = Array.isArray(json.data) ? json.data : json.data?.list;
-    if (!Array.isArray(data)) {
-      throw new Error(json.msg || json.message || "接口返回格式异常");
-    }
-
-    const used = selectItems(name, data, cfg);
-    if (!used) return { ok: false, title: name, skip: true };
-
-    const lines = used.map((item, idx) => {
-      const title = pickTitle(item) || "无标题";
-      return `${idx + 1}. ${title}`;
-    });
-
-    return {
-      ok: true,
-      title: `${name} Top${used.length}`,
-      text: lines.join("\n"),
-      openUrl: "zhihu://zhihu.com/hot",
-    };
-  } catch (e) {
-    log(`${name} 获取失败：${e.message || e}`);
-    return { ok: false, title: name, err: e.message || String(e) };
-  }
-}
-
-// 6. B 站热门（今日热榜 / PearAPI）
-async function fetchBilibili() {
-  const name = "B站热门";
-  const cfg = CFG.bilibili;
-  log(`开始获取  ${name}…`);
-
-  try {
-    const url =
-      "https://api.pearktrue.cn/api/dailyhot/?title=" +
-      encodeURIComponent("哔哩哔哩");
-    const resp = await httpGet(url);
-    const json = parseJSON(resp.body, name);
-
-    const data = Array.isArray(json.data) ? json.data : json.data?.list;
-    if (!Array.isArray(data)) {
-      throw new Error(json.msg || json.message || "接口返回格式异常");
-    }
-
-    const used = selectItems(name, data, cfg);
-    if (!used) return { ok: false, title: name, skip: true };
-
-    const lines = used.map((item, idx) => {
-      const title = pickTitle(item) || "无标题";
-      return `${idx + 1}. ${title}`;
-    });
-
-    return {
-      ok: true,
-      title: `${name} Top${used.length}`,
-      text: lines.join("\n"),
-      openUrl: "bilibili://popular",
-    };
-  } catch (e) {
-    log(`${name} 获取失败：${e.message || e}`);
-    return { ok: false, title: name, err: e.message || String(e) };
-  }
-}
-
-// ========== 主流程 ==========
-
+/***********************************
+
+Zorro 热榜监控 hot.js
+
+说明：
+1. 依赖 BoxJs 配置，前缀统一为 zorro_hot_
+2. 支持平台（使用聚合热榜接口）：
+   - 微博热搜
+   - 知乎热榜
+   - 百度热搜
+   - 哔哩哔哩热门
+   - 抖音热榜
+   - 今日头条热榜
+   - 36 氪热榜
+   - 快手热榜
+   - 小红书热门话题（接口不稳定时会自动跳过）
+
+接口来源：聚合热榜（公益接口，偶尔抽风属于正常现象）
+  https://api.lolimi.cn/API/jhrb/?hot=平台名
+
+Quantumult X 任务示例：
+[task_local]
+0 8-23/2 * * * https://raw.githubusercontent.com/zorro-cell/zorro/main/hot.js, tag=Zorro 热榜监控, img-url=https://raw.githubusercontent.com/zorro-cell/zorro/main/icon_hot.png, enabled=true
+
+***********************************/
+
+const $ = new Env("Zorro 热榜监控");
+
+// BoxJs key 前缀
+const CONFIG_PREFIX = "zorro_hot_";
+
+// 聚合热榜接口
+const JHRB_API = "https://api.lolimi.cn/API/jhrb/?hot=";
+
+// 支持的平台配置
+const BOARDS = [
+  { id: "weibo",    key: "weibo",    hot: "微博",       name: "微博热搜" },
+  { id: "zhihu",    key: "zhihu",    hot: "知乎",       name: "知乎热榜" },
+  { id: "baidu",    key: "baidu",    hot: "百度",       name: "百度热搜" },
+  { id: "bilibili", key: "bilibili", hot: "哔哩哔哩",   name: "B站热门" },
+  { id: "douyin",   key: "douyin",   hot: "抖音",       name: "抖音热榜" },
+  { id: "toutiao",  key: "toutiao",  hot: "今日头条",   name: "今日头条热榜" },
+  { id: "36kr",     key: "36kr",     hot: "36氪",       name: "36氪热榜" },
+  { id: "kuaishou", key: "kuaishou", hot: "快手",       name: "快手热榜" },
+  { id: "xhs",      key: "xhs",      hot: "小红书",     name: "小红书热门话题" }
+];
+
+// 主逻辑
 !(async () => {
-  const tasks = [];
-
-  if (CFG.weibo.enable) tasks.push(fetchWeibo());
-  if (CFG.zhihu.enable) tasks.push(fetchZhihu());
-  if (CFG.baidu.enable) tasks.push(fetchBaidu());
-  if (CFG.bilibili.enable) tasks.push(fetchBilibili());
-  if (CFG.douyin.enable) tasks.push(fetchDouyin());
-  if (CFG.kr36.enable) tasks.push(fetch36Kr());
-
-  if (tasks.length === 0) {
-    log("所有榜单都被关闭，脚本直接结束");
-    $done();
+  if (!readBool("enable", true)) {
+    $.log("🔕 已在 BoxJs 关闭，总开关 enable=false，直接退出");
     return;
   }
 
-  const results = await Promise.all(tasks);
+  const keywords = parseKeywords(readStr("keywords", ""));
+  const pushLimit = readNum("pushLimit", 5);
+  const ignoreKeywordPushLatest = readBool("ignoreKeywordPushLatest", true);
 
-  results.forEach((res) => {
-    if (!res) return;
-    if (res.ok) {
-      $notify(res.title, "", res.text, {
-        "open-url": res.openUrl || "",
-      });
-    } else if (!res.skip) {
-      // 真报错（网络 / 接口挂了）才提示
-      $notify(`${res.title} 获取失败`, "", String(res.err || "未知错误"));
+  $.log(`关键词: ${keywords.length ? keywords.join(", ") : "（未设置，按平台 TOP 推送）"}`);
+  $.log(`每个平台推送条数: ${pushLimit}`);
+  $.log(`未命中关键词是否仍推送: ${ignoreKeywordPushLatest}`);
+
+  const tasks = [];
+
+  for (const board of BOARDS) {
+    const defaultEnable = defaultBoardEnabled(board.key);
+    if (!readBool(board.key, defaultEnable)) {
+      $.log(`⏭ 已关闭 ${board.name}`);
+      continue;
     }
-  });
+    tasks.push(handleBoard(board, { keywords, pushLimit, ignoreKeywordPushLatest }));
+  }
 
-  $done();
-})().catch((e) => {
-  log(`脚本运行异常：${e.message || e}`);
-  $notify("热榜脚本异常", "", String(e));
-  $done();
-});
+  if (tasks.length === 0) {
+    $.msg("Zorro 热榜监控", "", "未开启任何平台，请到 BoxJs 中打开需要的榜单");
+    return;
+  }
+
+  await Promise.all(tasks);
+})()
+  .catch((err) => $.log(`❌ 脚本运行异常：${err}`))
+  .finally(() => $.done());
+
+// 默认哪些榜单是“开”的（第一次没有 BoxJs 配置时用这个）
+function defaultBoardEnabled(key) {
+  switch (key) {
+    case "weibo":
+    case "zhihu":
+      return true; // 默认开 微博 / 知乎
+    default:
+      return false;
+  }
+}
+
+// 单个平台处理逻辑
+async function handleBoard(board, globalCfg) {
+  const { keywords, pushLimit, ignoreKeywordPushLatest } = globalCfg;
+  const list = await fetchHot(board);
+
+  if (!list || list.length === 0) {
+    $.log(`⚠️ ${board.name} 无返回数据`);
+    return;
+  }
+
+  const hits = filterByKeywords(list, keywords);
+
+  let toPush = [];
+  let subtitle = "";
+
+  if (hits.length > 0) {
+    toPush = hits.slice(0, pushLimit);
+    subtitle = `命中关键词：${collectHitKeywords(toPush).join(" / ")}`;
+  } else if (ignoreKeywordPushLatest || keywords.length === 0) {
+    toPush = list.slice(0, pushLimit);
+    subtitle = keywords.length ? `未命中关键词，推送 TOP${pushLimit}` : `推送 TOP${pushLimit}`;
+  } else {
+    $.log(`ℹ️ ${board.name} 未命中关键词，且设置为不推送`);
+    return;
+  }
+
+  const body = toPush
+    .map((item, idx) => {
+      const hotStr = item.hot ? `（热度：${item.hot}）` : "";
+      const kwStr =
+        item.hitKeywords && item.hitKeywords.length
+          ? `【命中：${item.hitKeywords.join(" / ")}】`
+          : "";
+      return `${idx + 1}. ${item.title}${hotStr}${kwStr}`;
+    })
+    .join("\n");
+
+  const openUrl = buildOpenUrl(board, toPush[0]);
+
+  $.msg(`Zorro 热榜 | ${board.name}`, subtitle, body, {
+    "open-url": openUrl,
+    "media-url": ""
+  });
+}
+
+// 调接口拿榜单数据
+function fetchHot(board) {
+  const url = `${JHRB_API}${encodeURIComponent(board.hot)}`;
+  const req = {
+    url,
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
+    }
+  };
+
+  return new Promise((resolve) => {
+    $.get(req, (err, resp, data) => {
+      if (err) {
+        $.log(`❌ ${board.name} 请求失败: ${err}`);
+        return resolve([]);
+      }
+      if (!data) {
+        $.log(`❌ ${board.name} 返回空数据`);
+        return resolve([]);
+      }
+      try {
+        const json = JSON.parse(data);
+        if (json.code !== 200) {
+          $.log(
+            `❌ ${board.name} 接口 code=${json.code}, message=${json.message || json.msg || ""}`
+          );
+          return resolve([]);
+        }
+        const arr = Array.isArray(json.data) ? json.data : [];
+        const list = arr
+          .map((it, idx) => {
+            const title = it.title || it.name || "";
+            if (!title) return null;
+            const hot =
+              it.hot ||
+              it.hotValue ||
+              it.hot_num ||
+              (it.data && (it.data.view || it.data.hot)) ||
+              "";
+            const mobileUrl = it.mobileUrl || it.mobile_url || "";
+            const url2 = mobileUrl || it.url || "";
+            return {
+              title,
+              hot,
+              url: url2,
+              mobileUrl,
+              rawUrl: it.url || "",
+              index: idx + 1
+            };
+          })
+          .filter(Boolean);
+
+        return resolve(list);
+      } catch (e) {
+        $.log(`❌ ${board.name} 解析失败: ${e}`);
+        return resolve([]);
+      }
+    });
+  });
+}
+
+// 根据标题做关键词过滤
+function filterByKeywords(list, keywords) {
+  if (!keywords || keywords.length === 0) return [];
+  return list.reduce((acc, item) => {
+    const titleLower = (item.title || "").toLowerCase();
+    const hits = keywords.filter((k) => titleLower.includes(k.toLowerCase()));
+    if (hits.length) {
+      acc.push(Object.assign({}, item, { hitKeywords: hits }));
+    }
+    return acc;
+  }, []);
+}
+
+// 收集这次命中的所有关键词，用来展示在副标题
+function collectHitKeywords(list) {
+  const set = new Set();
+  list.forEach((item) => {
+    (item.hitKeywords || []).forEach((k) => set.add(k));
+  });
+  return Array.from(set);
+}
+
+// 关键词字符串 → 数组（支持 换行/中英文逗号/顿号）
+function parseKeywords(str) {
+  if (!str) return [];
+  return str
+    .split(/[\n,，、\s]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+// 不同平台的“打开方式”
+function buildOpenUrl(board, item) {
+  if (!item) return "";
+  const title = item.title || "";
+  const fallback = item.url || item.mobileUrl || item.rawUrl || "";
+
+  switch (board.id) {
+    case "weibo":
+      // 直接在微博里搜索这条热搜标题
+      return `sinaweibo://searchall?q=${encodeURIComponent(title)}`;
+    case "douyin":
+      // 抖音关键词搜索
+      return `snssdk1128://search?keyword=${encodeURIComponent(title)}`;
+    case "kuaishou":
+      // 快手关键词搜索（部分版本支持，如果不支持会自动回退到浏览器）
+      return `kwai://search?keyword=${encodeURIComponent(title)}`;
+    case "xhs":
+      // 小红书搜索话题
+      return `xhsdiscover://search/result?keyword=${encodeURIComponent(title)}`;
+    case "bilibili":
+      // B 站：优先走链接，系统会自动尝试用 App 打开
+      return fallback || `bilibili://browser?url=${encodeURIComponent(item.rawUrl || "")}`;
+    default:
+      // 其它的直接用接口返回的链接（很多 App 支持通用链接唤起）
+      return fallback;
+  }
+}
+
+/**************** 工具函数：读配置 ****************/
+
+function readStr(name, def = "") {
+  const v = $.getdata(CONFIG_PREFIX + name);
+  if (v === undefined || v === null || v === "") return def;
+  return v;
+}
+
+function readNum(name, def = 0) {
+  const v = $.getdata(CONFIG_PREFIX + name);
+  if (v === undefined || v === null || v === "") return def;
+  const n = Number(v);
+  return isNaN(n) ? def : n;
+}
+
+function readBool(name, def = false) {
+  const v = $.getdata(CONFIG_PREFIX + name);
+  if (v === undefined || v === null || v === "") return def;
+  if (typeof v === "boolean") return v;
+  return v === "true" || v === "1" || v === 1;
+}
+
+/**************** Env 封装（支持 QX / Surge / Loon / Node） ****************/
+
+function Env(name) {
+  this.name = name;
+  this.logs = [];
+  this.startTime = new Date().getTime();
+
+  this.isSurge = () =>
+    typeof $httpClient !== "undefined" && typeof $loon === "undefined";
+  this.isLoon = () => typeof $loon !== "undefined";
+  this.isQuanX = () => typeof $task !== "undefined";
+  this.isNode = () =>
+    typeof module !== "undefined" && !!module.exports;
+
+  this.log = (...args) => {
+    this.logs.push(...args);
+    console.log(...args.join(" "));
+  };
+
+  this.msg = (title = this.name, subtitle = "", body = "", options) => {
+    if (this.isSurge() || this.isLoon()) {
+      $notification.post(title, subtitle, body, options);
+    } else if (this.isQuanX()) {
+      let opts = {};
+      if (typeof options === "string") {
+        opts = { "open-url": options };
+      } else if (options) {
+        opts = options;
+      }
+      $notify(title, subtitle, body, opts);
+    } else {
+      console.log(`\n🔔${this.name}\n${title}\n${subtitle}\n${body}`);
+    }
+  };
+
+  this.getdata = (key) => {
+    if (this.isSurge() || this.isLoon()) return $persistentStore.read(key);
+    if (this.isQuanX()) return $prefs.valueForKey(key);
+    if (this.isNode()) {
+      this.data = this.data || this.loaddata() || {};
+      return this.data[key];
+    }
+    return null;
+  };
+
+  this.setdata = (val, key) => {
+    if (this.isSurge() || this.isLoon()) return $persistentStore.write(val, key);
+    if (this.isQuanX()) return $prefs.setValueForKey(val, key);
+    if (this.isNode()) {
+      this.data = this.data || this.loaddata() || {};
+      this.data[key] = val;
+      this.writedata();
+      return true;
+    }
+    return false;
+  };
+
+  this.loaddata = () => {
+    if (!this.isNode()) return {};
+    const fs = require("fs");
+    const path = require("path");
+    const file = path.resolve("box.dat");
+    if (!fs.existsSync(file)) return {};
+    try {
+      return JSON.parse(fs.readFileSync(file));
+    } catch {
+      return {};
+    }
+  };
+
+  this.writedata = () => {
+    if (!this.isNode()) return;
+    const fs = require("fs");
+    const path = require("path");
+    const file = path.resolve("box.dat");
+    fs.writeFileSync(file, JSON.stringify(this.data));
+  };
+
+  this.get = (opts, cb) => {
+    if (this.isSurge() || this.isLoon()) {
+      $httpClient.get(opts, (err, resp, body) => {
+        if (!err) {
+          resp.body = body;
+        }
+        cb(err, resp, body);
+      });
+    } else if (this.isQuanX()) {
+      if (typeof opts === "string") opts = { url: opts };
+      opts.method = "GET";
+      $task.fetch(opts).then(
+        (resp) => {
+          cb(
+            null,
+            {
+              status: resp.statusCode,
+              headers: resp.headers,
+              body: resp.body
+            },
+            resp.body
+          );
+        },
+        (err) => cb(err)
+      );
+    } else if (this.isNode()) {
+      const axios = require("axios");
+      axios
+        .get(opts.url, { headers: opts.headers })
+        .then((res) =>
+          cb(
+            null,
+            { status: res.status, headers: res.headers, body: res.data },
+            res.data
+          )
+        )
+        .catch((err) => cb(err));
+    }
+  };
+
+  this.done = (val = {}) => {
+    const end = new Date().getTime();
+    const cost = ((end - this.startTime) / 1000).toFixed(2);
+    this.log(`🔚 ${this.name} 结束，耗时 ${cost}s`);
+    if (this.isSurge() || this.isLoon() || this.isQuanX()) $done(val);
+  };
+}
