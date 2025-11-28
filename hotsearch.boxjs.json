@@ -1,0 +1,182 @@
+{
+  "id": "veyna.hotsearch.sub",
+  "name": "热门监控（新接口版）",
+  "author": "@veyna + GPT",
+  "icon": "https://raw.githubusercontent.com/NobyDa/mini/master/Color/wanan.png",
+  "repo": "",
+  "apps": [
+    {
+      "id": "veyna.hotsearch",
+      "name": "热门监控（新接口版）",
+      "keys": [
+        "hot_keywords",
+
+        "hot_weibo_enable",
+        "hot_weibo_ignore",
+        "hot_weibo_count",
+
+        "hot_zhihu_enable",
+        "hot_zhihu_ignore",
+        "hot_zhihu_count",
+
+        "hot_baidu_enable",
+        "hot_baidu_ignore",
+        "hot_baidu_count",
+
+        "hot_bilibili_enable",
+        "hot_bilibili_ignore",
+        "hot_bilibili_count",
+
+        "hot_douyin_enable",
+        "hot_douyin_ignore",
+        "hot_douyin_count",
+
+        "hot_36kr_enable",
+        "hot_36kr_ignore",
+        "hot_36kr_count"
+      ],
+      "settings": [
+        {
+          "id": "hot_keywords",
+          "name": "监控关键词",
+          "val": "",
+          "type": "textarea",
+          "rows": 4,
+          "desc": "多个关键词用中文/英文逗号、空格或换行分隔；示例： 周杰伦, 小米, 刘亦菲"
+        },
+
+        {
+          "id": "hot_weibo_enable",
+          "name": "微博热搜",
+          "val": true,
+          "type": "boolean",
+          "desc": "打开则监控微博热搜"
+        },
+        {
+          "id": "hot_weibo_ignore",
+          "name": "忽略关键词推送微博最新内容",
+          "val": true,
+          "type": "boolean",
+          "desc": "关：只推送命中关键词的微博；开：没命中也会推最新 N 条"
+        },
+        {
+          "id": "hot_weibo_count",
+          "name": "微博：忽略关键词时获取数量",
+          "val": 3,
+          "type": "number",
+          "desc": "默认 3 条"
+        },
+
+        {
+          "id": "hot_zhihu_enable",
+          "name": "知乎热榜",
+          "val": false,
+          "type": "boolean",
+          "desc": "打开则监控知乎热榜"
+        },
+        {
+          "id": "hot_zhihu_ignore",
+          "name": "忽略关键词推送知乎最新内容",
+          "val": false,
+          "type": "boolean",
+          "desc": ""
+        },
+        {
+          "id": "hot_zhihu_count",
+          "name": "知乎：忽略关键词时获取数量",
+          "val": 3,
+          "type": "number",
+          "desc": ""
+        },
+
+        {
+          "id": "hot_baidu_enable",
+          "name": "百度热搜",
+          "val": true,
+          "type": "boolean",
+          "desc": "打开则监控百度热搜"
+        },
+        {
+          "id": "hot_baidu_ignore",
+          "name": "忽略关键词推送百度最新内容",
+          "val": true,
+          "type": "boolean",
+          "desc": ""
+        },
+        {
+          "id": "hot_baidu_count",
+          "name": "百度：忽略关键词时获取数量",
+          "val": 3,
+          "type": "number",
+          "desc": ""
+        },
+
+        {
+          "id": "hot_bilibili_enable",
+          "name": "B站热门",
+          "val": false,
+          "type": "boolean",
+          "desc": "打开则监控 B 站热门"
+        },
+        {
+          "id": "hot_bilibili_ignore",
+          "name": "忽略关键词推送 B 站最新内容",
+          "val": false,
+          "type": "boolean",
+          "desc": ""
+        },
+        {
+          "id": "hot_bilibili_count",
+          "name": "B站：忽略关键词时获取数量",
+          "val": 3,
+          "type": "number",
+          "desc": ""
+        },
+
+        {
+          "id": "hot_douyin_enable",
+          "name": "抖音热榜",
+          "val": true,
+          "type": "boolean",
+          "desc": "打开则监控抖音热榜"
+        },
+        {
+          "id": "hot_douyin_ignore",
+          "name": "忽略关键词推送抖音最新内容",
+          "val": true,
+          "type": "boolean",
+          "desc": ""
+        },
+        {
+          "id": "hot_douyin_count",
+          "name": "抖音：忽略关键词时获取数量",
+          "val": 3,
+          "type": "number",
+          "desc": ""
+        },
+
+        {
+          "id": "hot_36kr_enable",
+          "name": "36氪热榜",
+          "val": false,
+          "type": "boolean",
+          "desc": "打开则监控 36 氪热榜"
+        },
+        {
+          "id": "hot_36kr_ignore",
+          "name": "忽略关键词推送 36 氪最新内容",
+          "val": false,
+          "type": "boolean",
+          "desc": ""
+        },
+        {
+          "id": "hot_36kr_count",
+          "name": "36氪：忽略关键词时获取数量",
+          "val": 3,
+          "type": "number",
+          "desc": ""
+        }
+      ]
+    }
+  ]
+}
