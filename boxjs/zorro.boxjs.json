@@ -1,181 +1,186 @@
-[
-  {
-    "id": "zorro.hot",
-    "name": "Zorro 热榜监控 (hot)",
-    "author": "zorro-cell",
-    "keys": [
-      "zorro_hot_enable",
-      "zorro_hot_keywords",
-      "zorro_hot_pushLimit",
-      "zorro_hot_ignoreKeywordPushLatest",
-      "zorro_hot_weibo",
-      "zorro_hot_zhihu",
-      "zorro_hot_baidu",
-      "zorro_hot_bilibili",
-      "zorro_hot_douyin",
-      "zorro_hot_toutiao",
-      "zorro_hot_36kr",
-      "zorro_hot_kuaishou",
-      "zorro_hot_xhs"
-    ],
-    "settings": [
-      {
-        "id": "zorro_hot_enable",
-        "name": "总开关",
-        "val": true,
-        "type": "boolean",
-        "desc": "关闭后不再请求任何平台"
-      },
-      {
-        "id": "zorro_hot_keywords",
-        "name": "监控关键词",
-        "val": "",
-        "type": "text",
-        "placeholder": "多个关键词用英文逗号或换行分隔，例如：刘亦菲,小米汽车,北向资金",
-        "desc": "留空则不做过滤，直接推送各平台榜单前 N 条"
-      },
-      {
-        "id": "zorro_hot_pushLimit",
-        "name": "每个平台推送条数 N",
-        "val": 5,
-        "type": "number",
-        "desc": "建议 3~10，过多通知会很长"
-      },
-      {
-        "id": "zorro_hot_ignoreKeywordPushLatest",
-        "name": "未命中关键词时仍推送 TOP N",
-        "val": true,
-        "type": "boolean",
-        "desc": "开启：关键词没命中也会推送该平台最新热榜；关闭：只在命中关键词时推送"
-      },
-      {
-        "id": "zorro_hot_weibo",
-        "name": "开启 微博热搜",
-        "val": true,
-        "type": "boolean"
-      },
-      {
-        "id": "zorro_hot_zhihu",
-        "name": "开启 知乎热榜",
-        "val": true,
-        "type": "boolean"
-      },
-      {
-        "id": "zorro_hot_baidu",
-        "name": "开启 百度热搜",
-        "val": false,
-        "type": "boolean"
-      },
-      {
-        "id": "zorro_hot_bilibili",
-        "name": "开启 B站热门",
-        "val": false,
-        "type": "boolean"
-      },
-      {
-        "id": "zorro_hot_douyin",
-        "name": "开启 抖音热榜",
-        "val": false,
-        "type": "boolean"
-      },
-      {
-        "id": "zorro_hot_toutiao",
-        "name": "开启 今日头条热榜",
-        "val": false,
-        "type": "boolean"
-      },
-      {
-        "id": "zorro_hot_36kr",
-        "name": "开启 36氪热榜",
-        "val": false,
-        "type": "boolean"
-      },
-      {
-        "id": "zorro_hot_kuaishou",
-        "name": "开启 快手热榜",
-        "val": false,
-        "type": "boolean"
-      },
-      {
-        "id": "zorro_hot_xhs",
-        "name": "开启 小红书热门话题",
-        "val": false,
-        "type": "boolean",
-        "desc": "接口偶尔会抽风，获取失败时脚本会自动跳过，不会中断整个任务"
-      }
-    ],
-    "script": "https://raw.githubusercontent.com/zorro-cell/zorro/main/hot.js",
-    "icon": "https://raw.githubusercontent.com/zorro-cell/zorro/main/icon_hot.png",
-    "repo": "https://github.com/zorro-cell/zorro"
-  },
-  {
-    "id": "zorro.seek",
-    "name": "Zorro 多站关键词搜索 (seek)",
-    "author": "zorro-cell",
-    "keys": [
-      "zorro_seek_keywords",
-      "zorro_seek_weibo",
-      "zorro_seek_douyin",
-      "zorro_seek_kuaishou",
-      "zorro_seek_xhs",
-      "zorro_seek_bilibili",
-      "zorro_seek_zhihu",
-      "zorro_seek_toutiao"
-    ],
-    "settings": [
-      {
-        "id": "zorro_seek_keywords",
-        "name": "搜索关键词",
-        "val": "",
-        "type": "text",
-        "placeholder": "在这里填你要搜的词，例如：刘亦菲,小米汽车",
-        "desc": "运行脚本时会在勾选的平台中一键搜索该关键词"
-      },
-      {
-        "id": "zorro_seek_weibo",
-        "name": "搜索 微博",
-        "val": true,
-        "type": "boolean"
-      },
-      {
-        "id": "zorro_seek_douyin",
-        "name": "搜索 抖音",
-        "val": true,
-        "type": "boolean"
-      },
-      {
-        "id": "zorro_seek_kuaishou",
-        "name": "搜索 快手",
-        "val": false,
-        "type": "boolean"
-      },
-      {
-        "id": "zorro_seek_xhs",
-        "name": "搜索 小红书",
-        "val": false,
-        "type": "boolean"
-      },
-      {
-        "id": "zorro_seek_bilibili",
-        "name": "搜索 B站",
-        "val": false,
-        "type": "boolean"
-      },
-      {
-        "id": "zorro_seek_zhihu",
-        "name": "搜索 知乎",
-        "val": false,
-        "type": "boolean"
-      },
-      {
-        "id": "zorro_seek_toutiao",
-        "name": "搜索 今日头条",
-        "val": false,
-        "type": "boolean"
-      }
-    ],
-    "script": "https://raw.githubusercontent.com/zorro-cell/zorro/main/seek.js",
-    "icon": "https://raw.githubusercontent.com/zorro-cell/zorro/main/icon_seek.png",
-    "repo": "https://github.com/zorro-cell/zorro"
-  }
-]
+{
+  "id": "zorro.sub",
+  "name": "热门监控（新接口版）",
+  "author": "@veyna + GPT",
+  "icon": "star",
+  "apps": [
+    {
+      "id": "zorro.hot",
+      "name": "热门监控（新接口版）",
+      "keys": [
+        "zorro_hot_enable",
+        "zorro_hot_keywords",
+        "zorro_hot_pushLimit",
+        "zorro_hot_ignoreKeywordPushLatest",
+        "zorro_hot_weibo",
+        "zorro_hot_zhihu",
+        "zorro_hot_baidu",
+        "zorro_hot_bilibili",
+        "zorro_hot_douyin",
+        "zorro_hot_toutiao",
+        "zorro_hot_36kr",
+        "zorro_hot_kuaishou",
+        "zorro_hot_xhs"
+      ],
+      "settings": [
+        {
+          "id": "zorro_hot_enable",
+          "name": "总开关",
+          "val": true,
+          "type": "boolean",
+          "desc": "关闭后不再请求任何平台"
+        },
+        {
+          "id": "zorro_hot_keywords",
+          "name": "监控关键词",
+          "val": "",
+          "type": "textarea",
+          "rows": 5,
+          "placeholder": "多个关键词用换行分隔，例如：\n刘亦菲\n小米汽车\n北向资金",
+          "desc": "留空则不做过滤，直接推送各平台榜单前 N 条"
+        },
+        {
+          "id": "zorro_hot_pushLimit",
+          "name": "每个平台推送条数 N",
+          "val": 5,
+          "type": "number",
+          "desc": "建议 3~10，过多通知会很长"
+        },
+        {
+          "id": "zorro_hot_ignoreKeywordPushLatest",
+          "name": "未命中关键词时仍推送 TOP N",
+          "val": true,
+          "type": "boolean",
+          "desc": "开启：关键词没命中也会推送该平台最新热榜；关闭：只在命中关键词时推送"
+        },
+        {
+          "id": "zorro_hot_weibo",
+          "name": "开启 微博热搜",
+          "val": true,
+          "type": "boolean"
+        },
+        {
+          "id": "zorro_hot_zhihu",
+          "name": "开启 知乎热榜",
+          "val": true,
+          "type": "boolean"
+        },
+        {
+          "id": "zorro_hot_baidu",
+          "name": "开启 百度热搜",
+          "val": false,
+          "type": "boolean"
+        },
+        {
+          "id": "zorro_hot_bilibili",
+          "name": "开启 B站热门",
+          "val": false,
+          "type": "boolean"
+        },
+        {
+          "id": "zorro_hot_douyin",
+          "name": "开启 抖音热榜",
+          "val": false,
+          "type": "boolean"
+        },
+        {
+          "id": "zorro_hot_toutiao",
+          "name": "开启 今日头条热榜",
+          "val": false,
+          "type": "boolean"
+        },
+        {
+          "id": "zorro_hot_36kr",
+          "name": "开启 36氪热榜",
+          "val": false,
+          "type": "boolean"
+        },
+        {
+          "id": "zorro_hot_kuaishou",
+          "name": "开启 快手热榜",
+          "val": false,
+          "type": "boolean"
+        },
+        {
+          "id": "zorro_hot_xhs",
+          "name": "开启 小红书热门话题",
+          "val": false,
+          "type": "boolean",
+          "desc": "接口偶尔会抽风，获取失败时脚本会自动跳过，不会中断整个任务"
+        }
+      ],
+      "script": "https://raw.githubusercontent.com/zorro-cell/zorro/main/hot.js",
+      "icon": "https://raw.githubusercontent.com/zorro-cell/zorro/main/icon_hot.png",
+      "repo": "https://github.com/zorro-cell/zorro"
+    },
+    {
+      "id": "seek.multi.search",
+      "name": "Seek 多站关键词搜索",
+      "keys": [
+        "seek_keywords",
+        "seek_enable_douyin",
+        "seek_enable_kuaishou",
+        "seek_enable_xhs",
+        "seek_enable_weibo",
+        "seek_enable_bilibili",
+        "seek_enable_zhihu",
+        "seek_enable_toutiao"
+      ],
+      "settings": [
+        {
+          "id": "seek_keywords",
+          "name": "搜索关键词（每行一个）",
+          "val": "",
+          "type": "textarea",
+          "rows": 5,
+          "placeholder": "例：\n刘亦菲\n小米汽车\n北向资金"
+        },
+        {
+          "id": "seek_enable_douyin",
+          "name": "启用 抖音 搜索",
+          "val": true,
+          "type": "boolean"
+        },
+        {
+          "id": "seek_enable_kuaishou",
+          "name": "启用 快手 搜索",
+          "val": true,
+          "type": "boolean"
+        },
+        {
+          "id": "seek_enable_xhs",
+          "name": "启用 小红书 搜索",
+          "val": true,
+          "type": "boolean"
+        },
+        {
+          "id": "seek_enable_weibo",
+          "name": "启用 微博 搜索",
+          "val": true,
+          "type": "boolean"
+        },
+        {
+          "id": "seek_enable_bilibili",
+          "name": "启用 B站 搜索",
+          "val": true,
+          "type": "boolean"
+        },
+        {
+          "id": "seek_enable_zhihu",
+          "name": "启用 知乎 搜索",
+          "val": true,
+          "type": "boolean"
+        },
+        {
+          "id": "seek_enable_toutiao",
+          "name": "启用 今日头条 搜索",
+          "val": true,
+          "type": "boolean"
+        }
+      ],
+      "script": "https://raw.githubusercontent.com/zorro-cell/zorro/main/seek.js",
+      "icon": "https://raw.githubusercontent.com/zorro-cell/zorro/main/icon_seek.png",
+      "repo": "https://github.com/zorro-cell/zorro"
+    }
+  ]
+}
