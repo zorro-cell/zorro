@@ -1,0 +1,9 @@
+{
+  "name": "zorro",
+  "description": "自用任务仓库：热搜监控 hot.js + Seek 多站关键词搜索 seek.js",
+  "raw": "https://raw.githubusercontent.com/zorro-cell/zorro/main/tasks/zorro_tasks.json",
+  "task": [
+    "0 8-23/2 * * * https://raw.githubusercontent.com/zorro-cell/zorro/main/hot.js, tag=热门监控（热搜榜）, img-url=https://raw.githubusercontent.com/Orz-3/mini/master/Color/hot.png, enabled=true",
+    "0 9 * * * https://raw.githubusercontent.com/zorro-cell/zorro/main/seek.js, tag=Seek 多站关键词搜索, img-url=https://raw.githubusercontent.com/Orz-3/mini/master/Color/search.png, enabled=true"
+  ]
+}
