@@ -47,7 +47,7 @@ if (!hours.includes(nowH)) {
     // 微博通知
     $notify("微博热搜 Top5", "", wb, {
       "open-url":
-        "sinaweibo://weibo.com/p/106003type=25%26t=3%26disable_hot=1%26filter_type=realtimehot",
+        "sinaweibo://pageinfo?containerid=106003type%3D25%26t%3D3%26disable_hot%3D1%26filter_type%3Drealtimehot",
     });
 
     // 抖音通知
