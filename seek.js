@@ -1,261 +1,170 @@
+// ==UserScript==
+// @name         Seek 多站关键词搜索（App 跳转版）
+// @description  从 BoxJs 读取关键词，一键在 抖音/快手/小红书/微博/B 站/知乎/今日头条 中搜索，并尽量直接拉起 App。
+// @author       veyna + GPT
+// @version      1.1
+// ==/UserScript==
+
+// ---------------- 配置 Key（保持和 BoxJs 一致） ----------------
+const KEY_KEYWORDS        = "seek_keywords";          // 关键词，多行
+const KEY_DOUYIN          = "seek_enable_douyin";     // 抖音
+const KEY_KUAISHOU        = "seek_enable_kuaishou";   // 快手
+const KEY_XHS             = "seek_enable_xhs";        // 小红书
+const KEY_WEIBO           = "seek_enable_weibo";      // 微博
+const KEY_BILIBILI        = "seek_enable_bilibili";   // B 站
+const KEY_ZHIHU           = "seek_enable_zhihu";      // 知乎
+const KEY_TOUTIAO         = "seek_enable_toutiao";    // 今日头条
+
+// ---------------- 工具函数：只考虑 Quantumult X / NE 环境 ----------------
+function readData(key, def = "") {
+  try {
+    const v = $prefs.valueForKey(key);
+    if (v === undefined || v === null || v === "") return def;
+    return v;
+  } catch (e) {
+    return def;
+  }
+}
+
+function readBool(key, def = false) {
+  const raw = readData(key, def ? "true" : "false");
+  if (typeof raw === "boolean") return raw;
+  const str = String(raw).toLowerCase();
+  if (["1", "true", "yes", "on"].includes(str)) return true;
+  if (["0", "false", "no", "off"].includes(str)) return false;
+  return def;
+}
+
+function notify(title, subtitle, body, opts) {
+  $notify(title, subtitle, body, opts);
+}
+
+// ---------------- 平台定义：同时给出 App Scheme 和 Web 链接 ----------------
+
+function encode(q) {
+  return encodeURIComponent(q);
+}
+
 /*
- Seek 多站关键词搜索
- 支持平台：抖音 / 快手 / 小红书 / 微博 / B 站 / 知乎 / 今日头条
-
- 使用方法：
- 1. 在 BoxJs → 「Seek 多站关键词搜索」里填写关键词（每行一个）；
- 2. 在同一个面板勾选要启用的平台开关（抖音/快手/小红书/微博/B站/知乎/今日头条）；
- 3. 在 Quantumult X 的 task 里定时、或者手动运行本脚本；
- 4. 每个「关键词 × 平台」会生成一条通知，点击即可打开对应搜索结果。
-
- 本脚本：
- - 内部全部使用 seek 前缀（脚本名 / Env 名）；
- - 持久化 key 全是 seek_ 开头；
- - 不会跟你之前的 hot / hot_kw 系列冲突。
+  说明：
+  - appUrl(kw):  优先使用的 App 内搜索 Scheme
+  - webUrl(kw):  备用的网页搜索链接（用于通知里预览 / 复制）
+  - 有的 App（比如今日头条）官方没公开搜索 Scheme，就只用网页
+  - 如果某个 App 没有安装：点击 Scheme 可能无反应，这是 iOS 限制
 */
 
-// ========== 简易环境封装 ==========
-
-const $ = new SeekEnv('Seek 多站关键词搜索');
-
-// ========== BoxJs KEY 定义（全部 seek_ 开头） ==========
-
-// 关键词列表（多行文本）
-const SEEK_KW_LIST_KEY = 'seek_keywords';
-
-// 各平台开关
-const SEEK_ENABLE_DOUYIN   = 'seek_enable_douyin';
-const SEEK_ENABLE_KUAISHOU = 'seek_enable_kuaishou';
-const SEEK_ENABLE_XHS      = 'seek_enable_xhs';
-const SEEK_ENABLE_WEIBO    = 'seek_enable_weibo';
-const SEEK_ENABLE_BILIBILI = 'seek_enable_bilibili';
-const SEEK_ENABLE_ZHIHU    = 'seek_enable_zhihu';
-const SEEK_ENABLE_TOUTIAO  = 'seek_enable_toutiao';
-
-// ========== 平台配置 ==========
-
-const SEEK_PLATFORMS = [
+const PLATFORMS = [
   {
-    id: 'douyin',
-    name: '抖音',
-    enableKey: SEEK_ENABLE_DOUYIN,
-    // 抖音网页搜索（有机会唤起 App）
-    buildUrl(kw) {
-      return `https://www.douyin.com/search/${encodeURIComponent(kw)}`;
-    }
+    id: "douyin",
+    name: "抖音搜索",
+    enableKey: KEY_DOUYIN,
+    defaultEnable: true,
+    appUrl: kw => `snssdk1128://search?keyword=${encode(kw)}`, // 或 snssdk1128://search/result?keyword=
+    webUrl: kw => `https://www.douyin.com/search/${encode(kw)}`
   },
   {
-    id: 'kuaishou',
-    name: '快手',
-    enableKey: SEEK_ENABLE_KUAISHOU,
-    // 快手网页搜索
-    buildUrl(kw) {
-      return `https://www.kuaishou.com/search/video?searchKey=${encodeURIComponent(kw)}`;
-    }
+    id: "kuaishou",
+    name: "快手搜索",
+    enableKey: KEY_KUAISHOU,
+    defaultEnable: true,
+    appUrl: kw => `kwai://search?keyword=${encode(kw)}`,
+    webUrl: kw => `https://www.kuaishou.com/search/${encode(kw)}`
   },
   {
-    id: 'xhs',
-    name: '小红书',
-    enableKey: SEEK_ENABLE_XHS,
-    // 小红书搜索结果页
-    buildUrl(kw) {
-      return `https://www.xiaohongshu.com/search_result?keyword=${encodeURIComponent(kw)}`;
-    }
+    id: "xhs",
+    name: "小红书搜索",
+    enableKey: KEY_XHS,
+    defaultEnable: true,
+    appUrl: kw => `xhsdiscover://search/result?keyword=${encode(kw)}`,
+    webUrl: kw => `https://www.xiaohongshu.com/search_result?keyword=${encode(kw)}`
   },
   {
-    id: 'weibo',
-    name: '微博',
-    enableKey: SEEK_ENABLE_WEIBO,
-    // 微博搜索（这里用网页，比较通用；想强制走 App 也可以自己改成 sinaweibo://searchall?q=）
-    buildUrl(kw) {
-      return `https://s.weibo.com/weibo?q=${encodeURIComponent(kw)}`;
-    }
+    id: "weibo",
+    name: "微博搜索",
+    enableKey: KEY_WEIBO,
+    defaultEnable: true,
+    // 官方收集到的搜索 Scheme：sinaweibo://searchall?q=关键词
+    appUrl: kw => `sinaweibo://searchall?q=${encode(kw)}`,
+    webUrl: kw => `https://s.weibo.com/weibo?q=${encode(kw)}`
   },
   {
-    id: 'bilibili',
-    name: 'B站',
-    enableKey: SEEK_ENABLE_BILIBILI,
-    buildUrl(kw) {
-      return `https://search.bilibili.com/all?keyword=${encodeURIComponent(kw)}`;
-    }
+    id: "bilibili",
+    name: "B 站搜索",
+    enableKey: KEY_BILIBILI,
+    defaultEnable: true,
+    appUrl: kw => `bilibili://search?keyword=${encode(kw)}`,
+    webUrl: kw => `https://search.bilibili.com/all?keyword=${encode(kw)}`
   },
   {
-    id: 'zhihu',
-    name: '知乎',
-    enableKey: SEEK_ENABLE_ZHIHU,
-    buildUrl(kw) {
-      return `https://www.zhihu.com/search?type=content&q=${encodeURIComponent(kw)}`;
-    }
+    id: "zhihu",
+    name: "知乎搜索",
+    enableKey: KEY_ZHIHU,
+    defaultEnable: true,
+    appUrl: kw => `zhihu://search?q=${encode(kw)}`,
+    webUrl: kw => `https://www.zhihu.com/search?q=${encode(kw)}`
   },
   {
-    id: 'toutiao',
-    name: '今日头条',
-    enableKey: SEEK_ENABLE_TOUTIAO,
-    // 今日头条搜索（移动端搜索入口）
-    buildUrl(kw) {
-      return `https://m.toutiao.com/search?keyword=${encodeURIComponent(kw)}`;
-    }
+    id: "toutiao",
+    name: "今日头条搜索",
+    enableKey: KEY_TOUTIAO,
+    defaultEnable: true,
+    // 头条目前没有稳定可查的公开“搜索” Scheme，这里暂时只用网页搜索
+    appUrl: null,
+    webUrl: kw => `https://so.toutiao.com/search?keyword=${encode(kw)}`
   }
 ];
 
-// ========== 主逻辑 ==========
+// ---------------- 主逻辑 ----------------
 
-!(async () => {
-  try {
-    const rawKw = $.read(SEEK_KW_LIST_KEY) || '';
-    const keywords = parseKeywords(rawKw);
-
-    if (!keywords.length) {
-      $.notify(
-        'Seek 多站关键词搜索',
-        '未配置关键词',
-        '请在 BoxJs → Seek 多站关键词搜索 中填写关键词，每行一个。'
-      );
-      return $.done();
-    }
-
-    const enabledPlatforms = SEEK_PLATFORMS.filter(p => readBool(p.enableKey, true));
-
-    if (!enabledPlatforms.length) {
-      $.notify(
-        'Seek 多站关键词搜索',
-        '所有平台都被关闭',
-        '请在 BoxJs 中至少打开一个平台开关（抖音/快手/小红书/微博/B站/知乎/今日头条）。'
-      );
-      return $.done();
-    }
-
-    let notifyCount = 0;
-
-    for (const kw of keywords) {
-      for (const p of enabledPlatforms) {
-        const url = safeUrl(p.buildUrl(kw));
-        const title = `${p.name} 搜索`;
-        const subtitle = `关键词：${kw}`;
-        const body = `点击打开 ${p.name} 中关于「${kw}」的搜索结果`;
-
-        $.notify(title, subtitle, body, {
-          'open-url': url,
-          'media-url': url
-        });
-
-        notifyCount++;
-      }
-    }
-
-    $.log(
-      `本次运行：关键词 ${keywords.length} 个，平台 ${enabledPlatforms.length} 个，共推送 ${notifyCount} 条通知。`
-    );
-  } catch (e) {
-    $.log('脚本运行异常：', e);
-    $.notify('Seek 多站关键词搜索', '脚本运行异常', String(e));
-  } finally {
-    $.done();
-  }
-})();
-
-// ========== 工具函数 ==========
-
-// 把文本拆成关键词数组：支持 换行 / 逗号 / 分号 / 空格
-function parseKeywords(raw) {
-  return raw
-    .split(/\n|,|，|;|；|\s+/)
+(function main() {
+  // 1. 读关键词（支持多行）
+  const rawKw = readData(KEY_KEYWORDS, "")
+    .replace(/\r/g, "\n")
+    .split("\n")
     .map(s => s.trim())
     .filter(Boolean);
-}
 
-// 读取布尔（BoxJs 那些 true/false）
-function readBool(key, def = true) {
-  const v = $.read(key);
-  if (v === undefined || v === null || v === '') return def;
-  if (typeof v === 'boolean') return v;
-  const s = String(v).toLowerCase();
-  return ['1', 'true', 'yes', 'on', '打开', '开启'].includes(s);
-}
+  if (!rawKw.length) {
+    notify(
+      "Seek 多站关键词搜索",
+      "",
+      "未配置关键词，请到 BoxJs → seek_keywords 中填写（每行一个）。"
+    );
+    return $done();
+  }
 
-function safeUrl(u) {
-  if (!u) return 'https://www.baidu.com';
-  return u;
-}
+  // 多个关键词就用空格拼起来一起搜
+  const query = rawKw.join(" ");
 
-// ========== 环境封装：SeekEnv ==========
+  // 2. 读哪些平台开启了
+  const enabledPlatforms = PLATFORMS.filter(p =>
+    readBool(p.enableKey, p.defaultEnable)
+  );
 
-function SeekEnv(name) {
-  this.name = name;
-  this.isQuanX = typeof $task !== 'undefined';
-  this.isSurge = typeof $httpClient !== 'undefined' && !this.isQuanX;
-  this.isLoon = typeof $loon !== 'undefined';
-  this.isNode =
-    typeof require === 'function' &&
-    !this.isQuanX &&
-    !this.isSurge &&
-    !this.isLoon;
+  if (!enabledPlatforms.length) {
+    notify(
+      "Seek 多站关键词搜索",
+      "",
+      "所有平台都被关闭了，请到 BoxJs 勾选需要的站点。"
+    );
+    return $done();
+  }
 
-  this.log = (...args) => console.log(`[${this.name}]`, ...args);
+  // 3. 逐个平台发通知（点击即跳 App）
+  enabledPlatforms.forEach(p => {
+    const appUrl = p.appUrl ? p.appUrl(query) : p.webUrl(query);
+    const webUrl = p.webUrl(query);
 
-  // 读取持久化（BoxJs 存的东西）
-  this.read = key => {
-    try {
-      if (this.isQuanX) return $prefs.valueForKey(key);
-      if (this.isSurge || this.isLoon) return $persistentStore.read(key);
-      if (this.isNode) {
-        const fs = require('fs');
-        const path = require('path');
-        const file = path.resolve('seek_data.json');
-        if (!fs.existsSync(file)) return null;
-        const data = JSON.parse(fs.readFileSync(file));
-        return data[key];
-      }
-    } catch (e) {
-      this.log('read 出错', e);
-    }
-    return null;
-  };
+    const subtitle = `关键词：${query}`;
+    const body = p.appUrl
+      ? "点击打开 App 搜索"
+      : "当前平台暂时只支持网页搜索";
 
-  // 写入持久化（这里你一般用不到，预留）
-  this.write = (value, key) => {
-    try {
-      if (this.isQuanX) return $prefs.setValueForKey(String(value), key);
-      if (this.isSurge || this.isLoon)
-        return $persistentStore.write(String(value), key);
-      if (this.isNode) {
-        const fs = require('fs');
-        const path = require('path');
-        const file = path.resolve('seek_data.json');
-        let data = {};
-        if (fs.existsSync(file)) {
-          data = JSON.parse(fs.readFileSync(file));
-        }
-        data[key] = value;
-        fs.writeFileSync(file, JSON.stringify(data, null, 2));
-        return true;
-      }
-    } catch (e) {
-      this.log('write 出错', e);
-    }
-    return false;
-  };
+    notify(p.name, subtitle, body, {
+      "open-url": appUrl,   // 优先尝试拉起 App
+      "media-url": webUrl   // 通知里长按可复制 / 预览网页
+    });
+  });
 
-  // 通知
-  this.notify = (title, subtitle, message, options) => {
-    try {
-      if (this.isQuanX) {
-        $notify(title, subtitle, message, options);
-      } else if (this.isSurge || this.isLoon) {
-        $notification.post(title, subtitle, message, options);
-      } else {
-        this.log('通知：', title, subtitle, message, options || '');
-      }
-    } catch (e) {
-      this.log('notify 出错', e);
-    }
-  };
-
-  this.done = (value = {}) => {
-    if (this.isQuanX || this.isSurge || this.isLoon) {
-      $done(value);
-    } else {
-      this.log('脚本结束', JSON.stringify(value));
-    }
-  };
-}
+  $done();
+})();
