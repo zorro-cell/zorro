@@ -1,0 +1,74 @@
+{
+  "id": "seek.sub",
+  "name": "Seek 工具合集",
+  "author": "@zorro-cell",
+  "icon": "search",
+  "apps": [
+    {
+      "id": "seek.multi.search",
+      "name": "Seek 多站关键词搜索",
+      "keys": [
+        "seek_keywords",
+        "seek_enable_douyin",
+        "seek_enable_kuaishou",
+        "seek_enable_xhs",
+        "seek_enable_weibo",
+        "seek_enable_bilibili",
+        "seek_enable_zhihu",
+        "seek_enable_toutiao"
+      ],
+      "settings": [
+        {
+          "id": "seek_keywords",
+          "name": "关键词列表（每行一个）",
+          "val": "",
+          "type": "textarea",
+          "rows": 6,
+          "placeholder": "例：\n香港大火\n雷军 小米汽车\n刘亦菲 素颜\n陈震 道歉"
+        },
+        {
+          "id": "seek_enable_douyin",
+          "name": "启用 抖音 搜索",
+          "val": true,
+          "type": "boolean"
+        },
+        {
+          "id": "seek_enable_kuaishou",
+          "name": "启用 快手 搜索",
+          "val": true,
+          "type": "boolean"
+        },
+        {
+          "id": "seek_enable_xhs",
+          "name": "启用 小红书 搜索",
+          "val": true,
+          "type": "boolean"
+        },
+        {
+          "id": "seek_enable_weibo",
+          "name": "启用 微博 搜索",
+          "val": true,
+          "type": "boolean"
+        },
+        {
+          "id": "seek_enable_bilibili",
+          "name": "启用 B站 搜索",
+          "val": true,
+          "type": "boolean"
+        },
+        {
+          "id": "seek_enable_zhihu",
+          "name": "启用 知乎 搜索",
+          "val": true,
+          "type": "boolean"
+        },
+        {
+          "id": "seek_enable_toutiao",
+          "name": "启用 今日头条 搜索",
+          "val": true,
+          "type": "boolean"
+        }
+      ]
+    }
+  ]
+}
