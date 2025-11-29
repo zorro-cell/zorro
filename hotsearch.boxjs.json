@@ -1,12 +1,12 @@
 {
-  "id": "veyna.hotsearch.sub",
-  "name": "热门监控（新接口版）",
-  "author": "@veyna + GPT",
+  "id": "zorro",
+  "name": "热门监控",
+  "author": "@心事全在脸上",
   "icon": "https://raw.githubusercontent.com/NobyDa/mini/master/Color/wanan.png",
   "repo": "",
   "apps": [
     {
-      "id": "veyna.hotsearch",
+      "id": "zorro",
       "name": "热门监控（新接口版）",
       "keys": [
         "hot_keywords",
@@ -45,8 +45,7 @@
 
         "hot_xhs_enable",
         "hot_xhs_ignore",
-        "hot_xhs_count",
-        "hot_xhs_api"
+        "hot_xhs_count"
       ],
       "settings": [
         {
@@ -195,18 +194,18 @@
           "name": "今日头条热榜",
           "val": false,
           "type": "boolean",
-          "desc": "打开则监控 今日头条 热榜"
+          "desc": "打开则监控今日头条热榜"
         },
         {
           "id": "hot_toutiao_ignore",
-          "name": "忽略关键词推送 今日头条 最新内容",
+          "name": "忽略关键词推送头条最新内容",
           "val": false,
           "type": "boolean",
           "desc": ""
         },
         {
           "id": "hot_toutiao_count",
-          "name": "今日头条：忽略关键词时获取数量",
+          "name": "头条：忽略关键词时获取数量",
           "val": 3,
           "type": "number",
           "desc": ""
@@ -217,11 +216,11 @@
           "name": "快手热榜",
           "val": false,
           "type": "boolean",
-          "desc": "打开则监控 快手 热榜"
+          "desc": "打开则监控快手热榜"
         },
         {
           "id": "hot_kuaishou_ignore",
-          "name": "忽略关键词推送 快手 最新内容",
+          "name": "忽略关键词推送快手最新内容",
           "val": false,
           "type": "boolean",
           "desc": ""
@@ -236,14 +235,14 @@
 
         {
           "id": "hot_xhs_enable",
-          "name": "小红书热门话题（需自备接口）",
+          "name": "小红书热门话题",
           "val": false,
           "type": "boolean",
-          "desc": "开启前请先在下方填入可用接口地址"
+          "desc": "打开则监控小红书热门话题"
         },
         {
           "id": "hot_xhs_ignore",
-          "name": "忽略关键词推送 小红书 最新内容",
+          "name": "忽略关键词推送小红书最新内容",
           "val": false,
           "type": "boolean",
           "desc": ""
@@ -254,16 +253,8 @@
           "val": 3,
           "type": "number",
           "desc": ""
-        },
-        {
-          "id": "hot_xhs_api",
-          "name": "小红书热门话题 API 地址",
-          "val": "",
-          "type": "text",
-          "desc": "例如：https://xxxx.com/your/xhs/hot/api，要求返回 JSON 数组或 data.list 这类结构"
         }
       ]
     }
   ]
 }
-
