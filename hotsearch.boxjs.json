@@ -1,7 +1,7 @@
 {
   "id": "zorro",
   "name": "热门监控",
-  "author": "@心事全在脸上",
+  "author": "@心事全在脸上,
   "icon": "https://raw.githubusercontent.com/NobyDa/mini/master/Color/wanan.png",
   "repo": "",
   "apps": [
@@ -12,38 +12,47 @@
         "hot_keywords",
 
         "hot_weibo_enable",
+        "hot_weibo_split",
         "hot_weibo_ignore",
         "hot_weibo_count",
 
         "hot_zhihu_enable",
+        "hot_zhihu_split",
         "hot_zhihu_ignore",
         "hot_zhihu_count",
 
         "hot_baidu_enable",
+        "hot_baidu_split",
         "hot_baidu_ignore",
         "hot_baidu_count",
 
         "hot_bilibili_enable",
+        "hot_bilibili_split",
         "hot_bilibili_ignore",
         "hot_bilibili_count",
 
         "hot_douyin_enable",
+        "hot_douyin_split",
         "hot_douyin_ignore",
         "hot_douyin_count",
 
         "hot_36kr_enable",
+        "hot_36kr_split",
         "hot_36kr_ignore",
         "hot_36kr_count",
 
         "hot_toutiao_enable",
+        "hot_toutiao_split",
         "hot_toutiao_ignore",
         "hot_toutiao_count",
 
         "hot_kuaishou_enable",
+        "hot_kuaishou_split",
         "hot_kuaishou_ignore",
         "hot_kuaishou_count",
 
         "hot_xhs_enable",
+        "hot_xhs_split",
         "hot_xhs_ignore",
         "hot_xhs_count"
       ],
@@ -63,6 +72,13 @@
           "val": true,
           "type": "boolean",
           "desc": "打开则监控微博热搜"
+        },
+        {
+          "id": "hot_weibo_split",
+          "name": "分开推送微博内容",
+          "val": false,
+          "type": "boolean",
+          "desc": "打开则每条微博单独推送一条通知"
         },
         {
           "id": "hot_weibo_ignore",
@@ -87,6 +103,13 @@
           "desc": "打开则监控知乎热榜"
         },
         {
+          "id": "hot_zhihu_split",
+          "name": "分开推送知乎内容",
+          "val": false,
+          "type": "boolean",
+          "desc": "打开则每条知乎单独推送一条通知"
+        },
+        {
           "id": "hot_zhihu_ignore",
           "name": "忽略关键词推送知乎最新内容",
           "val": false,
@@ -107,6 +130,13 @@
           "val": true,
           "type": "boolean",
           "desc": "打开则监控百度热搜"
+        },
+        {
+          "id": "hot_baidu_split",
+          "name": "分开推送百度内容",
+          "val": false,
+          "type": "boolean",
+          "desc": "打开则每条百度热搜单独推送一条通知"
         },
         {
           "id": "hot_baidu_ignore",
@@ -131,6 +161,13 @@
           "desc": "打开则监控 B 站热门"
         },
         {
+          "id": "hot_bilibili_split",
+          "name": "分开推送B站内容",
+          "val": false,
+          "type": "boolean",
+          "desc": "打开则每条 B 站内容单独推送一条通知"
+        },
+        {
           "id": "hot_bilibili_ignore",
           "name": "忽略关键词推送 B 站最新内容",
           "val": false,
@@ -151,6 +188,13 @@
           "val": true,
           "type": "boolean",
           "desc": "打开则监控抖音热榜"
+        },
+        {
+          "id": "hot_douyin_split",
+          "name": "分开推送抖音内容",
+          "val": false,
+          "type": "boolean",
+          "desc": "打开则每条抖音热榜单独推送一条通知"
         },
         {
           "id": "hot_douyin_ignore",
@@ -175,6 +219,13 @@
           "desc": "打开则监控 36 氪热榜"
         },
         {
+          "id": "hot_36kr_split",
+          "name": "分开推送36氪内容",
+          "val": false,
+          "type": "boolean",
+          "desc": "打开则每条 36 氪内容单独推送一条通知"
+        },
+        {
           "id": "hot_36kr_ignore",
           "name": "忽略关键词推送 36 氪最新内容",
           "val": false,
@@ -195,6 +246,13 @@
           "val": false,
           "type": "boolean",
           "desc": "打开则监控今日头条热榜"
+        },
+        {
+          "id": "hot_toutiao_split",
+          "name": "分开推送头条内容",
+          "val": false,
+          "type": "boolean",
+          "desc": "打开则每条头条热榜单独推送一条通知"
         },
         {
           "id": "hot_toutiao_ignore",
@@ -219,6 +277,13 @@
           "desc": "打开则监控快手热榜"
         },
         {
+          "id": "hot_kuaishou_split",
+          "name": "分开推送快手内容",
+          "val": false,
+          "type": "boolean",
+          "desc": "打开则每条快手热榜单独推送一条通知"
+        },
+        {
           "id": "hot_kuaishou_ignore",
           "name": "忽略关键词推送快手最新内容",
           "val": false,
@@ -239,6 +304,13 @@
           "val": false,
           "type": "boolean",
           "desc": "打开则监控小红书热门话题"
+        },
+        {
+          "id": "hot_xhs_split",
+          "name": "分开推送小红书内容",
+          "val": false,
+          "type": "boolean",
+          "desc": "打开则每条小红书热门话题单独推送一条通知"
         },
         {
           "id": "hot_xhs_ignore",
