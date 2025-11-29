@@ -1,27 +1,15 @@
 /*******************************
  * 多平台热榜 - hot.js（xxapi + 今日热榜 + BoxJs）
  * 支持的榜单：
- *  - 微博热搜（xxapi）
- *  - 知乎热榜（PearAPI / 今日热榜）
- *  - 百度热搜（xxapi）
- *  - B站热门（PearAPI / 今日热榜）
- *  - 抖音热榜（xxapi）
- *  - 36氪热榜（xxapi）
- *  - 今日头条热榜（PearAPI / 今日热榜）
- *  - 快手热榜（cunyuapi）
- *  - 小红书热门话题（需自备接口，默认关闭）
- *
- * BoxJs 配套 keys：
- *  - hot_keywords                     全局关键词（逗号/空格/换行分隔）
- *  - hot_weibo_enable / hot_weibo_ignore / hot_weibo_count
- *  - hot_zhihu_enable / hot_zhihu_ignore / hot_zhihu_count
- *  - hot_baidu_enable / hot_baidu_ignore / hot_baidu_count
- *  - hot_bilibili_enable / hot_bilibili_ignore / hot_bilibili_count
- *  - hot_douyin_enable / hot_douyin_ignore / hot_douyin_count
- *  - hot_36kr_enable / hot_36kr_ignore / hot_36kr_count
- *  - hot_toutiao_enable / hot_toutiao_ignore / hot_toutiao_count
- *  - hot_kuaishou_enable / hot_kuaishou_ignore / hot_kuaishou_count
- *  - hot_xhs_enable / hot_xhs_ignore / hot_xhs_count / hot_xhs_api
+ *  - 微博热搜
+ *  - 知乎热榜
+ *  - 百度热搜
+ *  - B站热门
+ *  - 抖音热榜
+ *  - 36氪热榜
+ *  - 今日头条热榜
+ *  - 快手热榜
+ *  - 小红书热门话题
  *******************************/
 
 // ========== 通用存储读写（兼容 Quantumult X / Surge） ==========
@@ -65,51 +53,48 @@ const CFG = {
   weibo: {
     enable: readBool("hot_weibo_enable", true),
     ignorePushLatest: readBool("hot_weibo_ignore", true),
-    count: readInt("hot_weibo_count", 3),
+    count: readInt("hot_weibo_count", 3)
   },
   zhihu: {
     enable: readBool("hot_zhihu_enable", false),
     ignorePushLatest: readBool("hot_zhihu_ignore", false),
-    count: readInt("hot_zhihu_count", 3),
+    count: readInt("hot_zhihu_count", 3)
   },
   baidu: {
     enable: readBool("hot_baidu_enable", true),
     ignorePushLatest: readBool("hot_baidu_ignore", true),
-    count: readInt("hot_baidu_count", 3),
+    count: readInt("hot_baidu_count", 3)
   },
   bilibili: {
     enable: readBool("hot_bilibili_enable", false),
     ignorePushLatest: readBool("hot_bilibili_ignore", false),
-    count: readInt("hot_bilibili_count", 3),
+    count: readInt("hot_bilibili_count", 3)
   },
   douyin: {
     enable: readBool("hot_douyin_enable", true),
     ignorePushLatest: readBool("hot_douyin_ignore", true),
-    count: readInt("hot_douyin_count", 3),
+    count: readInt("hot_douyin_count", 3)
   },
   kr36: {
     enable: readBool("hot_36kr_enable", false),
     ignorePushLatest: readBool("hot_36kr_ignore", false),
-    count: readInt("hot_36kr_count", 3),
+    count: readInt("hot_36kr_count", 3)
   },
-  // 新增：今日头条
   toutiao: {
     enable: readBool("hot_toutiao_enable", false),
     ignorePushLatest: readBool("hot_toutiao_ignore", false),
-    count: readInt("hot_toutiao_count", 3),
+    count: readInt("hot_toutiao_count", 3)
   },
-  // 新增：快手
   kuaishou: {
     enable: readBool("hot_kuaishou_enable", false),
     ignorePushLatest: readBool("hot_kuaishou_ignore", false),
-    count: readInt("hot_kuaishou_count", 3),
+    count: readInt("hot_kuaishou_count", 3)
   },
-  // 新增：小红书（需自备接口）
   xhs: {
     enable: readBool("hot_xhs_enable", false),
     ignorePushLatest: readBool("hot_xhs_ignore", false),
-    count: readInt("hot_xhs_count", 3),
-  },
+    count: readInt("hot_xhs_count", 3)
+  }
 };
 
 // 是否输出日志
@@ -121,7 +106,7 @@ function log(msg) {
 // 通用 UA
 const UA = {
   "User-Agent":
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1"
 };
 
 // ========== 公共函数 ==========
@@ -147,7 +132,6 @@ function parseJSON(body, label) {
 }
 
 // 把一条记录转成“标题字符串”
-// 已经兼容 36 氪的 templateMaterial.widgetTitle
 function pickTitle(item) {
   if (!item) return "";
 
@@ -172,13 +156,13 @@ function pickTitle(item) {
     "note",
     "desc",
     "summary",
-    "content",
+    "content"
   ];
   for (const k of keys) {
     if (item[k] && typeof item[k] === "string") return item[k].trim();
   }
 
-  // ✅ 兼容 36 氪：标题在 templateMaterial.widgetTitle
+  // 兼容 36 氪：标题在 templateMaterial.widgetTitle
   if (
     item.templateMaterial &&
     typeof item.templateMaterial.widgetTitle === "string"
@@ -186,7 +170,6 @@ function pickTitle(item) {
     return item.templateMaterial.widgetTitle.trim();
   }
 
-  // 再不行就把整条 JSON 截一下当标题（防止通知里是一大坨）
   try {
     return JSON.stringify(item).slice(0, 80);
   } catch (e) {
@@ -241,7 +224,7 @@ function httpGet(url, headers = UA) {
   return $task.fetch({
     url,
     method: "GET",
-    headers,
+    headers
   });
 }
 
@@ -266,7 +249,6 @@ async function fetchWeibo() {
 
     const lines = used.map((item, idx) => {
       const title = pickTitle(item) || "无标题";
-      // 有的接口会给热度 hot / hotValue 等，这里尽量兼容
       const hot = item.hot || item.hotValue || item.hot_value;
       const hotStr = hot ? `【热度：${hot}】` : "";
       return `${idx + 1}. ${title}${hotStr}`;
@@ -276,9 +258,8 @@ async function fetchWeibo() {
       ok: true,
       title: `${name} Top${used.length}`,
       text: lines.join("\n"),
-      // 这个链接可能因客户端版本有差异，如果不生效最多就是打开微博首页
       openUrl:
-        "sinaweibo://pageinfo?containerid=106003type%3D25%26t%3D3%26disable_hot%3D1%26filter_type%3Drealtimehot",
+        "sinaweibo://pageinfo?containerid=106003type%3D25%26t%3D3%26disable_hot%3D1%26filter_type%3Drealtimehot"
     };
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
@@ -312,8 +293,7 @@ async function fetchDouyin() {
       ok: true,
       title: `${name} Top${used.length}`,
       text: lines.join("\n"),
-      // 抖音热搜页
-      openUrl: "snssdk1128://search/trending",
+      openUrl: "snssdk1128://search/trending"
     };
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
@@ -347,7 +327,8 @@ async function fetchBaidu() {
       ok: true,
       title: `${name} Top${used.length}`,
       text: lines.join("\n"),
-      openUrl: "https://top.baidu.com/board?tab=realtime",
+      // 换成今日热榜的百度 Tab，界面更干净
+      openUrl: "https://rebang.today/?tab=baidu"
     };
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
@@ -369,7 +350,6 @@ async function fetch36Kr() {
       throw new Error(json.msg || json.message || "接口返回格式异常");
     }
 
-    // 利用上面改过的 pickTitle，从 templateMaterial.widgetTitle 里拿标题
     const used = selectItems(name, json.data, cfg);
     if (!used) return { ok: false, title: name, skip: true };
 
@@ -386,8 +366,7 @@ async function fetch36Kr() {
       ok: true,
       title: `${name} Top${used.length}`,
       text: lines.join("\n"),
-      // 稳定一点的 36 氪榜单网页
-      openUrl: "https://rebang.today/?tab=36kr",
+      openUrl: "https://rebang.today/?tab=36kr"
     };
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
@@ -408,12 +387,7 @@ async function fetchZhihu() {
     const resp = await httpGet(url);
     const json = parseJSON(resp.body, name);
 
-    // dailyhot：code=200, data 为数组或 data.list
-    const data = Array.isArray(json.data)
-      ? json.data
-      : Array.isArray(json.data?.list)
-      ? json.data.list
-      : null;
+    const data = Array.isArray(json.data) ? json.data : json.data && json.data.list;
     if (!Array.isArray(data)) {
       throw new Error(json.msg || json.message || "接口返回格式异常");
     }
@@ -430,7 +404,7 @@ async function fetchZhihu() {
       ok: true,
       title: `${name} Top${used.length}`,
       text: lines.join("\n"),
-      openUrl: "zhihu://zhihu.com/hot",
+      openUrl: "zhihu://zhihu.com/hot"
     };
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
@@ -451,11 +425,7 @@ async function fetchBilibili() {
     const resp = await httpGet(url);
     const json = parseJSON(resp.body, name);
 
-    const data = Array.isArray(json.data)
-      ? json.data
-      : Array.isArray(json.data?.list)
-      ? json.data.list
-      : null;
+    const data = Array.isArray(json.data) ? json.data : json.data && json.data.list;
     if (!Array.isArray(data)) {
       throw new Error(json.msg || json.message || "接口返回格式异常");
     }
@@ -472,7 +442,7 @@ async function fetchBilibili() {
       ok: true,
       title: `${name} Top${used.length}`,
       text: lines.join("\n"),
-      openUrl: "bilibili://popular",
+      openUrl: "bilibili://popular"
     };
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
@@ -493,11 +463,7 @@ async function fetchToutiao() {
     const resp = await httpGet(url);
     const json = parseJSON(resp.body, name);
 
-    const data = Array.isArray(json.data)
-      ? json.data
-      : Array.isArray(json.data?.list)
-      ? json.data.list
-      : null;
+    const data = Array.isArray(json.data) ? json.data : json.data && json.data.list;
     if (!Array.isArray(data)) {
       throw new Error(json.msg || json.message || "接口返回格式异常");
     }
@@ -514,8 +480,8 @@ async function fetchToutiao() {
       ok: true,
       title: `${name} Top${used.length}`,
       text: lines.join("\n"),
-      // 官方热榜网页，点击通知至少能看榜单
-      openUrl: "https://www.toutiao.com/hot-event/hot-board/",
+      // 直接拉起今日头条 App
+      openUrl: "snssdk141://"
     };
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
@@ -523,49 +489,48 @@ async function fetchToutiao() {
   }
 }
 
-// 8. 快手热榜（新接口：icofun）
+// 8. 快手热榜（icofun）
 async function fetchKuaishou() {
   const name = "快手热榜";
   const cfg = CFG.kuaishou;
   log(`开始获取  ${name}…`);
 
   try {
-    // 使用 icofun 的快手热搜接口，请求 JSON 格式
     const resp = await httpGet(
       "https://api.icofun.cn/api/kuaishou_hot_search.php?type=json"
     );
     const json = parseJSON(resp.body, name);
 
-    // 尽量兼容各种返回结构
-    let data = null;
-    if (Array.isArray(json)) {
-      data = json;
-    } else if (Array.isArray(json.data)) {
-      data = json.data;
-    } else if (Array.isArray(json.list)) {
-      data = json.list;
-    } else if (Array.isArray(json.result)) {
-      data = json.result;
-    } else {
+    // 返回形如 { "Top_1": "...", "Top_2": "...", ... }
+    const keys = Object.keys(json || {}).filter((k) =>
+      /^Top_\d+/i.test(k)
+    );
+    if (keys.length === 0) {
       throw new Error("接口返回格式异常");
     }
 
-    const used = selectItems(name, data, cfg);
+    keys.sort((a, b) => {
+      const na = parseInt(a.split("_")[1], 10) || 0;
+      const nb = parseInt(b.split("_")[1], 10) || 0;
+      return na - nb;
+    });
+
+    const list = keys.map((k) => json[k]).filter(Boolean);
+
+    const used = selectItems(name, list, cfg);
     if (!used) return { ok: false, title: name, skip: true };
 
-    const lines = used.map((item, idx) => {
-      const title = pickTitle(item) || "无标题";
-      return `${idx + 1}. ${title}`;
+    const lines = used.map((title, idx) => {
+      const t = pickTitle(title) || "无标题";
+      return `${idx + 1}. ${t}`;
     });
 
     return {
       ok: true,
       title: `${name} Top${used.length}`,
       text: lines.join("\n"),
-
-      // 🔗 打开快手：如果下面这个 scheme 在你那边打不开
-      // 可以自行改成 H5，比如 "https://www.kuaishou.com"
-      openUrl: "kwai://home/hot"
+      // 打开快手话题热榜
+      openUrl: "kwai://search/topicRank"
     };
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
@@ -573,34 +538,22 @@ async function fetchKuaishou() {
   }
 }
 
-
-// 9. 小红书热门话题（需自备接口）
-// 默认不会请求任何网络，只要你在 BoxJs 里填写 hot_xhs_api 并且打开开关才会生效
-async function fetchXhs() {
+// 9. 小红书热门话题（今日热榜 / PearAPI）
+async function fetchXHS() {
   const name = "小红书热门话题";
   const cfg = CFG.xhs;
   log(`开始获取  ${name}…`);
 
-  const apiUrl = (readStore("hot_xhs_api", "") || "").trim();
-  if (!apiUrl) {
-    log(`${name}：未配置 hot_xhs_api，跳过`);
-    return { ok: false, title: name, skip: true };
-  }
-
   try {
-    const resp = await httpGet(apiUrl);
+    const url =
+      "https://api.pearktrue.cn/api/dailyhot/?title=" +
+      encodeURIComponent("小红书");
+    const resp = await httpGet(url);
     const json = parseJSON(resp.body, name);
 
-    // 尽量兼容各种结构
-    let data = null;
-    if (Array.isArray(json)) data = json;
-    else if (Array.isArray(json.data)) data = json.data;
-    else if (Array.isArray(json.data?.list)) data = json.data.list;
-    else if (Array.isArray(json.result)) data = json.result;
-    else if (Array.isArray(json.items)) data = json.items;
-
+    const data = Array.isArray(json.data) ? json.data : json.data && json.data.list;
     if (!Array.isArray(data)) {
-      throw new Error("接口返回格式异常（请检查你填的 API 返回格式）");
+      throw new Error(json.msg || json.message || "接口返回格式异常");
     }
 
     const used = selectItems(name, data, cfg);
@@ -615,8 +568,8 @@ async function fetchXhs() {
       ok: true,
       title: `${name} Top${used.length}`,
       text: lines.join("\n"),
-      // 常见的小红书唤起 scheme，有些系统上能直接拉起 App
-      openUrl: "xhsdiscover://",
+      // 拉起小红书 App（入口页）
+      openUrl: "xhsdiscover://"
     };
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
@@ -637,7 +590,7 @@ async function fetchXhs() {
   if (CFG.kr36.enable) tasks.push(fetch36Kr());
   if (CFG.toutiao.enable) tasks.push(fetchToutiao());
   if (CFG.kuaishou.enable) tasks.push(fetchKuaishou());
-  if (CFG.xhs.enable) tasks.push(fetchXhs());
+  if (CFG.xhs.enable) tasks.push(fetchXHS());
 
   if (tasks.length === 0) {
     log("所有榜单都被关闭，脚本直接结束");
@@ -651,10 +604,9 @@ async function fetchXhs() {
     if (!res) return;
     if (res.ok) {
       $notify(res.title, "", res.text, {
-        "open-url": res.openUrl || "",
+        "open-url": res.openUrl || ""
       });
     } else if (!res.skip) {
-      // 真报错（网络 / 接口挂了）才提示
       $notify(`${res.title} 获取失败`, "", String(res.err || "未知错误"));
     }
   });
