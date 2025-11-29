@@ -1,15 +1,27 @@
 /*******************************
  * 多平台热榜 - hot.js（xxapi + 今日热榜 + BoxJs）
  * 支持的榜单：
- *  - 微博热搜
- *  - 知乎热榜
- *  - 百度热搜
- *  - B站热门
- *  - 抖音热榜
- *  - 36氪热榜
- *  - 今日头条热榜
- *  - 快手热榜
- *  - 小红书热门话题
+ *  - 微博热搜（xxapi）
+ *  - 知乎热榜（PearAPI）
+ *  - 百度热搜（xxapi）
+ *  - B站热门（PearAPI）
+ *  - 抖音热榜（xxapi）
+ *  - 36氪热榜（xxapi，改用 36kr 官方热榜链接）
+ *  - 今日头条热榜（PearAPI）
+ *  - 快手热榜（PearAPI）
+ *  - 小红书热门话题（当前 API 不支持，仅在日志里提示并跳过）
+ *
+ * BoxJs key（保持你现在的面板不变）：
+ *  - hot_keywords                     全局关键词（逗号/空格/换行分隔）
+ *  - hot_weibo_enable / hot_weibo_ignore / hot_weibo_count
+ *  - hot_zhihu_enable / hot_zhihu_ignore / hot_zhihu_count
+ *  - hot_baidu_enable / hot_baidu_ignore / hot_baidu_count
+ *  - hot_bilibili_enable / hot_bilibili_ignore / hot_bilibili_count
+ *  - hot_douyin_enable / hot_douyin_ignore / hot_douyin_count
+ *  - hot_36kr_enable / hot_36kr_ignore / hot_36kr_count
+ *  - hot_toutiao_enable / hot_toutiao_ignore / hot_toutiao_count
+ *  - hot_kuaishou_enable / hot_kuaishou_ignore / hot_kuaishou_count
+ *  - hot_xhs_enable / hot_xhs_ignore / hot_xhs_count（目前无数据，只会跳过）
  *******************************/
 
 // ========== 通用存储读写（兼容 Quantumult X / Surge） ==========
@@ -53,48 +65,48 @@ const CFG = {
   weibo: {
     enable: readBool("hot_weibo_enable", true),
     ignorePushLatest: readBool("hot_weibo_ignore", true),
-    count: readInt("hot_weibo_count", 3)
+    count: readInt("hot_weibo_count", 3),
   },
   zhihu: {
     enable: readBool("hot_zhihu_enable", false),
     ignorePushLatest: readBool("hot_zhihu_ignore", false),
-    count: readInt("hot_zhihu_count", 3)
+    count: readInt("hot_zhihu_count", 3),
   },
   baidu: {
     enable: readBool("hot_baidu_enable", true),
     ignorePushLatest: readBool("hot_baidu_ignore", true),
-    count: readInt("hot_baidu_count", 3)
+    count: readInt("hot_baidu_count", 3),
   },
   bilibili: {
     enable: readBool("hot_bilibili_enable", false),
     ignorePushLatest: readBool("hot_bilibili_ignore", false),
-    count: readInt("hot_bilibili_count", 3)
+    count: readInt("hot_bilibili_count", 3),
   },
   douyin: {
     enable: readBool("hot_douyin_enable", true),
     ignorePushLatest: readBool("hot_douyin_ignore", true),
-    count: readInt("hot_douyin_count", 3)
+    count: readInt("hot_douyin_count", 3),
   },
   kr36: {
     enable: readBool("hot_36kr_enable", false),
     ignorePushLatest: readBool("hot_36kr_ignore", false),
-    count: readInt("hot_36kr_count", 3)
+    count: readInt("hot_36kr_count", 3),
   },
   toutiao: {
-    enable: readBool("hot_toutiao_enable", false),
-    ignorePushLatest: readBool("hot_toutiao_ignore", false),
-    count: readInt("hot_toutiao_count", 3)
+    enable: readBool("hot_toutiao_enable", true),
+    ignorePushLatest: readBool("hot_toutiao_ignore", true),
+    count: readInt("hot_toutiao_count", 3),
   },
   kuaishou: {
-    enable: readBool("hot_kuaishou_enable", false),
-    ignorePushLatest: readBool("hot_kuaishou_ignore", false),
-    count: readInt("hot_kuaishou_count", 3)
+    enable: readBool("hot_kuaishou_enable", true),
+    ignorePushLatest: readBool("hot_kuaishou_ignore", true),
+    count: readInt("hot_kuaishou_count", 3),
   },
   xhs: {
     enable: readBool("hot_xhs_enable", false),
     ignorePushLatest: readBool("hot_xhs_ignore", false),
-    count: readInt("hot_xhs_count", 3)
-  }
+    count: readInt("hot_xhs_count", 3),
+  },
 };
 
 // 是否输出日志
@@ -106,7 +118,7 @@ function log(msg) {
 // 通用 UA
 const UA = {
   "User-Agent":
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1"
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1",
 };
 
 // ========== 公共函数 ==========
@@ -156,13 +168,13 @@ function pickTitle(item) {
     "note",
     "desc",
     "summary",
-    "content"
+    "content",
   ];
   for (const k of keys) {
     if (item[k] && typeof item[k] === "string") return item[k].trim();
   }
 
-  // 兼容 36 氪：标题在 templateMaterial.widgetTitle
+  // 36 氪：标题在 templateMaterial.widgetTitle
   if (
     item.templateMaterial &&
     typeof item.templateMaterial.widgetTitle === "string"
@@ -219,12 +231,12 @@ function selectItems(boardName, rawList, cfg) {
   return null;
 }
 
-// 简单封装 GET
+// 简单封装 GET（Quantumult X）
 function httpGet(url, headers = UA) {
   return $task.fetch({
     url,
     method: "GET",
-    headers
+    headers,
   });
 }
 
@@ -259,7 +271,7 @@ async function fetchWeibo() {
       title: `${name} Top${used.length}`,
       text: lines.join("\n"),
       openUrl:
-        "sinaweibo://pageinfo?containerid=106003type%3D25%26t%3D3%26disable_hot%3D1%26filter_type%3Drealtimehot"
+        "sinaweibo://pageinfo?containerid=106003type%3D25%26t%3D3%26disable_hot%3D1%26filter_type%3Drealtimehot",
     };
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
@@ -293,7 +305,7 @@ async function fetchDouyin() {
       ok: true,
       title: `${name} Top${used.length}`,
       text: lines.join("\n"),
-      openUrl: "snssdk1128://search/trending"
+      openUrl: "snssdk1128://search/trending", // 抖音热搜页
     };
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
@@ -327,8 +339,8 @@ async function fetchBaidu() {
       ok: true,
       title: `${name} Top${used.length}`,
       text: lines.join("\n"),
-      // 换成今日热榜的百度 Tab，界面更干净
-      openUrl: "https://rebang.today/?tab=baidu"
+      // 用百度热搜页面（比之前那个黑底页面好看一些）
+      openUrl: "https://top.baidu.com/board?tab=realtime",
     };
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
@@ -366,7 +378,8 @@ async function fetch36Kr() {
       ok: true,
       title: `${name} Top${used.length}`,
       text: lines.join("\n"),
-      openUrl: "https://rebang.today/?tab=36kr"
+      // 改成 36kr 官方热榜页（若做了通用链接，可直接拉起 App）
+      openUrl: "https://36kr.com/hot-list",
     };
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
@@ -374,7 +387,7 @@ async function fetch36Kr() {
   }
 }
 
-// 5. 知乎热榜（今日热榜 / PearAPI）
+// 5. 知乎热榜（PearAPI）
 async function fetchZhihu() {
   const name = "知乎热榜";
   const cfg = CFG.zhihu;
@@ -387,7 +400,7 @@ async function fetchZhihu() {
     const resp = await httpGet(url);
     const json = parseJSON(resp.body, name);
 
-    const data = Array.isArray(json.data) ? json.data : json.data && json.data.list;
+    const data = Array.isArray(json.data) ? json.data : json.data?.list;
     if (!Array.isArray(data)) {
       throw new Error(json.msg || json.message || "接口返回格式异常");
     }
@@ -404,7 +417,7 @@ async function fetchZhihu() {
       ok: true,
       title: `${name} Top${used.length}`,
       text: lines.join("\n"),
-      openUrl: "zhihu://zhihu.com/hot"
+      openUrl: "zhihu://zhihu.com/hot",
     };
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
@@ -412,7 +425,7 @@ async function fetchZhihu() {
   }
 }
 
-// 6. B 站热门（今日热榜 / PearAPI）
+// 6. B 站热门（PearAPI）
 async function fetchBilibili() {
   const name = "B站热门";
   const cfg = CFG.bilibili;
@@ -425,7 +438,7 @@ async function fetchBilibili() {
     const resp = await httpGet(url);
     const json = parseJSON(resp.body, name);
 
-    const data = Array.isArray(json.data) ? json.data : json.data && json.data.list;
+    const data = Array.isArray(json.data) ? json.data : json.data?.list;
     if (!Array.isArray(data)) {
       throw new Error(json.msg || json.message || "接口返回格式异常");
     }
@@ -442,7 +455,7 @@ async function fetchBilibili() {
       ok: true,
       title: `${name} Top${used.length}`,
       text: lines.join("\n"),
-      openUrl: "bilibili://popular"
+      openUrl: "bilibili://popular",
     };
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
@@ -450,7 +463,7 @@ async function fetchBilibili() {
   }
 }
 
-// 7. 今日头条热榜（今日热榜 / PearAPI）
+// 7. 今日头条热榜（PearAPI）
 async function fetchToutiao() {
   const name = "今日头条热榜";
   const cfg = CFG.toutiao;
@@ -463,7 +476,7 @@ async function fetchToutiao() {
     const resp = await httpGet(url);
     const json = parseJSON(resp.body, name);
 
-    const data = Array.isArray(json.data) ? json.data : json.data && json.data.list;
+    const data = Array.isArray(json.data) ? json.data : json.data?.list;
     if (!Array.isArray(data)) {
       throw new Error(json.msg || json.message || "接口返回格式异常");
     }
@@ -480,8 +493,9 @@ async function fetchToutiao() {
       ok: true,
       title: `${name} Top${used.length}`,
       text: lines.join("\n"),
-      // 直接拉起今日头条 App
-      openUrl: "snssdk141://"
+      // 官方热榜页面，若做通用链接可唤起 App
+      openUrl:
+        "https://www.toutiao.com/hot-event/hot-board/?origin=hot_search",
     };
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
@@ -489,69 +503,20 @@ async function fetchToutiao() {
   }
 }
 
-// 8. 快手热榜（icofun）
+// 8. 快手热榜（PearAPI）
 async function fetchKuaishou() {
   const name = "快手热榜";
   const cfg = CFG.kuaishou;
   log(`开始获取  ${name}…`);
 
   try {
-    const resp = await httpGet(
-      "https://api.icofun.cn/api/kuaishou_hot_search.php?type=json"
-    );
-    const json = parseJSON(resp.body, name);
-
-    // 返回形如 { "Top_1": "...", "Top_2": "...", ... }
-    const keys = Object.keys(json || {}).filter((k) =>
-      /^Top_\d+/i.test(k)
-    );
-    if (keys.length === 0) {
-      throw new Error("接口返回格式异常");
-    }
-
-    keys.sort((a, b) => {
-      const na = parseInt(a.split("_")[1], 10) || 0;
-      const nb = parseInt(b.split("_")[1], 10) || 0;
-      return na - nb;
-    });
-
-    const list = keys.map((k) => json[k]).filter(Boolean);
-
-    const used = selectItems(name, list, cfg);
-    if (!used) return { ok: false, title: name, skip: true };
-
-    const lines = used.map((title, idx) => {
-      const t = pickTitle(title) || "无标题";
-      return `${idx + 1}. ${t}`;
-    });
-
-    return {
-      ok: true,
-      title: `${name} Top${used.length}`,
-      text: lines.join("\n"),
-      // 打开快手话题热榜
-      openUrl: "kwai://search/topicRank"
-    };
-  } catch (e) {
-    log(`${name} 获取失败：${e.message || e}`);
-    return { ok: false, title: name, err: e.message || String(e) };
-  }
-}
-
-// 9. 小红书热门话题（今日热榜 / PearAPI）
-async function fetchXHS() {
-  const name = "小红书热门话题";
-  const cfg = CFG.xhs;
-  log(`开始获取  ${name}…`);
-
-  try {
     const url =
       "https://api.pearktrue.cn/api/dailyhot/?title=" +
-      encodeURIComponent("小红书");
+      encodeURIComponent("快手");
     const resp = await httpGet(url);
     const json = parseJSON(resp.body, name);
 
-    const data = Array.isArray(json.data) ? json.data : json.data && json.data.list;
+    const data = Array.isArray(json.data) ? json.data : json.data?.list;
     if (!Array.isArray(data)) {
       throw new Error(json.msg || json.message || "接口返回格式异常");
     }
@@ -568,13 +533,27 @@ async function fetchXHS() {
       ok: true,
       title: `${name} Top${used.length}`,
       text: lines.join("\n"),
-      // 拉起小红书 App（入口页）
-      openUrl: "xhsdiscover://"
+      // 快手首页 / 热门（如果有通用链接可以唤起 app）
+      openUrl: "https://www.kuaishou.com",
     };
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
     return { ok: false, title: name, err: e.message || String(e) };
   }
+}
+
+// 9. 小红书热门话题（当前 API 不支持，仅提示并跳过）
+async function fetchXHS() {
+  const name = "小红书热门话题";
+  const cfg = CFG.xhs;
+
+  if (!cfg.enable) {
+    return { ok: false, title: name, skip: true };
+  }
+
+  // 这里暂时没有稳定免费的热榜接口，所以直接日志提示并跳过
+  log(`${name}：当前使用的接口不支持小红书，暂时无法获取，自动跳过`);
+  return { ok: false, title: name, skip: true };
 }
 
 // ========== 主流程 ==========
@@ -604,7 +583,7 @@ async function fetchXHS() {
     if (!res) return;
     if (res.ok) {
       $notify(res.title, "", res.text, {
-        "open-url": res.openUrl || ""
+        "open-url": res.openUrl || "",
       });
     } else if (!res.skip) {
       $notify(`${res.title} 获取失败`, "", String(res.err || "未知错误"));
