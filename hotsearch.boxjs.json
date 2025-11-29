@@ -33,7 +33,20 @@
 
         "hot_36kr_enable",
         "hot_36kr_ignore",
-        "hot_36kr_count"
+        "hot_36kr_count",
+
+        "hot_toutiao_enable",
+        "hot_toutiao_ignore",
+        "hot_toutiao_count",
+
+        "hot_kuaishou_enable",
+        "hot_kuaishou_ignore",
+        "hot_kuaishou_count",
+
+        "hot_xhs_enable",
+        "hot_xhs_ignore",
+        "hot_xhs_count",
+        "hot_xhs_api"
       ],
       "settings": [
         {
@@ -175,6 +188,79 @@
           "val": 3,
           "type": "number",
           "desc": ""
+        },
+
+        {
+          "id": "hot_toutiao_enable",
+          "name": "今日头条热榜",
+          "val": false,
+          "type": "boolean",
+          "desc": "打开则监控 今日头条 热榜"
+        },
+        {
+          "id": "hot_toutiao_ignore",
+          "name": "忽略关键词推送 今日头条 最新内容",
+          "val": false,
+          "type": "boolean",
+          "desc": ""
+        },
+        {
+          "id": "hot_toutiao_count",
+          "name": "今日头条：忽略关键词时获取数量",
+          "val": 3,
+          "type": "number",
+          "desc": ""
+        },
+
+        {
+          "id": "hot_kuaishou_enable",
+          "name": "快手热榜",
+          "val": false,
+          "type": "boolean",
+          "desc": "打开则监控 快手 热榜"
+        },
+        {
+          "id": "hot_kuaishou_ignore",
+          "name": "忽略关键词推送 快手 最新内容",
+          "val": false,
+          "type": "boolean",
+          "desc": ""
+        },
+        {
+          "id": "hot_kuaishou_count",
+          "name": "快手：忽略关键词时获取数量",
+          "val": 3,
+          "type": "number",
+          "desc": ""
+        },
+
+        {
+          "id": "hot_xhs_enable",
+          "name": "小红书热门话题（需自备接口）",
+          "val": false,
+          "type": "boolean",
+          "desc": "开启前请先在下方填入可用接口地址"
+        },
+        {
+          "id": "hot_xhs_ignore",
+          "name": "忽略关键词推送 小红书 最新内容",
+          "val": false,
+          "type": "boolean",
+          "desc": ""
+        },
+        {
+          "id": "hot_xhs_count",
+          "name": "小红书：忽略关键词时获取数量",
+          "val": 3,
+          "type": "number",
+          "desc": ""
+        },
+        {
+          "id": "hot_xhs_api",
+          "name": "小红书热门话题 API 地址",
+          "val": "",
+          "type": "text",
+          "desc": "例如：https://xxxx.com/your/xhs/hot/api，要求返回 JSON 数组或 data.list 这类结构"
         }
       ]
     }
