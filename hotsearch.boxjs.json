@@ -1,13 +1,13 @@
 {
-  "id": "zorro",
-  "name": "热门监控",
-  "author": "心事全在脸上",
+  "id": "veyna.hotsearch.sub",
+  "name": "热门监控（新接口版）",
+  "author": "@veyna + GPT",
   "icon": "https://raw.githubusercontent.com/NobyDa/mini/master/Color/wanan.png",
   "repo": "",
   "apps": [
     {
       "id": "veyna.hotsearch",
-      "name": "热门监控",
+      "name": "热门监控（新接口版）",
       "keys": [
         "hot_keywords",
 
