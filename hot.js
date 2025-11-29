@@ -523,27 +523,31 @@ async function fetchToutiao() {
   }
 }
 
-// 8. 快手热榜（cunyuapi，结构做了兼容处理）
+// 8. 快手热榜（新接口：icofun）
 async function fetchKuaishou() {
   const name = "快手热榜";
   const cfg = CFG.kuaishou;
   log(`开始获取  ${name}…`);
 
   try {
-    // 免费接口，如果后面换了，可以在这里改一处就行
-    const resp = await httpGet("https://api.cunyuapi.top/api/kshot");
+    // 使用 icofun 的快手热搜接口，请求 JSON 格式
+    const resp = await httpGet(
+      "https://api.icofun.cn/api/kuaishou_hot_search.php?type=json"
+    );
     const json = parseJSON(resp.body, name);
 
-    // 尽量兼容各种写法：data / data.list / result / items / 直接数组
+    // 尽量兼容各种返回结构
     let data = null;
-    if (Array.isArray(json)) data = json;
-    else if (Array.isArray(json.data)) data = json.data;
-    else if (Array.isArray(json.data?.list)) data = json.data.list;
-    else if (Array.isArray(json.result)) data = json.result;
-    else if (Array.isArray(json.items)) data = json.items;
-
-    if (!Array.isArray(data)) {
-      throw new Error(json.msg || json.message || "接口返回格式异常");
+    if (Array.isArray(json)) {
+      data = json;
+    } else if (Array.isArray(json.data)) {
+      data = json.data;
+    } else if (Array.isArray(json.list)) {
+      data = json.list;
+    } else if (Array.isArray(json.result)) {
+      data = json.result;
+    } else {
+      throw new Error("接口返回格式异常");
     }
 
     const used = selectItems(name, data, cfg);
@@ -558,14 +562,17 @@ async function fetchKuaishou() {
       ok: true,
       title: `${name} Top${used.length}`,
       text: lines.join("\n"),
-      // 快手首页（官方没有公开热榜 scheme，这里先跳网页）
-      openUrl: "https://www.kuaishou.com/",
+
+      // 🔗 打开快手：如果下面这个 scheme 在你那边打不开
+      // 可以自行改成 H5，比如 "https://www.kuaishou.com"
+      openUrl: "kwai://home/hot"
     };
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
     return { ok: false, title: name, err: e.message || String(e) };
   }
 }
+
 
 // 9. 小红书热门话题（需自备接口）
 // 默认不会请求任何网络，只要你在 BoxJs 里填写 hot_xhs_api 并且打开开关才会生效
