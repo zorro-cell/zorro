@@ -7,7 +7,7 @@
   "apps": [
     {
       "id": "zorro",
-      "name": "热门监控（新接口版）",
+      "name": "热门监控",
       "keys": [
         "hot_keywords",
 
