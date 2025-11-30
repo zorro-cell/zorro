@@ -1,11 +1,20 @@
 /*******************************
- * 多平台热榜 - hot.js（定制版）
+ * 多平台热榜 - hot.js
+ * 支持的榜单：
+ *  - 微博热搜
+ *  - 知乎热榜
+ *  - 百度热搜
+ *  - B站热门
+ *  - 抖音热榜
+ *  - 36氪热榜
+ *  - 今日头条热榜
+ *  - 快手热榜
+ *  - 小红书热门话题
  *
- * 修正点：
- *  - B站：分开推送时尽量直达视频
- *  - 百度：改为调起百度App搜索，而不是在 QX 内打开网页
- *  - 36氪：统一跳到 https://36kr.com/hot-list（人气榜）
- *  - 抖音 / 微博 / 快手：恢复正常跳转，不再额外处理
+ * 主要特性：
+ *  - 关键词监控 + 忽略关键词时推最新 N 条
+ *  - 每个平台可选「分开推送内容」
+ *  - 可全局控制「是否附带跳转链接」
  *******************************/
 
 // ========== 通用存储读写（兼容 Quantumult X / Surge） ==========
@@ -229,6 +238,103 @@ function pickUrl(item, fallback) {
   return fallback || "";
 }
 
+// 根据不同榜单生成尽量“直达 App 内容”的链接
+function buildAppUrl(boardName, item, defaultUrl) {
+  const title = pickTitle(item);
+  const kwRaw =
+    (item &&
+      (item.hot_word ||
+        item.word ||
+        item.keyword ||
+        item.name ||
+        item.title ||
+        item.note)) ||
+    title ||
+    "";
+  const kw = String(kwRaw).trim();
+  const encodedKw = kw ? encodeURIComponent(kw) : "";
+
+  // 先看原始数据里有没有可用链接
+  const rawUrl = pickUrl(item, "");
+
+  switch (boardName) {
+    case "微博热搜": {
+      // 优先用关键词搜索
+      if (encodedKw) {
+        return `sinaweibo://searchall?q=${encodedKw}`;
+      }
+      // 再退回原始链接
+      return rawUrl || defaultUrl;
+    }
+    case "抖音热榜": {
+      if (encodedKw) {
+        // 抖音搜索
+        return `snssdk1128://search?keyword=${encodedKw}`;
+      }
+      return rawUrl || defaultUrl;
+    }
+    case "百度热搜": {
+      if (encodedKw) {
+        // 百度 App 搜索
+        return `baiduboxapp://swan/BaiduAppSearch?from=hot&word=${encodedKw}`;
+      }
+      return rawUrl || defaultUrl;
+    }
+    case "知乎热榜": {
+      if (rawUrl && /^https?:\/\/www\.zhihu\.com/i.test(rawUrl)) {
+        // 直接把网页地址改成 zhihu:// 开头
+        return rawUrl.replace(/^https?:\/\/www\.zhihu\.com/i, "zhihu://");
+      }
+      if (encodedKw) {
+        return `zhihu://search?type=content&q=${encodedKw}`;
+      }
+      return defaultUrl;
+    }
+    case "B站热门": {
+      if (rawUrl && /^https?:\/\/www\.bilibili\.com/i.test(rawUrl)) {
+        return rawUrl.replace(/^https?:\/\/www\.bilibili\.com/i, "bilibili://");
+      }
+      if (encodedKw) {
+        return `bilibili://search?keyword=${encodedKw}`;
+      }
+      return defaultUrl;
+    }
+    case "今日头条热榜": {
+      if (rawUrl && /^https?:\/\/www\.toutiao\.com/i.test(rawUrl)) {
+        // 头条很多是 H5，直接交给系统处理
+        return rawUrl;
+      }
+      if (encodedKw) {
+        return `snssdk141://search?keyword=${encodedKw}`;
+      }
+      return defaultUrl;
+    }
+    case "快手热榜": {
+      if (encodedKw) {
+        return `kwai://search?keyword=${encodedKw}`;
+      }
+      return rawUrl || defaultUrl;
+    }
+    case "小红书热门话题": {
+      if (rawUrl && /^https?:\/\/www\.xiaohongshu\.com/i.test(rawUrl)) {
+        // 小红书基本支持通用链接，直接用原始链接
+        return rawUrl;
+      }
+      if (encodedKw) {
+        // 兜底用通用发现页
+        return defaultUrl;
+      }
+      return defaultUrl;
+    }
+    case "36 氪热榜": {
+      // 36 氪直接用原始文章链接，App 支持通用链接
+      return rawUrl || defaultUrl;
+    }
+    default:
+      return rawUrl || defaultUrl;
+  }
+}
+
 // 根据关键词 & 配置，从原始列表中选出要推送的条目
 function selectItems(boardName, rawList, cfg) {
   if (!Array.isArray(rawList) || rawList.length === 0) return null;
@@ -271,29 +377,16 @@ function selectItems(boardName, rawList, cfg) {
   return null;
 }
 
-// 简单封装 GET（以 Quantumult X 为主）
+// 简单封装 GET
 function httpGet(url, headers = UA) {
-  if (typeof $task !== "undefined") {
-    return $task.fetch({
-      url,
-      method: "GET",
-      headers
-    });
-  }
-  // 其他环境（Surge / Loon）简单适配
-  return new Promise((resolve, reject) => {
-    if (typeof $httpClient === "undefined") {
-      reject(new Error("当前环境不支持 httpGet"));
-      return;
-    }
-    $httpClient.get({ url, headers }, (err, resp, body) => {
-      if (err) reject(err);
-      else resolve({ statusCode: resp.status || resp.statusCode, body });
-    });
+  return $task.fetch({
+    url,
+    method: "GET",
+    headers
   });
 }
 
-// 通用：构造 pushes（大部分平台用这个）
+// 封装一个统一的返回结构：{ ok, title, pushes[] }
 function makePushes(name, cfg, usedItems, lines, defaultUrl, itemList) {
   // 不分开推送：一条通知
   if (!cfg.split) {
@@ -314,44 +407,10 @@ function makePushes(name, cfg, usedItems, lines, defaultUrl, itemList) {
   const pushes = usedItems.map((item, idx) => ({
     title: `${name} 第${idx + 1}名`,
     body: lines[idx],
-    openUrl: pickUrl(itemList[idx], defaultUrl)
+    openUrl: buildAppUrl(name, itemList[idx], defaultUrl)
   }));
 
   return { ok: true, title: name, pushes };
-}
-
-// ========== 特定平台的跳转修正 ==========
-
-// B站：把网页链接尽量转成 bilibili://video/BVXXX
-function transformBilibiliUrl(rawUrl, fallback) {
-  if (!rawUrl) return fallback;
-  const u = String(rawUrl).trim();
-
-  // 已经是 bilibili:// 直接用
-  if (/^bilibili:\/\//i.test(u)) return u;
-
-  // 标准视频页
-  const m = u.match(
-    /https?:\/\/(?:www\.)?bilibili\.com\/video\/(BV[0-9A-Za-z]+)/i
-  );
-  if (m) {
-    return "bilibili://video/" + m[1];
-  }
-
-  // 其它链接（b23.tv 等），就走原始链接
-  return u || fallback;
-}
-
-// 百度：构造百度App搜索的 scheme
-function buildBaiduSearchUrl(word) {
-  const q = encodeURIComponent(word || "");
-  // 常见分享里用到的 searchbox scheme
-  return `baiduboxapp://searchbox?from=hotjs&word=${q}`;
-}
-
-// 36氪：统一跳到人气榜（热榜）
-function build36KrHotListUrl() {
-  return "https://36kr.com/hot-list";
 }
 
 // ========== 各平台获取函数 ==========
@@ -382,7 +441,6 @@ async function fetchWeibo() {
       return `${idx + 1}. ${title}${hotStr}`;
     });
 
-    // 微博：直接用通用 makePushes（不要额外加工，保证按原来那样正常跳转）
     return makePushes(name, cfg, used, lines, defaultUrl, used);
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
@@ -413,7 +471,6 @@ async function fetchDouyin() {
       return `${idx + 1}. ${title}`;
     });
 
-    // 抖音：也保持原样，用统一 trending 页面 scheme
     return makePushes(name, cfg, used, lines, defaultUrl, used);
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
@@ -421,10 +478,11 @@ async function fetchDouyin() {
   }
 }
 
-// 3. 百度热搜（xxapi）——改为调起百度 App 搜索
+// 3. 百度热搜（xxapi）
 async function fetchBaidu() {
   const name = "百度热搜";
   const cfg = CFG.baidu;
+  const defaultUrl = "baiduboxapp://swan/BaiduHotList"; // 直接进百度热榜
   log(`开始获取  ${name}…`);
 
   try {
@@ -443,45 +501,18 @@ async function fetchBaidu() {
       return `${idx + 1}. ${title}`;
     });
 
-    // 不分开推送：用第 1 条的标题做搜索词
-    if (!cfg.split) {
-      const topTitle = pickTitle(used[0]) || "热搜榜";
-      const url = buildBaiduSearchUrl(topTitle);
-      return {
-        ok: true,
-        title: name,
-        pushes: [
-          {
-            title: `${name} Top${used.length}`,
-            body: lines.join("\n"),
-            openUrl: url
-          }
-        ]
-      };
-    }
-
-    // 分开推送：每条用自己的标题做搜索词
-    const pushes = used.map((item, idx) => {
-      const title = pickTitle(item) || "无标题";
-      return {
-        title: `${name} 第${idx + 1}名`,
-        body: lines[idx],
-        openUrl: buildBaiduSearchUrl(title)
-      };
-    });
-
-    return { ok: true, title: name, pushes };
+    return makePushes(name, cfg, used, lines, defaultUrl, used);
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
     return { ok: false, title: name, err: e.message || String(e) };
   }
 }
 
-// 4. 36 氪热榜（xxapi）——统一跳到 36kr 人气榜
+// 4. 36 氪热榜（xxapi）
 async function fetch36Kr() {
   const name = "36 氪热榜";
   const cfg = CFG.kr36;
-  const defaultUrl = build36KrHotListUrl();
+  const defaultUrl = "https://36kr.com/newsflashes"; // 36 氪快讯列表
   log(`开始获取  ${name}…`);
 
   try {
@@ -504,29 +535,7 @@ async function fetch36Kr() {
       return `${idx + 1}. ${title}${author}`;
     });
 
-    if (!cfg.split) {
-      // 不分开推送：点击就统一到 36kr 人气榜
-      return {
-        ok: true,
-        title: name,
-        pushes: [
-          {
-            title: `${name} Top${used.length}`,
-            body: lines.join("\n"),
-            openUrl: defaultUrl
-          }
-        ]
-      };
-    }
-
-    // 分开推送：每条也都统一跳人气榜（你需求是定位到人气榜，而不是每篇文章）
-    const pushes = used.map((item, idx) => ({
-      title: `${name} 第${idx + 1}名`,
-      body: lines[idx],
-      openUrl: defaultUrl
-    }));
-
-    return { ok: true, title: name, pushes };
+    return makePushes(name, cfg, used, lines, defaultUrl, used);
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
     return { ok: false, title: name, err: e.message || String(e) };
@@ -567,7 +576,7 @@ async function fetchZhihu() {
   }
 }
 
-// 6. B 站热门（今日热榜 / PearAPI）——修正为尽量直达视频
+// 6. B 站热门（今日热榜 / PearAPI）
 async function fetchBilibili() {
   const name = "B站热门";
   const cfg = CFG.bilibili;
@@ -594,33 +603,7 @@ async function fetchBilibili() {
       return `${idx + 1}. ${title}`;
     });
 
-    if (!cfg.split) {
-      // 不分开推送：保持原样，打开 B站热门页
-      return {
-        ok: true,
-        title: name,
-        pushes: [
-          {
-            title: `${name} Top${used.length}`,
-            body: lines.join("\n"),
-            openUrl: defaultUrl
-          }
-        ]
-      };
-    }
-
-    // 分开推送：尽量直达对应视频
-    const pushes = used.map((item, idx) => {
-      const rawUrl = pickUrl(item, defaultUrl);
-      const openUrl = transformBilibiliUrl(rawUrl, defaultUrl);
-      return {
-        title: `${name} 第${idx + 1}名`,
-        body: lines[idx],
-        openUrl
-      };
-    });
-
-    return { ok: true, title: name, pushes };
+    return makePushes(name, cfg, used, lines, defaultUrl, used);
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
     return { ok: false, title: name, err: e.message || String(e) };
@@ -697,7 +680,7 @@ async function fetchKuaishou() {
       return `${idx + 1}. ${title}`;
     });
 
-    // 快手：本身就只拿文本，保持原有 scheme，不做别的处理
+    // 这里没有原文链接，只能用 app 打开搜索 / 热榜
     return makePushes(name, cfg, used, lines, defaultUrl, used);
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
@@ -756,7 +739,7 @@ async function fetchXHS() {
 
   if (tasks.length === 0) {
     log("所有榜单都被关闭，脚本直接结束");
-    if (typeof $done === "function") $done();
+    $done();
     return;
   }
 
@@ -774,17 +757,13 @@ async function fetchXHS() {
       });
     } else if (!res.skip) {
       // 真报错（网络 / 接口挂了）才提示
-      $notify(
-        `${res.title || "某平台"} 获取失败`,
-        "",
-        String(res.err || "未知错误")
-      );
+      $notify(`${res.title || "某平台"} 获取失败`, "", String(res.err || "未知错误"));
     }
   });
 
-  if (typeof $done === "function") $done();
+  $done();
 })().catch((e) => {
   log(`脚本运行异常：${e.message || e}`);
   $notify("热榜脚本异常", "", String(e));
-  if (typeof $done === "function") $done();
+  $done();
 });
