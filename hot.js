@@ -237,7 +237,95 @@ function pickUrl(item, fallback) {
 
   return fallback || "";
 }
+// [修改] 针对不同平台，修正跳转链接，尽量直接打开 app 对应内容页
+function fixOpenUrl(name, item, openUrl, defaultUrl) {
+  // B 站热门：优先跳转到视频页
+  if (name.indexOf("B站") !== -1 || name.indexOf("哔哩") !== -1) {
+    return buildBilibiliUrlFromItem(item, defaultUrl);
+  }
 
+  // 百度热搜：用关键词拼出百度搜索链接
+  if (name.indexOf("百度") !== -1) {
+    return buildBaiduUrlFromItem(item, defaultUrl);
+  }
+
+  // 36 氪热榜：跳到 36kr 人气榜 / 文章，而不是快讯
+  if (name.indexOf("36") !== -1) {
+    return build36KrUrlFromItem(item, defaultUrl);
+  }
+
+  // 其它榜单保持原逻辑
+  const finalUrl = openUrl || pickUrl(item, "") || defaultUrl || "";
+  return finalUrl;
+}
+
+// [修改] B 站：尽量跳转到对应视频（或番剧）页面
+function buildBilibiliUrlFromItem(item, defaultUrl) {
+  let url = pickUrl(item, "");
+  if (!url) url = defaultUrl || "";
+  if (!url) return "";
+
+  // 已经是 bilibili 自定义 scheme，直接用
+  if (/^bilibili:\/\//i.test(url)) return url;
+
+  // 提取 BV 号
+  const mBV = url.match(/(BV[0-9A-Za-z]+)/);
+  if (mBV) return `bilibili://video/${mBV[1]}`;
+
+  // 提取 av 号
+  const mAv = url.match(/\/av(\d+)/i);
+  if (mAv) return `bilibili://video/av${mAv[1]}`;
+
+  // 番剧：bangumi/play/ss12345 -> bilibili://bangumi/season/12345
+  const mSs = url.match(/bangumi\/play\/(ss\d+)/i);
+  if (mSs) {
+    const ssid = mSs[1].replace(/^ss/i, "");
+    return `bilibili://bangumi/season/${ssid}`;
+  }
+
+  // 兜底：直接打开原链接（一般是 https://www.bilibili.com/... 或 b23.tv）
+  return url;
+}
+
+// [修改] 百度：用热词拼成搜索页链接，确保点击有反应
+function buildBaiduUrlFromItem(item, defaultUrl) {
+  if (!item) return defaultUrl || "";
+
+  const kw =
+    item.word ||
+    item.keyword ||
+    item.name ||
+    item.title ||
+    item.hot_word ||
+    "";
+
+  if (kw) {
+    return (
+      "https://www.baidu.com/s?wd=" + encodeURIComponent(String(kw).trim())
+    );
+  }
+
+  let url = pickUrl(item, "");
+  if (url) return url;
+
+  // 兜底：百度热榜页
+  return defaultUrl || "https://top.baidu.com/board?tab=realtime";
+}
+
+// [修改] 36 氪：优先 36kr 站内文章，否则直接丢到人气榜网页
+function build36KrUrlFromItem(item, defaultUrl) {
+  let url = pickUrl(item, "");
+  if (url && /36kr\.com/i.test(url)) {
+    return url;
+  }
+
+  // 官方人气榜网页，App 一般会拉起到对应页面
+  const hotList = "https://36kr.com/hot-list";
+  if (defaultUrl && /36kr\.com/i.test(defaultUrl)) {
+    return defaultUrl;
+  }
+  return hotList;
+}
 // 根据不同榜单生成尽量“直达 App 内容”的链接
 function buildAppUrl(boardName, item, defaultUrl) {
   const title = pickTitle(item);
@@ -386,10 +474,25 @@ function httpGet(url, headers = UA) {
   });
 }
 
-// 封装一个统一的返回结构：{ ok, title, pushes[] }
+// [修改] 封装一个统一的返回结构：{ ok, title, pushes[] }
+// 增加 fixOpenUrl，修正 B 站 / 百度 / 36 氪 的跳转
 function makePushes(name, cfg, usedItems, lines, defaultUrl, itemList) {
   // 不分开推送：一条通知
   if (!cfg.split) {
+    let openUrl = defaultUrl;
+
+    if (usedItems && usedItems.length > 0) {
+      const firstItem = itemList && itemList[0] ? itemList[0] : usedItems[0];
+
+      // 尝试根据平台修正跳转，尽量跳到具体内容页
+      openUrl = fixOpenUrl(
+        name,
+        firstItem,
+        pickUrl(firstItem, defaultUrl),
+        defaultUrl
+      );
+    }
+
     return {
       ok: true,
       title: name,
@@ -397,21 +500,30 @@ function makePushes(name, cfg, usedItems, lines, defaultUrl, itemList) {
         {
           title: `${name} Top${usedItems.length}`,
           body: lines.join("\n"),
-          openUrl: defaultUrl
+          openUrl
         }
       ]
     };
   }
 
   // 分开推送：每一条都是单独通知
-  const pushes = usedItems.map((item, idx) => ({
-    title: `${name} 第${idx + 1}名`,
-    body: lines[idx],
-    openUrl: buildAppUrl(name, itemList[idx], defaultUrl)
-  }));
+  const pushes = usedItems.map((item, idx) => {
+    const url = fixOpenUrl(
+      name,
+      itemList[idx],
+      pickUrl(itemList[idx], defaultUrl),
+      defaultUrl
+    );
+    return {
+      title: `${name} 第${idx + 1}名`,
+      body: lines[idx],
+      openUrl: url
+    };
+  });
 
   return { ok: true, title: name, pushes };
 }
+
 
 // ========== 各平台获取函数 ==========
 
