@@ -712,7 +712,11 @@ async function fetchKuaishou() {
 async function fetchXHS() {
   const name = "小红书热门话题";
   const cfg = CFG.xhs;
-  const defaultUrl = "xhsdiscover://"; // 打开小红书发现页
+
+  // 不分开推送时用的兜底链接：搜索“热门”
+  const defaultUrl =
+    "xhsdiscover://search/result?keyword=%E7%83%AD%E9%97%A8";
+
   log(`开始获取  ${name}…`);
 
   try {
@@ -722,7 +726,9 @@ async function fetchXHS() {
     const resp = await httpGet(url);
     const json = parseJSON(resp.body, name);
 
-    const data = Array.isArray(json.data) ? json.data : json.data && json.data.list;
+    const data = Array.isArray(json.data)
+      ? json.data
+      : json.data && json.data.list;
     if (!Array.isArray(data)) {
       throw new Error(json.msg || json.message || "接口返回格式异常");
     }
@@ -730,17 +736,42 @@ async function fetchXHS() {
     const used = selectItems(name, data, cfg);
     if (!used) return { ok: false, title: name, skip: true };
 
-    const lines = used.map((item, idx) => {
-      const title = pickTitle(item) || "无标题";
-      return `${idx + 1}. ${title}`;
-    });
+    const pushes = [];
 
-    return makePushes(name, cfg, used, lines, defaultUrl, used);
+    if (cfg.split) {
+      // 分开推送：每条用自己的关键词做搜索
+      used.forEach((item, idx) => {
+        const title = pickTitle(item) || "无标题";
+        const kw = encodeURIComponent(title); // 搜索关键词
+        const openUrl = `xhsdiscover://search/result?keyword=${kw}`;
+
+        pushes.push({
+          title: `${name} 第${idx + 1}名`,
+          body: `${idx + 1}. ${title}`,
+          openUrl
+        });
+      });
+    } else {
+      // 不分开推送：合成一条，点进去搜索“热门”
+      const lines = used.map((item, idx) => {
+        const title = pickTitle(item) || "无标题";
+        return `${idx + 1}. ${title}`;
+      });
+
+      pushes.push({
+        title: `${name} Top${used.length}`,
+        body: lines.join("\n"),
+        openUrl: defaultUrl
+      });
+    }
+
+    return { ok: true, title: name, pushes };
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
     return { ok: false, title: name, err: e.message || String(e) };
   }
 }
+
 
 // ========== 主流程 ==========
 
