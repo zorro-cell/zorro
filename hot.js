@@ -1,22 +1,20 @@
 /*******************************
  * 多平台热榜 - hot.js
- * 作者：心事全在脸上
- *
  * 支持的榜单：
- *  - 微博热搜（xxapi）
- *  - 知乎热榜（PearAPI / 今日热榜）
- *  - 百度热搜（xxapi）
- *  - B站热门（PearAPI / 今日热榜）
- *  - 抖音热榜（xxapi）
- *  - 36氪热榜（xxapi）
- *  - 今日头条热榜（PearAPI / 今日热榜）
- *  - 快手热榜（icofun）
- *  - 小红书热门话题（PearAPI / 今日热榜）
+ *  - 微博热搜
+ *  - 知乎热榜
+ *  - 百度热搜
+ *  - B站热门
+ *  - 抖音热榜
+ *  - 36氪热榜
+ *  - 今日头条热榜
+ *  - 快手热榜
+ *  - 小红书热门话题
  *
- * 主要功能：
- *  - 关键词监控：命中才推送 / 未命中则按配置决定是否推送最新 N 条
- *  - 可选「分开推送内容」：每条单独一条通知（模仿 evilbutcher 老版本）
- *  - 可选「附带跳转链接」：在通知正文里附上链接文本
+ * 主要特性：
+ *  - 关键词监控 + 忽略关键词时推最新 N 条
+ *  - 每个平台可选「分开推送内容」
+ *  - 可全局控制「是否附带跳转链接」
  *******************************/
 
 // ========== 通用存储读写（兼容 Quantumult X / Surge） ==========
@@ -49,20 +47,20 @@ function readInt(key, defVal = 3) {
 
 // ========== 全局配置 ==========
 
-// 监控关键词：支持中文逗号 / 英文逗号 / 空格 / 换行分隔
+// 关键词：支持中文逗号、英文逗号、空格、换行分隔
 const KEYWORD_STRING = readStore("hot_keywords", "");
 const KEYWORDS = KEYWORD_STRING.split(/[,，\s\n]/)
   .map((x) => x.trim())
   .filter(Boolean);
 
-// 附带跳转链接（在通知正文里附上 URL）
-const ATTACH_LINK = readBool("hot_attach_link", false);
+// 通知里是否附带跳转链接（BoxJs: hot_attach_link）
+const ATTACH_LINK = readBool("hot_attach_link", true);
 
 // 每个榜单的 BoxJs 配置
 const CFG = {
   weibo: {
     enable: readBool("hot_weibo_enable", true),
-    split: readBool("hot_weibo_split", false), // 分开推送微博内容
+    split: readBool("hot_weibo_split", false),
     ignorePushLatest: readBool("hot_weibo_ignore", true),
     count: readInt("hot_weibo_count", 3)
   },
@@ -165,7 +163,6 @@ function pickTitle(item) {
     }
   }
 
-  // 通用字段
   const keys = [
     "title",
     "word",
@@ -196,46 +193,49 @@ function pickTitle(item) {
   }
 }
 
-// 从条目里尽量挑出一个 URL / Scheme，用于分开推送时点击直达
+// 从条目里尽量抽取一个可用的链接（优先具体内容，其次备用链接）
 function pickUrl(item, fallback) {
-  if (!item || typeof item !== "object") return fallback;
+  const urls = [];
 
-  const candidates = [
-    "url",
-    "link",
-    "href",
-    "scheme",
-    "schema",
-    "target_url",
-    "targetUrl",
-    "mobileUrl",
-    "mobile_url",
-    "appUrl",
-    "app_url",
-    "share_url",
-    "shareUrl"
-  ];
-
-  for (const key of candidates) {
-    const v = item[key];
-    if (typeof v === "string" && v) return v;
-  }
-
-  if (item.extra && typeof item.extra === "object") {
-    for (const key of candidates) {
-      const v = item.extra[key];
-      if (typeof v === "string" && v) return v;
+  function collect(obj) {
+    if (!obj || typeof obj !== "object") return;
+    const keys = [
+      "scheme",
+      "url",
+      "link",
+      "href",
+      "mobileUrl",
+      "mobile_url",
+      "appUrl",
+      "app_url",
+      "target_url",
+      "targetUrl",
+      "jump_url",
+      "jumpUrl"
+    ];
+    for (const k of keys) {
+      if (typeof obj[k] === "string") urls.push(obj[k]);
     }
   }
 
-  if (item.origin && typeof item.origin === "object") {
-    for (const key of candidates) {
-      const v = item.origin[key];
-      if (typeof v === "string" && v) return v;
-    }
+  if (typeof item === "string") {
+    urls.push(item);
+  } else if (item && typeof item === "object") {
+    collect(item);
+    // 常见嵌套字段再扫一遍
+    ["target", "card", "object", "templateMaterial", "mblog"].forEach((k) => {
+      if (item[k] && typeof item[k] === "object") collect(item[k]);
+    });
   }
 
-  return fallback;
+  for (const raw of urls) {
+    const v = String(raw).trim();
+    if (!v) continue;
+    if (/^https?:\/\//i.test(v)) return v; // http(s)
+    if (/^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\//.test(v)) return v; // 自定义 scheme
+  }
+
+  return fallback || "";
 }
 
 // 根据关键词 & 配置，从原始列表中选出要推送的条目
@@ -280,7 +280,7 @@ function selectItems(boardName, rawList, cfg) {
   return null;
 }
 
-// 简单封装 GET（Quantumult X）
+// 简单封装 GET
 function httpGet(url, headers = UA) {
   return $task.fetch({
     url,
@@ -289,9 +289,32 @@ function httpGet(url, headers = UA) {
   });
 }
 
-// 各 fetch 函数统一返回格式：
-// { ok: true, pushes: [ { title, body, openUrl }, ... ] }
-// or { ok:false, title, err, skip }
+// 封装一个统一的返回结构：{ ok, title, pushes[] }
+function makePushes(name, cfg, usedItems, lines, defaultUrl, itemList) {
+  // 不分开推送：一条通知
+  if (!cfg.split) {
+    return {
+      ok: true,
+      title: name,
+      pushes: [
+        {
+          title: `${name} Top${usedItems.length}`,
+          body: lines.join("\n"),
+          openUrl: defaultUrl
+        }
+      ]
+    };
+  }
+
+  // 分开推送：每一条都是单独通知
+  const pushes = usedItems.map((item, idx) => ({
+    title: `${name} 第${idx + 1}名`,
+    body: lines[idx],
+    openUrl: pickUrl(itemList[idx], defaultUrl)
+  }));
+
+  return { ok: true, title: name, pushes };
+}
 
 // ========== 各平台获取函数 ==========
 
@@ -321,26 +344,7 @@ async function fetchWeibo() {
       return `${idx + 1}. ${title}${hotStr}`;
     });
 
-    if (!cfg.split) {
-      return {
-        ok: true,
-        pushes: [
-          {
-            title: `${name} Top${used.length}`,
-            body: lines.join("\n"),
-            openUrl: defaultUrl
-          }
-        ]
-      };
-    }
-
-    const pushes = used.map((item, idx) => ({
-      title: `${name} 第${idx + 1}名`,
-      body: lines[idx],
-      openUrl: pickUrl(item, defaultUrl)
-    }));
-
-    return { ok: true, pushes };
+    return makePushes(name, cfg, used, lines, defaultUrl, used);
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
     return { ok: false, title: name, err: e.message || String(e) };
@@ -370,26 +374,7 @@ async function fetchDouyin() {
       return `${idx + 1}. ${title}`;
     });
 
-    if (!cfg.split) {
-      return {
-        ok: true,
-        pushes: [
-          {
-            title: `${name} Top${used.length}`,
-            body: lines.join("\n"),
-            openUrl: defaultUrl
-          }
-        ]
-      };
-    }
-
-    const pushes = used.map((item, idx) => ({
-      title: `${name} 第${idx + 1}名`,
-      body: lines[idx],
-      openUrl: pickUrl(item, defaultUrl)
-    }));
-
-    return { ok: true, pushes };
+    return makePushes(name, cfg, used, lines, defaultUrl, used);
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
     return { ok: false, title: name, err: e.message || String(e) };
@@ -419,26 +404,7 @@ async function fetchBaidu() {
       return `${idx + 1}. ${title}`;
     });
 
-    if (!cfg.split) {
-      return {
-        ok: true,
-        pushes: [
-          {
-            title: `${name} Top${used.length}`,
-            body: lines.join("\n"),
-            openUrl: defaultUrl
-          }
-        ]
-      };
-    }
-
-    const pushes = used.map((item, idx) => ({
-      title: `${name} 第${idx + 1}名`,
-      body: lines[idx],
-      openUrl: pickUrl(item, defaultUrl)
-    }));
-
-    return { ok: true, pushes };
+    return makePushes(name, cfg, used, lines, defaultUrl, used);
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
     return { ok: false, title: name, err: e.message || String(e) };
@@ -472,26 +438,7 @@ async function fetch36Kr() {
       return `${idx + 1}. ${title}${author}`;
     });
 
-    if (!cfg.split) {
-      return {
-        ok: true,
-        pushes: [
-          {
-            title: `${name} Top${used.length}`,
-            body: lines.join("\n"),
-            openUrl: defaultUrl
-          }
-        ]
-      };
-    }
-
-    const pushes = used.map((item, idx) => ({
-      title: `${name} 第${idx + 1}名`,
-      body: lines[idx],
-      openUrl: pickUrl(item, defaultUrl)
-    }));
-
-    return { ok: true, pushes };
+    return makePushes(name, cfg, used, lines, defaultUrl, used);
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
     return { ok: false, title: name, err: e.message || String(e) };
@@ -525,26 +472,7 @@ async function fetchZhihu() {
       return `${idx + 1}. ${title}`;
     });
 
-    if (!cfg.split) {
-      return {
-        ok: true,
-        pushes: [
-          {
-            title: `${name} Top${used.length}`,
-            body: lines.join("\n"),
-            openUrl: defaultUrl
-          }
-        ]
-      };
-    }
-
-    const pushes = used.map((item, idx) => ({
-      title: `${name} 第${idx + 1}名`,
-      body: lines[idx],
-      openUrl: pickUrl(item, defaultUrl)
-    }));
-
-    return { ok: true, pushes };
+    return makePushes(name, cfg, used, lines, defaultUrl, used);
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
     return { ok: false, title: name, err: e.message || String(e) };
@@ -578,26 +506,7 @@ async function fetchBilibili() {
       return `${idx + 1}. ${title}`;
     });
 
-    if (!cfg.split) {
-      return {
-        ok: true,
-        pushes: [
-          {
-            title: `${name} Top${used.length}`,
-            body: lines.join("\n"),
-            openUrl: defaultUrl
-          }
-        ]
-      };
-    }
-
-    const pushes = used.map((item, idx) => ({
-      title: `${name} 第${idx + 1}名`,
-      body: lines[idx],
-      openUrl: pickUrl(item, defaultUrl)
-    }));
-
-    return { ok: true, pushes };
+    return makePushes(name, cfg, used, lines, defaultUrl, used);
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
     return { ok: false, title: name, err: e.message || String(e) };
@@ -631,33 +540,14 @@ async function fetchToutiao() {
       return `${idx + 1}. ${title}`;
     });
 
-    if (!cfg.split) {
-      return {
-        ok: true,
-        pushes: [
-          {
-            title: `${name} Top${used.length}`,
-            body: lines.join("\n"),
-            openUrl: defaultUrl
-          }
-        ]
-      };
-    }
-
-    const pushes = used.map((item, idx) => ({
-      title: `${name} 第${idx + 1}名`,
-      body: lines[idx],
-      openUrl: pickUrl(item, defaultUrl)
-    }));
-
-    return { ok: true, pushes };
+    return makePushes(name, cfg, used, lines, defaultUrl, used);
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
     return { ok: false, title: name, err: e.message || String(e) };
   }
 }
 
-// 8. 快手热榜（icofun）
+// 8. 快手热榜（icofun：只给文本，没有原文链接）
 async function fetchKuaishou() {
   const name = "快手热榜";
   const cfg = CFG.kuaishou;
@@ -670,8 +560,9 @@ async function fetchKuaishou() {
     );
     const json = parseJSON(resp.body, name);
 
-    // 返回形如 { "Top_1": "...", "Top_2": "...", ... }
-    const keys = Object.keys(json || {}).filter((k) => /^Top_\d+/i.test(k));
+    const keys = Object.keys(json || {}).filter((k) =>
+      /^Top_\d+/i.test(k)
+    );
     if (keys.length === 0) {
       throw new Error("接口返回格式异常");
     }
@@ -687,31 +578,13 @@ async function fetchKuaishou() {
     const used = selectItems(name, list, cfg);
     if (!used) return { ok: false, title: name, skip: true };
 
-    const lines = used.map((item, idx) => {
-      const title = pickTitle(item) || "无标题";
+    const lines = used.map((t, idx) => {
+      const title = pickTitle(t) || "无标题";
       return `${idx + 1}. ${title}`;
     });
 
-    if (!cfg.split) {
-      return {
-        ok: true,
-        pushes: [
-          {
-            title: `${name} Top${used.length}`,
-            body: lines.join("\n"),
-            openUrl: defaultUrl
-          }
-        ]
-      };
-    }
-
-    const pushes = used.map((item, idx) => ({
-      title: `${name} 第${idx + 1}名`,
-      body: lines[idx],
-      openUrl: pickUrl(item, defaultUrl)
-    }));
-
-    return { ok: true, pushes };
+    // 这里没有原文链接，只能统一跳「话题热榜」页面
+    return makePushes(name, cfg, used, lines, defaultUrl, used);
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
     return { ok: false, title: name, err: e.message || String(e) };
@@ -722,7 +595,7 @@ async function fetchKuaishou() {
 async function fetchXHS() {
   const name = "小红书热门话题";
   const cfg = CFG.xhs;
-  const defaultUrl = "xhsdiscover://";
+  const defaultUrl = "xhsdiscover://"; // 打开小红书发现页
   log(`开始获取  ${name}…`);
 
   try {
@@ -745,26 +618,7 @@ async function fetchXHS() {
       return `${idx + 1}. ${title}`;
     });
 
-    if (!cfg.split) {
-      return {
-        ok: true,
-        pushes: [
-          {
-            title: `${name} Top${used.length}`,
-            body: lines.join("\n"),
-            openUrl: defaultUrl
-          }
-        ]
-      };
-    }
-
-    const pushes = used.map((item, idx) => ({
-      title: `${name} 第${idx + 1}名`,
-      body: lines[idx],
-      openUrl: pickUrl(item, defaultUrl)
-    }));
-
-    return { ok: true, pushes };
+    return makePushes(name, cfg, used, lines, defaultUrl, used);
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
     return { ok: false, title: name, err: e.message || String(e) };
@@ -796,27 +650,17 @@ async function fetchXHS() {
 
   results.forEach((res) => {
     if (!res) return;
-
     if (res.ok && Array.isArray(res.pushes)) {
       res.pushes.forEach((p) => {
-        if (!p) return;
-
-        let body = p.body || "";
-        const extra = {};
-
-        if (p.openUrl) {
-          extra["open-url"] = p.openUrl;
-          if (ATTACH_LINK) {
-            body = body
-              ? body + "\n\n🔗 " + p.openUrl
-              : "🔗 " + p.openUrl;
-          }
+        const opts = {};
+        if (ATTACH_LINK && p.openUrl) {
+          opts["open-url"] = p.openUrl;
         }
-
-        $notify(p.title || "热门监控", "", body, extra);
+        $notify("热门监控", p.title || "", p.body || "", opts);
       });
     } else if (!res.skip) {
-      $notify(`${res.title || "热榜"} 获取失败`, "", String(res.err || "未知错误"));
+      // 真报错（网络 / 接口挂了）才提示
+      $notify(`${res.title || "某平台"} 获取失败`, "", String(res.err || "未知错误"));
     }
   });
 
