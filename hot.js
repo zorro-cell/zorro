@@ -274,21 +274,31 @@ function buildAppUrl(boardName, item, defaultUrl) {
       return rawUrl || defaultUrl;
     }
     case "百度热搜": {
-      // 避免小程序 scheme，统一用网页 / 搜索链接，让百度 App 自己接管通用链接
-      if (rawUrl && /^https?:\/\//i.test(rawUrl)) {
-        return rawUrl;
+      // 先用原始链接或拼一个 Web 搜索，再用 baiduboxapp 容器打开
+      let target = rawUrl;
+      if (!target && encodedKw) {
+        target = `https://www.baidu.com/s?wd=${encodedKw}`;
+      }
+      if (target) {
+        return (
+          "baiduboxapp://v1/easybrowse/open?url=" +
+          encodeURIComponent(target)
+        );
       }
       if (encodedKw) {
-        // 普通网页搜索
-        return `https://www.baidu.com/s?wd=${encodedKw}`;
+        // 兜底：直接调用搜索
+        return `baiduboxapp://search?word=${encodedKw}`;
       }
-      // 默认跳转百度热榜网页
       return defaultUrl;
     }
     case "知乎热榜": {
       if (rawUrl && /^https?:\/\/www\.zhihu\.com/i.test(rawUrl)) {
-        // 直接把网页地址改成 zhihu:// 开头
-        return rawUrl.replace(/^https?:\/\/www\.zhihu\.com/i, "zhihu://");
+        // https://www.zhihu.com/question/123456 => zhihu://questions/123456
+        const m = rawUrl.match(/question\/(\d+)/);
+        if (m && m[1]) {
+          return `zhihu://questions/${m[1]}`;
+        }
+        // 没拿到 questionId 就退回搜索
       }
       if (encodedKw) {
         return `zhihu://search?type=content&q=${encodedKw}`;
@@ -296,8 +306,11 @@ function buildAppUrl(boardName, item, defaultUrl) {
       return defaultUrl;
     }
     case "B站热门": {
-      if (rawUrl && /^https?:\/\/www\.bilibili\.com/i.test(rawUrl)) {
-        return rawUrl.replace(/^https?:\/\/www\.bilibili\.com/i, "bilibili://");
+      if (rawUrl && /^https?:\/\//i.test(rawUrl)) {
+        // 用 B 站的 browser 容器打开原始链接，兼容视频 / 专栏 / 番剧等
+        return (
+          "bilibili://browser?url=" + encodeURIComponent(rawUrl)
+        );
       }
       if (encodedKw) {
         return `bilibili://search?keyword=${encodedKw}`;
@@ -321,14 +334,14 @@ function buildAppUrl(boardName, item, defaultUrl) {
       return rawUrl || defaultUrl;
     }
     case "小红书热门话题": {
-      // 优先按关键词打开搜索结果，接近你截图里的「搜索 + 热点」页面
-      if (encodedKw) {
-        return `xhsdiscover://search/result?keyword=${encodedKw}`;
-      }
       if (rawUrl && /^https?:\/\/www\.xiaohongshu\.com/i.test(rawUrl)) {
+        // 小红书基本支持通用链接，直接用原始链接
         return rawUrl;
       }
-      // 兜底：打开发现 / 搜索入口
+      if (encodedKw) {
+        // 兜底用通用发现页
+        return defaultUrl;
+      }
       return defaultUrl;
     }
     case "36 氪热榜": {
@@ -487,8 +500,9 @@ async function fetchDouyin() {
 async function fetchBaidu() {
   const name = "百度热搜";
   const cfg = CFG.baidu;
-  // 用网页热榜，避免小程序跳转失败；百度 App 支持接管该通用链接
-  const defaultUrl = "https://top.baidu.com/board?tab=realtime";
+  const defaultUrl =
+    "baiduboxapp://v1/easybrowse/open?url=" +
+    encodeURIComponent("https://top.baidu.com/board?tab=realtime"); // 直接进百度热搜榜
   log(`开始获取  ${name}…`);
 
   try {
@@ -552,7 +566,7 @@ async function fetch36Kr() {
 async function fetchZhihu() {
   const name = "知乎热榜";
   const cfg = CFG.zhihu;
-  const defaultUrl = "zhihu://zhihu.com/hot";
+  const defaultUrl = "zhihu://topstory/hot-list";
   log(`开始获取  ${name}…`);
 
   try {
@@ -698,8 +712,7 @@ async function fetchKuaishou() {
 async function fetchXHS() {
   const name = "小红书热门话题";
   const cfg = CFG.xhs;
-  // 默认打开搜索入口（App 内可从这里点进「小红书热点」）
-  const defaultUrl = "xhsdiscover://search";
+  const defaultUrl = "xhsdiscover://"; // 打开小红书发现页
   log(`开始获取  ${name}…`);
 
   try {
