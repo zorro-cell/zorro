@@ -743,9 +743,9 @@ function buildXhsUrlFromItem(item, fallback) {
   );
 }
 
-// 9. 小红书热点（今日热榜 / PearAPI）
+// 9. 小红书热点榜（今日热榜 / PearAPI）
 async function fetchXHS() {
-  const name = "小红书热点";
+  const name = "小红书热点榜";
   const cfg = CFG.xhs;
 
   // 不分开推送时，点击整条通知用这个：搜索「小红书热点」
