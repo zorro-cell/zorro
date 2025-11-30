@@ -708,53 +708,84 @@ async function fetchKuaishou() {
   }
 }
 
-// 9. 小红书热门话题（简化版：直接用小红书搜索，不再调用 PearAPI）
+// 9. 小红书热门话题（TopHub）
 async function fetchXHS() {
   const name = "小红书热门话题";
   const cfg = CFG.xhs;
 
-  // 如果在 BoxJs 里关掉了小红书，就直接跳过
-  if (!cfg || cfg.enable === false) {
-    return { ok: false, title: name, skip: true };
+  // 不分开推送时：点整条通知，就打开“小红书热点”的搜索结果
+  const defaultUrl =
+    "xhsdiscover://search/result?keyword=" +
+    encodeURIComponent("小红书热点");
+
+  log(`开始获取  ${name}…`);
+
+  // 解析 TopHub 小红书榜单 HTML，提取标题列表
+  function parseTophubXhs(html) {
+    const titles = [];
+    if (typeof html !== "string") return titles;
+
+    // TopHub 榜单里标题的结构基本是：
+    // <td class="al"><a href="...">标题</a></td>
+    const regex = /<td class="al"><a[^>]*>(.*?)<\/a><\/td>/g;
+    let m;
+    while ((m = regex.exec(html)) !== null) {
+      // 去掉里面可能夹杂的 <i> 图标等标签
+      const t = m[1].replace(/<.*?>/g, "").trim();
+      if (!t) continue;
+      if (t.indexOf("<i") !== -1) continue;
+      titles.push(t);
+    }
+    return titles;
   }
 
-  // 从全局 KEYWORDS 里拿关键词；如果没配关键词，就默认用「小红书热点」
-  const kws =
-    Array.isArray(KEYWORDS) && KEYWORDS.length > 0
-      ? KEYWORDS.slice(0)
-      : ["小红书热点"];
+  try {
+    // TopHub 小红书热点榜
+    const resp = await httpGet("https://tophub.today/n/L4MdA5ldxD");
+    const html = resp.body || resp;
+    const allTitles = parseTophubXhs(html);
 
-  // 生成文案
-  const lines = kws.map((k, idx) => `${idx + 1}. 搜索「${k}」`);
+    if (!Array.isArray(allTitles) || allTitles.length === 0) {
+      throw new Error("解析 TopHub 小红书榜单失败");
+    }
 
-  // 统一生成小红书搜索 scheme
-  const buildSearchUrl = (kw) =>
-    "xhsdiscover://search/result?keyword=" + encodeURIComponent(kw);
+    // 复用你原来的关键词 / 条数逻辑
+    const used = selectItems(name, allTitles, cfg);
+    if (!used) return { ok: false, title: name, skip: true };
 
-  // 不分开推送：一条通知，点进去默认搜索第一个关键词
-  if (!cfg.split) {
-    return {
-      ok: true,
-      title: name,
-      pushes: [
-        {
-          title: `${name} 搜索`,
-          body: lines.join("\n"),
-          openUrl: buildSearchUrl(kws[0])
-        }
-      ]
-    };
+    const lines = used.map((title, idx) => `${idx + 1}. ${title}`);
+
+    // 不分开推送：一条通知，点了就进“小红书热点”搜索
+    if (!cfg.split) {
+      return {
+        ok: true,
+        title: name,
+        pushes: [
+          {
+            title: `${name} Top${used.length}`,
+            body: lines.join("\n"),
+            openUrl: defaultUrl
+          }
+        ]
+      };
+    }
+
+    // 分开推送：每条通知都搜索对应的话题
+    const pushes = used.map((title, idx) => ({
+      title: `${name} 第${idx + 1}名`,
+      body: lines[idx],
+      openUrl:
+        "xhsdiscover://search/result?keyword=" +
+        encodeURIComponent(title)
+    }));
+
+    return { ok: true, title: name, pushes };
+  } catch (e) {
+    log(`${name} 获取失败：${e.message || e}`);
+    return { ok: false, title: name, err: e.message || String(e) };
   }
-
-  // 分开推送：每个关键词单独一条通知，对应各自搜索结果页
-  const pushes = kws.map((kw, idx) => ({
-    title: `${name} 搜索第${idx + 1}条`,
-    body: lines[idx],
-    openUrl: buildSearchUrl(kw)
-  }));
-
-  return { ok: true, title: name, pushes };
 }
+
 
 
 
