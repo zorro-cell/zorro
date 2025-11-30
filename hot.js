@@ -713,7 +713,7 @@ async function fetchKuaishou() {
 // PearAPI 里的平台名称，接口如果还提示「不支持的平台名称」
 // 可以在 BoxJs 里看实际支持的名字，来回换成：
 //   "小红书" / "小红书热榜" / "小红书热点" 等试一下
-const XHS_PLATFORM_TITLE = "小红书热点";
+const XHS_PLATFORM_TITLE = "小红书热点榜";
 
 // 根据条目生成小红书 App 跳转链接（搜索结果页）
 function buildXhsUrlFromItem(item, fallback) {
@@ -751,7 +751,7 @@ async function fetchXHS() {
   // 不分开推送时，点击整条通知用这个：搜索「小红书热点」
   const defaultUrl =
     "xhsdiscover://search/result?keyword=" +
-    encodeURIComponent("小红书热点");
+    encodeURIComponent("小红书热点榜");
 
   log(`开始获取  ${name}…`);
 
