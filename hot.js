@@ -1,20 +1,22 @@
 /*******************************
- * 多平台热榜 - hot.js（xxapi + 今日热榜 + BoxJs）
- * 支持的榜单：
- *  - 微博热搜
- *  - 知乎热榜
- *  - 百度热搜
- *  - B站热门
- *  - 抖音热榜
- *  - 36氪热榜
- *  - 今日头条热榜
- *  - 快手热榜
- *  - 小红书热门话题
+ * 多平台热榜 - hot.js
+ * 作者：心事全在脸上
  *
- * 额外功能：
- *  - 按关键词监控
- *  - 忽略关键词时推送最新 N 条
- *  - ✅ 每个平台可选「分开推送内容」
+ * 支持的榜单：
+ *  - 微博热搜（xxapi）
+ *  - 知乎热榜（PearAPI / 今日热榜）
+ *  - 百度热搜（xxapi）
+ *  - B站热门（PearAPI / 今日热榜）
+ *  - 抖音热榜（xxapi）
+ *  - 36氪热榜（xxapi）
+ *  - 今日头条热榜（PearAPI / 今日热榜）
+ *  - 快手热榜（icofun）
+ *  - 小红书热门话题（PearAPI / 今日热榜）
+ *
+ * 主要功能：
+ *  - 关键词监控：命中才推送 / 未命中则按配置决定是否推送最新 N 条
+ *  - 可选「分开推送内容」：每条单独一条通知（模仿 evilbutcher 老版本）
+ *  - 可选「附带跳转链接」：在通知正文里附上链接文本
  *******************************/
 
 // ========== 通用存储读写（兼容 Quantumult X / Surge） ==========
@@ -47,65 +49,68 @@ function readInt(key, defVal = 3) {
 
 // ========== 全局配置 ==========
 
-// 关键词：支持中文逗号、英文逗号、空格、换行分隔
+// 监控关键词：支持中文逗号 / 英文逗号 / 空格 / 换行分隔
 const KEYWORD_STRING = readStore("hot_keywords", "");
 const KEYWORDS = KEYWORD_STRING.split(/[,，\s\n]/)
   .map((x) => x.trim())
   .filter(Boolean);
 
+// 附带跳转链接（在通知正文里附上 URL）
+const ATTACH_LINK = readBool("hot_attach_link", false);
+
 // 每个榜单的 BoxJs 配置
 const CFG = {
   weibo: {
     enable: readBool("hot_weibo_enable", true),
-    splitPush: readBool("hot_weibo_split", false),
+    split: readBool("hot_weibo_split", false), // 分开推送微博内容
     ignorePushLatest: readBool("hot_weibo_ignore", true),
     count: readInt("hot_weibo_count", 3)
   },
   zhihu: {
     enable: readBool("hot_zhihu_enable", false),
-    splitPush: readBool("hot_zhihu_split", false),
+    split: readBool("hot_zhihu_split", false),
     ignorePushLatest: readBool("hot_zhihu_ignore", false),
     count: readInt("hot_zhihu_count", 3)
   },
   baidu: {
     enable: readBool("hot_baidu_enable", true),
-    splitPush: readBool("hot_baidu_split", false),
+    split: readBool("hot_baidu_split", false),
     ignorePushLatest: readBool("hot_baidu_ignore", true),
     count: readInt("hot_baidu_count", 3)
   },
   bilibili: {
     enable: readBool("hot_bilibili_enable", false),
-    splitPush: readBool("hot_bilibili_split", false),
+    split: readBool("hot_bilibili_split", false),
     ignorePushLatest: readBool("hot_bilibili_ignore", false),
     count: readInt("hot_bilibili_count", 3)
   },
   douyin: {
     enable: readBool("hot_douyin_enable", true),
-    splitPush: readBool("hot_douyin_split", false),
+    split: readBool("hot_douyin_split", false),
     ignorePushLatest: readBool("hot_douyin_ignore", true),
     count: readInt("hot_douyin_count", 3)
   },
   kr36: {
     enable: readBool("hot_36kr_enable", false),
-    splitPush: readBool("hot_36kr_split", false),
+    split: readBool("hot_36kr_split", false),
     ignorePushLatest: readBool("hot_36kr_ignore", false),
     count: readInt("hot_36kr_count", 3)
   },
   toutiao: {
     enable: readBool("hot_toutiao_enable", false),
-    splitPush: readBool("hot_toutiao_split", false),
+    split: readBool("hot_toutiao_split", false),
     ignorePushLatest: readBool("hot_toutiao_ignore", false),
     count: readInt("hot_toutiao_count", 3)
   },
   kuaishou: {
     enable: readBool("hot_kuaishou_enable", false),
-    splitPush: readBool("hot_kuaishou_split", false),
+    split: readBool("hot_kuaishou_split", false),
     ignorePushLatest: readBool("hot_kuaishou_ignore", false),
     count: readInt("hot_kuaishou_count", 3)
   },
   xhs: {
     enable: readBool("hot_xhs_enable", false),
-    splitPush: readBool("hot_xhs_split", false),
+    split: readBool("hot_xhs_split", false),
     ignorePushLatest: readBool("hot_xhs_ignore", false),
     count: readInt("hot_xhs_count", 3)
   }
@@ -191,6 +196,48 @@ function pickTitle(item) {
   }
 }
 
+// 从条目里尽量挑出一个 URL / Scheme，用于分开推送时点击直达
+function pickUrl(item, fallback) {
+  if (!item || typeof item !== "object") return fallback;
+
+  const candidates = [
+    "url",
+    "link",
+    "href",
+    "scheme",
+    "schema",
+    "target_url",
+    "targetUrl",
+    "mobileUrl",
+    "mobile_url",
+    "appUrl",
+    "app_url",
+    "share_url",
+    "shareUrl"
+  ];
+
+  for (const key of candidates) {
+    const v = item[key];
+    if (typeof v === "string" && v) return v;
+  }
+
+  if (item.extra && typeof item.extra === "object") {
+    for (const key of candidates) {
+      const v = item.extra[key];
+      if (typeof v === "string" && v) return v;
+    }
+  }
+
+  if (item.origin && typeof item.origin === "object") {
+    for (const key of candidates) {
+      const v = item.origin[key];
+      if (typeof v === "string" && v) return v;
+    }
+  }
+
+  return fallback;
+}
+
 // 根据关键词 & 配置，从原始列表中选出要推送的条目
 function selectItems(boardName, rawList, cfg) {
   if (!Array.isArray(rawList) || rawList.length === 0) return null;
@@ -233,7 +280,7 @@ function selectItems(boardName, rawList, cfg) {
   return null;
 }
 
-// 简单封装 GET
+// 简单封装 GET（Quantumult X）
 function httpGet(url, headers = UA) {
   return $task.fetch({
     url,
@@ -242,26 +289,18 @@ function httpGet(url, headers = UA) {
   });
 }
 
+// 各 fetch 函数统一返回格式：
+// { ok: true, pushes: [ { title, body, openUrl }, ... ] }
+// or { ok:false, title, err, skip }
+
 // ========== 各平台获取函数 ==========
-
-// 每个平台统一返回结构：
-// { ok, title, text, lines, split, openUrl }
-
-function wrapResult(name, cfg, lines, openUrl) {
-  return {
-    ok: true,
-    title: cfg.splitPush ? name : `${name} Top${lines.length}`,
-    text: lines.join("\n"),
-    lines,
-    split: cfg.splitPush,
-    openUrl
-  };
-}
 
 // 1. 微博热搜（xxapi）
 async function fetchWeibo() {
   const name = "微博热搜";
   const cfg = CFG.weibo;
+  const defaultUrl =
+    "sinaweibo://pageinfo?containerid=106003type%3D25%26t%3D3%26disable_hot%3D1%26filter_type%3Drealtimehot";
   log(`开始获取  ${name}…`);
 
   try {
@@ -282,12 +321,26 @@ async function fetchWeibo() {
       return `${idx + 1}. ${title}${hotStr}`;
     });
 
-    return wrapResult(
-      name,
-      cfg,
-      lines,
-      "sinaweibo://pageinfo?containerid=106003type%3D25%26t%3D3%26disable_hot%3D1%26filter_type%3Drealtimehot"
-    );
+    if (!cfg.split) {
+      return {
+        ok: true,
+        pushes: [
+          {
+            title: `${name} Top${used.length}`,
+            body: lines.join("\n"),
+            openUrl: defaultUrl
+          }
+        ]
+      };
+    }
+
+    const pushes = used.map((item, idx) => ({
+      title: `${name} 第${idx + 1}名`,
+      body: lines[idx],
+      openUrl: pickUrl(item, defaultUrl)
+    }));
+
+    return { ok: true, pushes };
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
     return { ok: false, title: name, err: e.message || String(e) };
@@ -298,6 +351,7 @@ async function fetchWeibo() {
 async function fetchDouyin() {
   const name = "抖音热榜";
   const cfg = CFG.douyin;
+  const defaultUrl = "snssdk1128://search/trending";
   log(`开始获取  ${name}…`);
 
   try {
@@ -316,7 +370,26 @@ async function fetchDouyin() {
       return `${idx + 1}. ${title}`;
     });
 
-    return wrapResult(name, cfg, lines, "snssdk1128://search/trending");
+    if (!cfg.split) {
+      return {
+        ok: true,
+        pushes: [
+          {
+            title: `${name} Top${used.length}`,
+            body: lines.join("\n"),
+            openUrl: defaultUrl
+          }
+        ]
+      };
+    }
+
+    const pushes = used.map((item, idx) => ({
+      title: `${name} 第${idx + 1}名`,
+      body: lines[idx],
+      openUrl: pickUrl(item, defaultUrl)
+    }));
+
+    return { ok: true, pushes };
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
     return { ok: false, title: name, err: e.message || String(e) };
@@ -327,6 +400,7 @@ async function fetchDouyin() {
 async function fetchBaidu() {
   const name = "百度热搜";
   const cfg = CFG.baidu;
+  const defaultUrl = "https://rebang.today/?tab=baidu";
   log(`开始获取  ${name}…`);
 
   try {
@@ -345,8 +419,26 @@ async function fetchBaidu() {
       return `${idx + 1}. ${title}`;
     });
 
-    // 今日热榜的百度 Tab
-    return wrapResult(name, cfg, lines, "https://rebang.today/?tab=baidu");
+    if (!cfg.split) {
+      return {
+        ok: true,
+        pushes: [
+          {
+            title: `${name} Top${used.length}`,
+            body: lines.join("\n"),
+            openUrl: defaultUrl
+          }
+        ]
+      };
+    }
+
+    const pushes = used.map((item, idx) => ({
+      title: `${name} 第${idx + 1}名`,
+      body: lines[idx],
+      openUrl: pickUrl(item, defaultUrl)
+    }));
+
+    return { ok: true, pushes };
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
     return { ok: false, title: name, err: e.message || String(e) };
@@ -357,6 +449,7 @@ async function fetchBaidu() {
 async function fetch36Kr() {
   const name = "36 氪热榜";
   const cfg = CFG.kr36;
+  const defaultUrl = "https://rebang.today/?tab=36kr";
   log(`开始获取  ${name}…`);
 
   try {
@@ -379,8 +472,26 @@ async function fetch36Kr() {
       return `${idx + 1}. ${title}${author}`;
     });
 
-    // rebang 的 36 氪 Tab
-    return wrapResult(name, cfg, lines, "https://rebang.today/?tab=36kr");
+    if (!cfg.split) {
+      return {
+        ok: true,
+        pushes: [
+          {
+            title: `${name} Top${used.length}`,
+            body: lines.join("\n"),
+            openUrl: defaultUrl
+          }
+        ]
+      };
+    }
+
+    const pushes = used.map((item, idx) => ({
+      title: `${name} 第${idx + 1}名`,
+      body: lines[idx],
+      openUrl: pickUrl(item, defaultUrl)
+    }));
+
+    return { ok: true, pushes };
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
     return { ok: false, title: name, err: e.message || String(e) };
@@ -391,6 +502,7 @@ async function fetch36Kr() {
 async function fetchZhihu() {
   const name = "知乎热榜";
   const cfg = CFG.zhihu;
+  const defaultUrl = "zhihu://zhihu.com/hot";
   log(`开始获取  ${name}…`);
 
   try {
@@ -413,7 +525,26 @@ async function fetchZhihu() {
       return `${idx + 1}. ${title}`;
     });
 
-    return wrapResult(name, cfg, lines, "zhihu://zhihu.com/hot");
+    if (!cfg.split) {
+      return {
+        ok: true,
+        pushes: [
+          {
+            title: `${name} Top${used.length}`,
+            body: lines.join("\n"),
+            openUrl: defaultUrl
+          }
+        ]
+      };
+    }
+
+    const pushes = used.map((item, idx) => ({
+      title: `${name} 第${idx + 1}名`,
+      body: lines[idx],
+      openUrl: pickUrl(item, defaultUrl)
+    }));
+
+    return { ok: true, pushes };
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
     return { ok: false, title: name, err: e.message || String(e) };
@@ -424,6 +555,7 @@ async function fetchZhihu() {
 async function fetchBilibili() {
   const name = "B站热门";
   const cfg = CFG.bilibili;
+  const defaultUrl = "bilibili://popular";
   log(`开始获取  ${name}…`);
 
   try {
@@ -446,7 +578,26 @@ async function fetchBilibili() {
       return `${idx + 1}. ${title}`;
     });
 
-    return wrapResult(name, cfg, lines, "bilibili://popular");
+    if (!cfg.split) {
+      return {
+        ok: true,
+        pushes: [
+          {
+            title: `${name} Top${used.length}`,
+            body: lines.join("\n"),
+            openUrl: defaultUrl
+          }
+        ]
+      };
+    }
+
+    const pushes = used.map((item, idx) => ({
+      title: `${name} 第${idx + 1}名`,
+      body: lines[idx],
+      openUrl: pickUrl(item, defaultUrl)
+    }));
+
+    return { ok: true, pushes };
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
     return { ok: false, title: name, err: e.message || String(e) };
@@ -457,6 +608,7 @@ async function fetchBilibili() {
 async function fetchToutiao() {
   const name = "今日头条热榜";
   const cfg = CFG.toutiao;
+  const defaultUrl = "snssdk141://"; // 拉起头条 App
   log(`开始获取  ${name}…`);
 
   try {
@@ -479,8 +631,26 @@ async function fetchToutiao() {
       return `${idx + 1}. ${title}`;
     });
 
-    // 直接拉起今日头条 App
-    return wrapResult(name, cfg, lines, "snssdk141://");
+    if (!cfg.split) {
+      return {
+        ok: true,
+        pushes: [
+          {
+            title: `${name} Top${used.length}`,
+            body: lines.join("\n"),
+            openUrl: defaultUrl
+          }
+        ]
+      };
+    }
+
+    const pushes = used.map((item, idx) => ({
+      title: `${name} 第${idx + 1}名`,
+      body: lines[idx],
+      openUrl: pickUrl(item, defaultUrl)
+    }));
+
+    return { ok: true, pushes };
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
     return { ok: false, title: name, err: e.message || String(e) };
@@ -491,6 +661,7 @@ async function fetchToutiao() {
 async function fetchKuaishou() {
   const name = "快手热榜";
   const cfg = CFG.kuaishou;
+  const defaultUrl = "kwai://search/topicRank";
   log(`开始获取  ${name}…`);
 
   try {
@@ -500,9 +671,7 @@ async function fetchKuaishou() {
     const json = parseJSON(resp.body, name);
 
     // 返回形如 { "Top_1": "...", "Top_2": "...", ... }
-    const keys = Object.keys(json || {}).filter((k) =>
-      /^Top_\d+/i.test(k)
-    );
+    const keys = Object.keys(json || {}).filter((k) => /^Top_\d+/i.test(k));
     if (keys.length === 0) {
       throw new Error("接口返回格式异常");
     }
@@ -518,12 +687,31 @@ async function fetchKuaishou() {
     const used = selectItems(name, list, cfg);
     if (!used) return { ok: false, title: name, skip: true };
 
-    const lines = used.map((title, idx) => {
-      const t = pickTitle(title) || "无标题";
-      return `${idx + 1}. ${t}`;
+    const lines = used.map((item, idx) => {
+      const title = pickTitle(item) || "无标题";
+      return `${idx + 1}. ${title}`;
     });
 
-    return wrapResult(name, cfg, lines, "kwai://search/topicRank");
+    if (!cfg.split) {
+      return {
+        ok: true,
+        pushes: [
+          {
+            title: `${name} Top${used.length}`,
+            body: lines.join("\n"),
+            openUrl: defaultUrl
+          }
+        ]
+      };
+    }
+
+    const pushes = used.map((item, idx) => ({
+      title: `${name} 第${idx + 1}名`,
+      body: lines[idx],
+      openUrl: pickUrl(item, defaultUrl)
+    }));
+
+    return { ok: true, pushes };
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
     return { ok: false, title: name, err: e.message || String(e) };
@@ -534,6 +722,7 @@ async function fetchKuaishou() {
 async function fetchXHS() {
   const name = "小红书热门话题";
   const cfg = CFG.xhs;
+  const defaultUrl = "xhsdiscover://";
   log(`开始获取  ${name}…`);
 
   try {
@@ -556,7 +745,26 @@ async function fetchXHS() {
       return `${idx + 1}. ${title}`;
     });
 
-    return wrapResult(name, cfg, lines, "xhsdiscover://");
+    if (!cfg.split) {
+      return {
+        ok: true,
+        pushes: [
+          {
+            title: `${name} Top${used.length}`,
+            body: lines.join("\n"),
+            openUrl: defaultUrl
+          }
+        ]
+      };
+    }
+
+    const pushes = used.map((item, idx) => ({
+      title: `${name} 第${idx + 1}名`,
+      body: lines[idx],
+      openUrl: pickUrl(item, defaultUrl)
+    }));
+
+    return { ok: true, pushes };
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
     return { ok: false, title: name, err: e.message || String(e) };
@@ -588,21 +796,27 @@ async function fetchXHS() {
 
   results.forEach((res) => {
     if (!res) return;
-    if (res.ok) {
-      // ✅ 支持「分开推送内容」
-      if (res.split && Array.isArray(res.lines)) {
-        res.lines.forEach((line) => {
-          $notify(res.title, "", line, {
-            "open-url": res.openUrl || ""
-          });
-        });
-      } else {
-        $notify(res.title, "", res.text, {
-          "open-url": res.openUrl || ""
-        });
-      }
+
+    if (res.ok && Array.isArray(res.pushes)) {
+      res.pushes.forEach((p) => {
+        if (!p) return;
+
+        let body = p.body || "";
+        const extra = {};
+
+        if (p.openUrl) {
+          extra["open-url"] = p.openUrl;
+          if (ATTACH_LINK) {
+            body = body
+              ? body + "\n\n🔗 " + p.openUrl
+              : "🔗 " + p.openUrl;
+          }
+        }
+
+        $notify(p.title || "热门监控", "", body, extra);
+      });
     } else if (!res.skip) {
-      $notify(`${res.title} 获取失败`, "", String(res.err || "未知错误"));
+      $notify(`${res.title || "热榜"} 获取失败`, "", String(res.err || "未知错误"));
     }
   });
 
