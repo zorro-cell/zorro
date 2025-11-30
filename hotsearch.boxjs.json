@@ -1,15 +1,17 @@
 {
   "id": "veyna.hotsearch.sub",
-  "name": "热门监控（新接口版）",
-  "author": "@veyna + GPT",
+  "name": "热门监控",
+  "author": "心事全在脸上",
   "icon": "https://raw.githubusercontent.com/NobyDa/mini/master/Color/wanan.png",
   "repo": "",
   "apps": [
     {
       "id": "veyna.hotsearch",
-      "name": "热门监控（新接口版）",
+      "name": "热门监控",
+      "script": "https://raw.githubusercontent.com/zorro-cell/zorro/refs/heads/main/hot.js",
       "keys": [
         "hot_keywords",
+        "hot_attach_link",
 
         "hot_weibo_enable",
         "hot_weibo_split",
@@ -65,6 +67,13 @@
           "rows": 4,
           "desc": "多个关键词用中文/英文逗号、空格或换行分隔；示例： 周杰伦, 小米, 刘亦菲"
         },
+        {
+          "id": "hot_attach_link",
+          "name": "附带跳转链接",
+          "val": false,
+          "type": "boolean",
+          "desc": "开：在通知正文中附带对应链接；关：只保留点击跳转"
+        },
 
         {
           "id": "hot_weibo_enable",
@@ -78,7 +87,7 @@
           "name": "分开推送微博内容",
           "val": false,
           "type": "boolean",
-          "desc": "打开则每条微博单独推送一条通知"
+          "desc": "开：每条微博一条通知；关：合并成一条"
         },
         {
           "id": "hot_weibo_ignore",
@@ -107,7 +116,7 @@
           "name": "分开推送知乎内容",
           "val": false,
           "type": "boolean",
-          "desc": "打开则每条知乎单独推送一条通知"
+          "desc": "开：每条问题一条通知；关：合并成一条"
         },
         {
           "id": "hot_zhihu_ignore",
@@ -136,7 +145,7 @@
           "name": "分开推送百度内容",
           "val": false,
           "type": "boolean",
-          "desc": "打开则每条百度热搜单独推送一条通知"
+          "desc": "开：每条热搜一条通知；关：合并成一条"
         },
         {
           "id": "hot_baidu_ignore",
@@ -165,7 +174,7 @@
           "name": "分开推送B站内容",
           "val": false,
           "type": "boolean",
-          "desc": "打开则每条 B 站内容单独推送一条通知"
+          "desc": "开：每个视频一条通知；关：合并成一条"
         },
         {
           "id": "hot_bilibili_ignore",
@@ -194,7 +203,7 @@
           "name": "分开推送抖音内容",
           "val": false,
           "type": "boolean",
-          "desc": "打开则每条抖音热榜单独推送一条通知"
+          "desc": "开：每个视频一条通知；关：合并成一条"
         },
         {
           "id": "hot_douyin_ignore",
@@ -223,7 +232,7 @@
           "name": "分开推送36氪内容",
           "val": false,
           "type": "boolean",
-          "desc": "打开则每条 36 氪内容单独推送一条通知"
+          "desc": "开：每篇文章一条通知；关：合并成一条"
         },
         {
           "id": "hot_36kr_ignore",
@@ -252,7 +261,7 @@
           "name": "分开推送头条内容",
           "val": false,
           "type": "boolean",
-          "desc": "打开则每条头条热榜单独推送一条通知"
+          "desc": "开：每条新闻一条通知；关：合并成一条"
         },
         {
           "id": "hot_toutiao_ignore",
@@ -281,7 +290,7 @@
           "name": "分开推送快手内容",
           "val": false,
           "type": "boolean",
-          "desc": "打开则每条快手热榜单独推送一条通知"
+          "desc": "开：每个话题一条通知；关：合并成一条"
         },
         {
           "id": "hot_kuaishou_ignore",
@@ -310,7 +319,7 @@
           "name": "分开推送小红书内容",
           "val": false,
           "type": "boolean",
-          "desc": "打开则每条小红书热门话题单独推送一条通知"
+          "desc": "开：每个话题一条通知；关：合并成一条"
         },
         {
           "id": "hot_xhs_ignore",
