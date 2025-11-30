@@ -708,87 +708,39 @@ async function fetchKuaishou() {
   }
 }
 
-// 9. 小红书热门话题（TopHub）
+// 9. 小红书热门话题（今日热榜 / PearAPI）
 async function fetchXHS() {
   const name = "小红书热门话题";
   const cfg = CFG.xhs;
-
-  // 不分开推送时：点整条通知，就打开“小红书热点”的搜索结果
-  const defaultUrl =
-    "xhsdiscover://search/result?keyword=" +
-    encodeURIComponent("小红书热点");
-
+  const defaultUrl = "xhsdiscover://"; // 打开小红书发现页
   log(`开始获取  ${name}…`);
 
-  // 解析 TopHub 小红书榜单 HTML，提取标题列表
-  function parseTophubXhs(html) {
-    const titles = [];
-    if (typeof html !== "string") return titles;
-
-    // TopHub 榜单里标题的结构基本是：
-    // <td class="al"><a href="...">标题</a></td>
-    const regex = /<td class="al"><a[^>]*>(.*?)<\/a><\/td>/g;
-    let m;
-    while ((m = regex.exec(html)) !== null) {
-      // 去掉里面可能夹杂的 <i> 图标等标签
-      const t = m[1].replace(/<.*?>/g, "").trim();
-      if (!t) continue;
-      if (t.indexOf("<i") !== -1) continue;
-      titles.push(t);
-    }
-    return titles;
-  }
-
   try {
-    // TopHub 小红书热点榜
-    const resp = await httpGet("https://tophub.today/n/L4MdA5ldxD");
-    const html = resp.body || resp;
-    const allTitles = parseTophubXhs(html);
+    const url =
+      "https://api.pearktrue.cn/api/dailyhot/?title=" +
+      encodeURIComponent("小红书");
+    const resp = await httpGet(url);
+    const json = parseJSON(resp.body, name);
 
-    if (!Array.isArray(allTitles) || allTitles.length === 0) {
-      throw new Error("解析 TopHub 小红书榜单失败");
+    const data = Array.isArray(json.data) ? json.data : json.data && json.data.list;
+    if (!Array.isArray(data)) {
+      throw new Error(json.msg || json.message || "接口返回格式异常");
     }
 
-    // 复用你原来的关键词 / 条数逻辑
-    const used = selectItems(name, allTitles, cfg);
+    const used = selectItems(name, data, cfg);
     if (!used) return { ok: false, title: name, skip: true };
 
-    const lines = used.map((title, idx) => `${idx + 1}. ${title}`);
+    const lines = used.map((item, idx) => {
+      const title = pickTitle(item) || "无标题";
+      return `${idx + 1}. ${title}`;
+    });
 
-    // 不分开推送：一条通知，点了就进“小红书热点”搜索
-    if (!cfg.split) {
-      return {
-        ok: true,
-        title: name,
-        pushes: [
-          {
-            title: `${name} Top${used.length}`,
-            body: lines.join("\n"),
-            openUrl: defaultUrl
-          }
-        ]
-      };
-    }
-
-    // 分开推送：每条通知都搜索对应的话题
-    const pushes = used.map((title, idx) => ({
-      title: `${name} 第${idx + 1}名`,
-      body: lines[idx],
-      openUrl:
-        "xhsdiscover://search/result?keyword=" +
-        encodeURIComponent(title)
-    }));
-
-    return { ok: true, title: name, pushes };
+    return makePushes(name, cfg, used, lines, defaultUrl, used);
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
     return { ok: false, title: name, err: e.message || String(e) };
   }
 }
-
-
-
-
 
 // ========== 主流程 ==========
 
@@ -821,7 +773,8 @@ async function fetchXHS() {
         if (ATTACH_LINK && p.openUrl) {
           opts["open-url"] = p.openUrl;
         }
-        $notify("热门监控", p.title || "", p.body || "", opts);
+        // 这里去掉「热门监控」，直接用每条的标题做通知标题
+        $notify(p.title || "", "", p.body || "", opts);
       });
     } else if (!res.skip) {
       // 真报错（网络 / 接口挂了）才提示
