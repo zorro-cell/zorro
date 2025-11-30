@@ -708,107 +708,52 @@ async function fetchKuaishou() {
   }
 }
 
-// ===== 小红书热门话题相关配置 =====
-
-// PearAPI 里的平台名称，接口如果还提示「不支持的平台名称」
-// 可以在 BoxJs 里看实际支持的名字，来回换成：
-//   "小红书" / "小红书热榜" / "小红书热点" 等试一下
-const XHS_PLATFORM_TITLE = "小红书";
-
-// 根据条目生成小红书 App 跳转链接（搜索结果页）
-function buildXhsUrlFromItem(item, fallback) {
-  const title = pickTitle(item);
-  const kwRaw =
-    (item &&
-      (item.keyword ||
-        item.word ||
-        item.name ||
-        item.title ||
-        item.note)) ||
-    title ||
-    "";
-  const kw = String(kwRaw).trim();
-
-  if (kw) {
-    // 直接用官方 scheme 搜索关键词
-    return (
-      "xhsdiscover://search/result?keyword=" + encodeURIComponent(kw)
-    );
-  }
-  // 兜底：搜索「小红书热点」
-  return (
-    fallback ||
-    "xhsdiscover://search/result?keyword=" +
-      encodeURIComponent("小红书热点")
-  );
-}
-
-// 9. 小红书热点榜（今日热榜 / PearAPI）
+// 9. 小红书热门话题（简化版：直接用小红书搜索，不再调用 PearAPI）
 async function fetchXHS() {
-  const name = "小红书";
+  const name = "小红书热门话题";
   const cfg = CFG.xhs;
 
-  // 不分开推送时，点击整条通知用这个：搜索「小红书热点」
-  const defaultUrl =
-    "xhsdiscover://search/result?keyword=" +
-    encodeURIComponent("小红书");
-
-  log(`开始获取  ${name}…`);
-
-  try {
-    const url =
-      "https://api.pearktrue.cn/api/dailyhot/?title=" +
-      encodeURIComponent(XHS_PLATFORM_TITLE);
-
-    const resp = await httpGet(url);
-    const json = parseJSON(resp.body, name);
-
-    // 兼容 data 是数组，或 data.list 是数组
-    const data = Array.isArray(json.data)
-      ? json.data
-      : json.data && Array.isArray(json.data.list)
-      ? json.data.list
-      : null;
-
-    if (!Array.isArray(data)) {
-      throw new Error(json.msg || json.message || "接口返回格式异常");
-    }
-
-    const used = selectItems(name, data, cfg);
-    if (!used) return { ok: false, title: name, skip: true };
-
-    const lines = used.map((item, idx) => {
-      const t = pickTitle(item) || "无标题";
-      return `${idx + 1}. ${t}`;
-    });
-
-    // 不分开推送：一条通知 + 统一 openUrl
-    if (!cfg.split) {
-      return {
-        ok: true,
-        title: name,
-        pushes: [
-          {
-            title: `${name} Top${used.length}`,
-            body: lines.join("\n"),
-            openUrl: defaultUrl
-          }
-        ]
-      };
-    }
-
-    // 分开推送：每条跳转到对应关键词搜索页
-    const pushes = used.map((item, idx) => ({
-      title: `${name} 第${idx + 1}名`,
-      body: lines[idx],
-      openUrl: buildXhsUrlFromItem(item, defaultUrl)
-    }));
-
-    return { ok: true, title: name, pushes };
-  } catch (e) {
-    log(`${name} 获取失败：${e.message || e}`);
-    return { ok: false, title: name, err: e.message || String(e) };
+  // 如果在 BoxJs 里关掉了小红书，就直接跳过
+  if (!cfg || cfg.enable === false) {
+    return { ok: false, title: name, skip: true };
   }
+
+  // 从全局 KEYWORDS 里拿关键词；如果没配关键词，就默认用「小红书热点」
+  const kws =
+    Array.isArray(KEYWORDS) && KEYWORDS.length > 0
+      ? KEYWORDS.slice(0)
+      : ["小红书热点"];
+
+  // 生成文案
+  const lines = kws.map((k, idx) => `${idx + 1}. 搜索「${k}」`);
+
+  // 统一生成小红书搜索 scheme
+  const buildSearchUrl = (kw) =>
+    "xhsdiscover://search/result?keyword=" + encodeURIComponent(kw);
+
+  // 不分开推送：一条通知，点进去默认搜索第一个关键词
+  if (!cfg.split) {
+    return {
+      ok: true,
+      title: name,
+      pushes: [
+        {
+          title: `${name} 搜索`,
+          body: lines.join("\n"),
+          openUrl: buildSearchUrl(kws[0])
+        }
+      ]
+    };
+  }
+
+  // 分开推送：每个关键词单独一条通知，对应各自搜索结果页
+  const pushes = kws.map((kw, idx) => ({
+    title: `${name} 搜索第${idx + 1}条`,
+    body: lines[idx],
+    openUrl: buildSearchUrl(kw)
+  }));
+
+  return { ok: true, title: name, pushes };
 }
 
 
