@@ -708,13 +708,11 @@ async function fetchKuaishou() {
   }
 }
 
-// 9. 小红书热门话题（今日热榜 / PearAPI）
-async function fetchXHS() {
- // ===== 小红书热门话题（替换你原来的 fetchXHS）=====
+// ===== 小红书热门话题相关配置 =====
 
-// PearAPI 里的平台名称，默认先用「小红书热点」
-// 如果接口仍然提示「不支持的平台名称」，改成接口实际支持的名字，比如：
-//   "小红书热榜" / "小红书" / "小红书热门"
+// PearAPI 里的平台名称，接口如果还提示「不支持的平台名称」
+// 可以在 BoxJs 里看实际支持的名字，来回换成：
+//   "小红书" / "小红书热榜" / "小红书热点" 等试一下
 const XHS_PLATFORM_TITLE = "小红书热点";
 
 // 根据条目生成小红书 App 跳转链接（搜索结果页）
@@ -737,6 +735,7 @@ function buildXhsUrlFromItem(item, fallback) {
       "xhsdiscover://search/result?keyword=" + encodeURIComponent(kw)
     );
   }
+  // 兜底：搜索「小红书热点」
   return (
     fallback ||
     "xhsdiscover://search/result?keyword=" +
@@ -744,11 +743,47 @@ function buildXhsUrlFromItem(item, fallback) {
   );
 }
 
+// ===== 小红书热门话题相关配置 =====
+
+// PearAPI 里的平台名称，接口如果还提示「不支持的平台名称」
+// 可以在 BoxJs 里看实际支持的名字，来回换成：
+//   "小红书" / "小红书热榜" / "小红书热点" 等试一下
+const XHS_PLATFORM_TITLE = "小红书热点";
+
+// 根据条目生成小红书 App 跳转链接（搜索结果页）
+function buildXhsUrlFromItem(item, fallback) {
+  const title = pickTitle(item);
+  const kwRaw =
+    (item &&
+      (item.keyword ||
+        item.word ||
+        item.name ||
+        item.title ||
+        item.note)) ||
+    title ||
+    "";
+  const kw = String(kwRaw).trim();
+
+  if (kw) {
+    // 直接用官方 scheme 搜索关键词
+    return (
+      "xhsdiscover://search/result?keyword=" + encodeURIComponent(kw)
+    );
+  }
+  // 兜底：搜索「小红书热点」
+  return (
+    fallback ||
+    "xhsdiscover://search/result?keyword=" +
+      encodeURIComponent("小红书热点")
+  );
+}
+
+// 9. 小红书热门话题（今日热榜 / PearAPI）
 async function fetchXHS() {
   const name = "小红书热门话题";
   const cfg = CFG.xhs;
 
-  // 不分开推送时点击整条通知用这个：搜索「小红书热点」
+  // 不分开推送时，点击整条通知用这个：搜索「小红书热点」
   const defaultUrl =
     "xhsdiscover://search/result?keyword=" +
     encodeURIComponent("小红书热点");
@@ -763,10 +798,12 @@ async function fetchXHS() {
     const resp = await httpGet(url);
     const json = parseJSON(resp.body, name);
 
-    // 兼容两种返回结构：data 是数组，或 data.list 是数组
+    // 兼容 data 是数组，或 data.list 是数组
     const data = Array.isArray(json.data)
       ? json.data
-      : json.data && json.data.list;
+      : json.data && Array.isArray(json.data.list)
+      ? json.data.list
+      : null;
 
     if (!Array.isArray(data)) {
       throw new Error(json.msg || json.message || "接口返回格式异常");
@@ -776,11 +813,11 @@ async function fetchXHS() {
     if (!used) return { ok: false, title: name, skip: true };
 
     const lines = used.map((item, idx) => {
-      const title = pickTitle(item) || "无标题";
-      return `${idx + 1}. ${title}`;
+      const t = pickTitle(item) || "无标题";
+      return `${idx + 1}. ${t}`;
     });
 
-    // 不分开推送：用一条通知 + 统一 openUrl
+    // 不分开推送：一条通知 + 统一 openUrl
     if (!cfg.split) {
       return {
         ok: true,
@@ -808,6 +845,7 @@ async function fetchXHS() {
     return { ok: false, title: name, err: e.message || String(e) };
   }
 }
+
 
 
 // ========== 主流程 ==========
