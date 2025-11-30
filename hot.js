@@ -743,44 +743,9 @@ function buildXhsUrlFromItem(item, fallback) {
   );
 }
 
-// ===== 小红书热门话题相关配置 =====
-
-// PearAPI 里的平台名称，接口如果还提示「不支持的平台名称」
-// 可以在 BoxJs 里看实际支持的名字，来回换成：
-//   "小红书" / "小红书热榜" / "小红书热点" 等试一下
-const XHS_PLATFORM_TITLE = "小红书热点榜";
-
-// 根据条目生成小红书 App 跳转链接（搜索结果页）
-function buildXhsUrlFromItem(item, fallback) {
-  const title = pickTitle(item);
-  const kwRaw =
-    (item &&
-      (item.keyword ||
-        item.word ||
-        item.name ||
-        item.title ||
-        item.note)) ||
-    title ||
-    "";
-  const kw = String(kwRaw).trim();
-
-  if (kw) {
-    // 直接用官方 scheme 搜索关键词
-    return (
-      "xhsdiscover://search/result?keyword=" + encodeURIComponent(kw)
-    );
-  }
-  // 兜底：搜索「小红书热点」
-  return (
-    fallback ||
-    "xhsdiscover://search/result?keyword=" +
-      encodeURIComponent("小红书热点")
-  );
-}
-
-// 9. 小红书热门话题（今日热榜 / PearAPI）
+// 9. 小红书热点（今日热榜 / PearAPI）
 async function fetchXHS() {
-  const name = "小红书热门话题";
+  const name = "小红书热点";
   const cfg = CFG.xhs;
 
   // 不分开推送时，点击整条通知用这个：搜索「小红书热点」
@@ -845,6 +810,7 @@ async function fetchXHS() {
     return { ok: false, title: name, err: e.message || String(e) };
   }
 }
+
 
 
 
