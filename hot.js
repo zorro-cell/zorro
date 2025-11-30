@@ -238,6 +238,103 @@ function pickUrl(item, fallback) {
   return fallback || "";
 }
 
+// 根据不同榜单生成尽量“直达 App 内容”的链接
+function buildAppUrl(boardName, item, defaultUrl) {
+  const title = pickTitle(item);
+  const kwRaw =
+    (item &&
+      (item.hot_word ||
+        item.word ||
+        item.keyword ||
+        item.name ||
+        item.title ||
+        item.note)) ||
+    title ||
+    "";
+  const kw = String(kwRaw).trim();
+  const encodedKw = kw ? encodeURIComponent(kw) : "";
+
+  // 先看原始数据里有没有可用链接
+  const rawUrl = pickUrl(item, "");
+
+  switch (boardName) {
+    case "微博热搜": {
+      // 优先用关键词搜索
+      if (encodedKw) {
+        return `sinaweibo://searchall?q=${encodedKw}`;
+      }
+      // 再退回原始链接
+      return rawUrl || defaultUrl;
+    }
+    case "抖音热榜": {
+      if (encodedKw) {
+        // 抖音搜索
+        return `snssdk1128://search?keyword=${encodedKw}`;
+      }
+      return rawUrl || defaultUrl;
+    }
+    case "百度热搜": {
+      if (encodedKw) {
+        // 百度 App 搜索
+        return `baiduboxapp://swan/BaiduAppSearch?from=hot&word=${encodedKw}`;
+      }
+      return rawUrl || defaultUrl;
+    }
+    case "知乎热榜": {
+      if (rawUrl && /^https?:\/\/www\.zhihu\.com/i.test(rawUrl)) {
+        // 直接把网页地址改成 zhihu:// 开头
+        return rawUrl.replace(/^https?:\/\/www\.zhihu\.com/i, "zhihu://");
+      }
+      if (encodedKw) {
+        return `zhihu://search?type=content&q=${encodedKw}`;
+      }
+      return defaultUrl;
+    }
+    case "B站热门": {
+      if (rawUrl && /^https?:\/\/www\.bilibili\.com/i.test(rawUrl)) {
+        return rawUrl.replace(/^https?:\/\/www\.bilibili\.com/i, "bilibili://");
+      }
+      if (encodedKw) {
+        return `bilibili://search?keyword=${encodedKw}`;
+      }
+      return defaultUrl;
+    }
+    case "今日头条热榜": {
+      if (rawUrl && /^https?:\/\/www\.toutiao\.com/i.test(rawUrl)) {
+        // 头条很多是 H5，直接交给系统处理
+        return rawUrl;
+      }
+      if (encodedKw) {
+        return `snssdk141://search?keyword=${encodedKw}`;
+      }
+      return defaultUrl;
+    }
+    case "快手热榜": {
+      if (encodedKw) {
+        return `kwai://search?keyword=${encodedKw}`;
+      }
+      return rawUrl || defaultUrl;
+    }
+    case "小红书热门话题": {
+      if (rawUrl && /^https?:\/\/www\.xiaohongshu\.com/i.test(rawUrl)) {
+        // 小红书基本支持通用链接，直接用原始链接
+        return rawUrl;
+      }
+      if (encodedKw) {
+        // 兜底用通用发现页
+        return defaultUrl;
+      }
+      return defaultUrl;
+    }
+    case "36 氪热榜": {
+      // 36 氪直接用原始文章链接，App 支持通用链接
+      return rawUrl || defaultUrl;
+    }
+    default:
+      return rawUrl || defaultUrl;
+  }
+}
+
 // 根据关键词 & 配置，从原始列表中选出要推送的条目
 function selectItems(boardName, rawList, cfg) {
   if (!Array.isArray(rawList) || rawList.length === 0) return null;
@@ -310,7 +407,7 @@ function makePushes(name, cfg, usedItems, lines, defaultUrl, itemList) {
   const pushes = usedItems.map((item, idx) => ({
     title: `${name} 第${idx + 1}名`,
     body: lines[idx],
-    openUrl: pickUrl(itemList[idx], defaultUrl)
+    openUrl: buildAppUrl(name, itemList[idx], defaultUrl)
   }));
 
   return { ok: true, title: name, pushes };
@@ -385,7 +482,7 @@ async function fetchDouyin() {
 async function fetchBaidu() {
   const name = "百度热搜";
   const cfg = CFG.baidu;
-  const defaultUrl = "https://rebang.today/?tab=baidu";
+  const defaultUrl = "baiduboxapp://swan/BaiduHotList"; // 直接进百度热榜
   log(`开始获取  ${name}…`);
 
   try {
@@ -415,7 +512,7 @@ async function fetchBaidu() {
 async function fetch36Kr() {
   const name = "36 氪热榜";
   const cfg = CFG.kr36;
-  const defaultUrl = "https://rebang.today/?tab=36kr";
+  const defaultUrl = "https://36kr.com/newsflashes"; // 36 氪快讯列表
   log(`开始获取  ${name}…`);
 
   try {
@@ -583,7 +680,7 @@ async function fetchKuaishou() {
       return `${idx + 1}. ${title}`;
     });
 
-    // 这里没有原文链接，只能统一跳「话题热榜」页面
+    // 这里没有原文链接，只能用 app 打开搜索 / 热榜
     return makePushes(name, cfg, used, lines, defaultUrl, used);
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
