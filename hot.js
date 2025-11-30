@@ -710,25 +710,64 @@ async function fetchKuaishou() {
 
 // 9. 小红书热门话题（今日热榜 / PearAPI）
 async function fetchXHS() {
+ // ===== 小红书热门话题（替换你原来的 fetchXHS）=====
+
+// PearAPI 里的平台名称，默认先用「小红书热点」
+// 如果接口仍然提示「不支持的平台名称」，改成接口实际支持的名字，比如：
+//   "小红书热榜" / "小红书" / "小红书热门"
+const XHS_PLATFORM_TITLE = "小红书热点";
+
+// 根据条目生成小红书 App 跳转链接（搜索结果页）
+function buildXhsUrlFromItem(item, fallback) {
+  const title = pickTitle(item);
+  const kwRaw =
+    (item &&
+      (item.keyword ||
+        item.word ||
+        item.name ||
+        item.title ||
+        item.note)) ||
+    title ||
+    "";
+  const kw = String(kwRaw).trim();
+
+  if (kw) {
+    // 直接用官方 scheme 搜索关键词
+    return (
+      "xhsdiscover://search/result?keyword=" + encodeURIComponent(kw)
+    );
+  }
+  return (
+    fallback ||
+    "xhsdiscover://search/result?keyword=" +
+      encodeURIComponent("小红书热点")
+  );
+}
+
+async function fetchXHS() {
   const name = "小红书热门话题";
   const cfg = CFG.xhs;
 
-  // 不分开推送时用的兜底链接：搜索“热门”
+  // 不分开推送时点击整条通知用这个：搜索「小红书热点」
   const defaultUrl =
-    "xhsdiscover://search/result?keyword=%E7%83%AD%E9%97%A8";
+    "xhsdiscover://search/result?keyword=" +
+    encodeURIComponent("小红书热点");
 
   log(`开始获取  ${name}…`);
 
   try {
     const url =
       "https://api.pearktrue.cn/api/dailyhot/?title=" +
-      encodeURIComponent("小红书");
+      encodeURIComponent(XHS_PLATFORM_TITLE);
+
     const resp = await httpGet(url);
     const json = parseJSON(resp.body, name);
 
+    // 兼容两种返回结构：data 是数组，或 data.list 是数组
     const data = Array.isArray(json.data)
       ? json.data
       : json.data && json.data.list;
+
     if (!Array.isArray(data)) {
       throw new Error(json.msg || json.message || "接口返回格式异常");
     }
@@ -736,34 +775,32 @@ async function fetchXHS() {
     const used = selectItems(name, data, cfg);
     if (!used) return { ok: false, title: name, skip: true };
 
-    const pushes = [];
+    const lines = used.map((item, idx) => {
+      const title = pickTitle(item) || "无标题";
+      return `${idx + 1}. ${title}`;
+    });
 
-    if (cfg.split) {
-      // 分开推送：每条用自己的关键词做搜索
-      used.forEach((item, idx) => {
-        const title = pickTitle(item) || "无标题";
-        const kw = encodeURIComponent(title); // 搜索关键词
-        const openUrl = `xhsdiscover://search/result?keyword=${kw}`;
-
-        pushes.push({
-          title: `${name} 第${idx + 1}名`,
-          body: `${idx + 1}. ${title}`,
-          openUrl
-        });
-      });
-    } else {
-      // 不分开推送：合成一条，点进去搜索“热门”
-      const lines = used.map((item, idx) => {
-        const title = pickTitle(item) || "无标题";
-        return `${idx + 1}. ${title}`;
-      });
-
-      pushes.push({
-        title: `${name} Top${used.length}`,
-        body: lines.join("\n"),
-        openUrl: defaultUrl
-      });
+    // 不分开推送：用一条通知 + 统一 openUrl
+    if (!cfg.split) {
+      return {
+        ok: true,
+        title: name,
+        pushes: [
+          {
+            title: `${name} Top${used.length}`,
+            body: lines.join("\n"),
+            openUrl: defaultUrl
+          }
+        ]
+      };
     }
+
+    // 分开推送：每条跳转到对应关键词搜索页
+    const pushes = used.map((item, idx) => ({
+      title: `${name} 第${idx + 1}名`,
+      body: lines[idx],
+      openUrl: buildXhsUrlFromItem(item, defaultUrl)
+    }));
 
     return { ok: true, title: name, pushes };
   } catch (e) {
