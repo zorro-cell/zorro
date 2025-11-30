@@ -274,16 +274,31 @@ function buildAppUrl(boardName, item, defaultUrl) {
       return rawUrl || defaultUrl;
     }
     case "百度热搜": {
-      if (encodedKw) {
-        // 百度 App 搜索
-        return `baiduboxapp://swan/BaiduAppSearch?from=hot&word=${encodedKw}`;
+      // 先用原始链接或拼一个 Web 搜索，再用 baiduboxapp 容器打开
+      let target = rawUrl;
+      if (!target && encodedKw) {
+        target = `https://www.baidu.com/s?wd=${encodedKw}`;
       }
-      return rawUrl || defaultUrl;
+      if (target) {
+        return (
+          "baiduboxapp://v1/easybrowse/open?url=" +
+          encodeURIComponent(target)
+        );
+      }
+      if (encodedKw) {
+        // 兜底：直接调用搜索
+        return `baiduboxapp://search?word=${encodedKw}`;
+      }
+      return defaultUrl;
     }
     case "知乎热榜": {
       if (rawUrl && /^https?:\/\/www\.zhihu\.com/i.test(rawUrl)) {
-        // 直接把网页地址改成 zhihu:// 开头
-        return rawUrl.replace(/^https?:\/\/www\.zhihu\.com/i, "zhihu://");
+        // https://www.zhihu.com/question/123456 => zhihu://questions/123456
+        const m = rawUrl.match(/question\/(\d+)/);
+        if (m && m[1]) {
+          return `zhihu://questions/${m[1]}`;
+        }
+        // 没拿到 questionId 就退回搜索
       }
       if (encodedKw) {
         return `zhihu://search?type=content&q=${encodedKw}`;
@@ -291,8 +306,11 @@ function buildAppUrl(boardName, item, defaultUrl) {
       return defaultUrl;
     }
     case "B站热门": {
-      if (rawUrl && /^https?:\/\/www\.bilibili\.com/i.test(rawUrl)) {
-        return rawUrl.replace(/^https?:\/\/www\.bilibili\.com/i, "bilibili://");
+      if (rawUrl && /^https?:\/\//i.test(rawUrl)) {
+        // 用 B 站的 browser 容器打开原始链接，兼容视频 / 专栏 / 番剧等
+        return (
+          "bilibili://browser?url=" + encodeURIComponent(rawUrl)
+        );
       }
       if (encodedKw) {
         return `bilibili://search?keyword=${encodedKw}`;
@@ -482,7 +500,9 @@ async function fetchDouyin() {
 async function fetchBaidu() {
   const name = "百度热搜";
   const cfg = CFG.baidu;
-  const defaultUrl = "baiduboxapp://swan/BaiduHotList"; // 直接进百度热榜
+  const defaultUrl =
+    "baiduboxapp://v1/easybrowse/open?url=" +
+    encodeURIComponent("https://top.baidu.com/board?tab=realtime"); // 直接进百度热搜榜
   log(`开始获取  ${name}…`);
 
   try {
@@ -546,7 +566,7 @@ async function fetch36Kr() {
 async function fetchZhihu() {
   const name = "知乎热榜";
   const cfg = CFG.zhihu;
-  const defaultUrl = "zhihu://zhihu.com/hot";
+  const defaultUrl = "zhihu://topstory/hot-list";
   log(`开始获取  ${name}…`);
 
   try {
