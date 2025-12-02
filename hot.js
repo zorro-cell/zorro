@@ -1,5 +1,5 @@
 /*******************************
- * 多平台热榜 - hot.js
+ * 多平台热榜 - hot.js (修复快手版)
  * 支持的榜单：
  *  - 微博热搜
  *  - 知乎热榜
@@ -8,7 +8,7 @@
  *  - 抖音热榜
  *  - 36氪热榜
  *  - 今日头条热榜
- *  - 快手热榜
+ *  - 快手热榜 (已修复)
  *  - 小红书热门话题
  *
  * 主要特性：
@@ -664,7 +664,7 @@ async function fetchToutiao() {
   }
 }
 
-// 8. 快手热榜（icofun：只给文本，没有原文链接）
+// 8. 快手热榜（已修复：使用韩小韩 API）
 async function fetchKuaishou() {
   const name = "快手热榜";
   const cfg = CFG.kuaishou;
@@ -672,35 +672,25 @@ async function fetchKuaishou() {
   log(`开始获取  ${name}…`);
 
   try {
-    const resp = await httpGet(
-      "https://api.icofun.cn/api/kuaishou_hot_search.php?type=json"
-    );
+    // 替换为稳定的第三方聚合接口
+    const resp = await httpGet("https://api.vvhan.com/api/hotlist?type=ks");
     const json = parseJSON(resp.body, name);
 
-    const keys = Object.keys(json || {}).filter((k) =>
-      /^Top_\d+/i.test(k)
-    );
-    if (keys.length === 0) {
+    // 韩小韩接口返回结构：{ success: true, data: [ { title, url, hot }, ... ] }
+    if (!json.success || !Array.isArray(json.data)) {
       throw new Error("接口返回格式异常");
     }
 
-    keys.sort((a, b) => {
-      const na = parseInt(a.split("_")[1], 10) || 0;
-      const nb = parseInt(b.split("_")[1], 10) || 0;
-      return na - nb;
-    });
-
-    const list = keys.map((k) => json[k]).filter(Boolean);
-
-    const used = selectItems(name, list, cfg);
+    const used = selectItems(name, json.data, cfg);
     if (!used) return { ok: false, title: name, skip: true };
 
-    const lines = used.map((t, idx) => {
-      const title = pickTitle(t) || "无标题";
-      return `${idx + 1}. ${title}`;
+    const lines = used.map((item, idx) => {
+      const title = pickTitle(item) || "无标题";
+      const hot = item.hot || "";
+      const hotStr = hot ? ` [${hot}]` : "";
+      return `${idx + 1}. ${title}${hotStr}`;
     });
 
-    // 这里没有原文链接，只能用 app 打开搜索 / 热榜
     return makePushes(name, cfg, used, lines, defaultUrl, used);
   } catch (e) {
     log(`${name} 获取失败：${e.message || e}`);
