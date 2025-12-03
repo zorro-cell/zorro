@@ -1,16 +1,18 @@
 /*******************************
- * 多平台热榜 - hot_loon.js (Loon 修复完整版)
+ * 多平台热榜 - hot_loon.js (修复面板失效版)
  *******************************/
 
-// ========== 1. Loon 环境适配与参数解析 ==========
+// ========== 1. Loon 参数解析 (核心修复) ==========
 
 const $arg = {};
+// 强制解析参数，处理空格和编码问题
 if (typeof $argument !== "undefined") {
+  // console.log("[HotSearch] Raw Argument: " + $argument); // 调试用
   $argument.split("&").forEach((item) => {
     const parts = item.split("=");
     if (parts.length >= 2) {
-      const key = parts[0];
-      const val = decodeURIComponent(parts.slice(1).join("="));
+      const key = parts[0].trim(); // 去除键的空格
+      const val = decodeURIComponent(parts.slice(1).join("=")).trim(); // 去除值的空格
       $arg[key] = val;
     }
   });
@@ -18,7 +20,11 @@ if (typeof $argument !== "undefined") {
 
 // 统一数据读取
 function readStore(key, defVal = "") {
-  if ($arg && $arg[key] !== undefined) return $arg[key];
+  // 优先读取插件参数
+  if ($arg && $arg[key] !== undefined) {
+    return $arg[key];
+  }
+  // 其次读取持久化存储
   try {
     if (typeof $persistentStore !== "undefined") {
       const v = $persistentStore.read(key);
@@ -28,38 +34,16 @@ function readStore(key, defVal = "") {
   return defVal;
 }
 
-// ========== 2. 核心功能：时间检查 (新增) ==========
-
-const PUSH_HOURS_STR = readStore("hot_push_hours", ""); 
-
-// 检查是否在指定时间运行
-function checkTime() {
-  if (!PUSH_HOURS_STR || PUSH_HOURS_STR.trim() === "") {
-    // 如果没填时间，默认不拦截，按 Cron 设定运行
-    return true; 
-  }
-  
-  const currentHour = new Date().getHours();
-  // 支持中文逗号和英文逗号
-  const allowedHours = PUSH_HOURS_STR.split(/[,，]/)
-    .map(n => parseInt(n.trim()))
-    .filter(n => !isNaN(n));
-
-  if (allowedHours.includes(currentHour)) {
-    console.log(`[HotSearch] 当前时间 ${currentHour} 点，符合推送设置 [${PUSH_HOURS_STR}]，开始运行。`);
-    return true;
-  } else {
-    console.log(`[HotSearch] 当前时间 ${currentHour} 点，不在推送设置 [${PUSH_HOURS_STR}] 内，跳过。`);
-    return false;
-  }
-}
-
-// ========== 3. 配置读取 ==========
-
+// 读取布尔值 (修复开关失效问题)
 function readBool(key, defVal = false) {
-  const v = readStore(key, String(defVal));
-  const s = String(v).toLowerCase();
-  return s === "true" || s === "1" || s === "on";
+  let v = readStore(key, String(defVal));
+  // Loon 的 switch 传回来的是字符串 "true"
+  if (typeof v === 'string') {
+    v = v.toLowerCase().trim();
+    if (v === "true" || v === "1" || v === "on") return true;
+    if (v === "false" || v === "0" || v === "off") return false;
+  }
+  return v === true; // 如果本身就是 boolean
 }
 
 function readInt(key, defVal = 3) {
@@ -67,10 +51,19 @@ function readInt(key, defVal = 3) {
   return isNaN(v) ? defVal : v;
 }
 
+// ========== 2. 配置加载 ==========
+
+// 获取监控关键词
 const KEYWORD_STRING = readStore("hot_keywords", "");
 const KEYWORDS = KEYWORD_STRING.split(/[,，\s\n]/).map((x) => x.trim()).filter(Boolean);
+
+// 获取推送时间设置
+const PUSH_HOURS_STR = readStore("hot_push_hours", ""); 
+
+// 是否附带跳转链接
 const ATTACH_LINK = readBool("hot_attach_link", true);
 
+// 平台配置 (这里会打印日志方便检查)
 const CFG = {
   weibo: { enable: readBool("hot_weibo_enable", true), split: readBool("hot_weibo_split", false), ignorePushLatest: readBool("hot_weibo_ignore", true), count: readInt("hot_weibo_count", 3) },
   zhihu: { enable: readBool("hot_zhihu_enable", false), split: readBool("hot_zhihu_split", false), ignorePushLatest: readBool("hot_zhihu_ignore", false), count: readInt("hot_zhihu_count", 3) },
@@ -88,10 +81,37 @@ function log(msg) {
   if (DEBUG_LOG) console.log(`[HotSearch] ${msg}`);
 }
 
+// 打印当前配置，用于调试面板是否生效
+log(`配置加载完成: 
+- 微博: 启用=${CFG.weibo.enable}, 分拆=${CFG.weibo.split}
+- 抖音: 启用=${CFG.douyin.enable}, 分拆=${CFG.douyin.split}
+- 推送时间: ${PUSH_HOURS_STR || "全天"}
+`);
+
 const UA = { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1" };
 
-// ========== 4. 工具函数适配 ==========
+// ========== 3. 核心功能函数 ==========
 
+// 检查时间
+function checkTime() {
+  if (!PUSH_HOURS_STR || PUSH_HOURS_STR.trim() === "") return true;
+  
+  const currentHour = new Date().getHours();
+  // 兼容中文逗号，处理空格
+  const allowedHours = PUSH_HOURS_STR.split(/[,，]/)
+    .map(n => parseInt(n.trim()))
+    .filter(n => !isNaN(n));
+
+  if (allowedHours.includes(currentHour)) {
+    log(`当前 ${currentHour} 点，在推送列表 [${allowedHours}] 中，执行任务。`);
+    return true;
+  } else {
+    log(`当前 ${currentHour} 点，不在推送列表 [${allowedHours}] 中，跳过。`);
+    return false;
+  }
+}
+
+// 发送通知 (适配 Loon)
 function postMsg(title, sub, body, url) {
   if (typeof $notification !== "undefined") {
     $notification.post(title, sub, body, url || "");
@@ -102,6 +122,7 @@ function postMsg(title, sub, body, url) {
   }
 }
 
+// 网络请求 (适配 Loon $httpClient)
 function httpGet(url) {
   return new Promise((resolve, reject) => {
     const opts = { url: url, headers: UA };
@@ -116,7 +137,7 @@ function httpGet(url) {
         (reason) => reject(reason)
       );
     } else {
-      reject("Unknown Environment");
+      reject("未知的脚本环境");
     }
   });
 }
@@ -133,7 +154,7 @@ function pickTitle(item) {
   const keys = ["title", "word", "name", "hot_word", "keyword", "note", "desc", "summary", "content"];
   for (const k of keys) if (item[k] && typeof item[k] === "string") return item[k].trim();
   if (item.templateMaterial && item.templateMaterial.widgetTitle) return item.templateMaterial.widgetTitle.trim();
-  try { return JSON.stringify(item).slice(0, 50); } catch (e) { return ""; }
+  return "";
 }
 
 function pickUrl(item, fallback) {
@@ -217,7 +238,7 @@ function makePushes(name, cfg, usedItems, lines, defaultUrl, itemList) {
   return { ok: true, title: name, pushes };
 }
 
-// ========== 5. 抓取逻辑 ==========
+// ========== 4. 抓取逻辑 ==========
 
 async function fetchWeibo() {
   const name = "微博热搜"; const cfg = CFG.weibo;
@@ -356,7 +377,7 @@ async function fetchXHS() {
   } catch (e) { return { ok: false, title: name, err: e.message }; }
 }
 
-// ========== 6. 主执行入口 ==========
+// ========== 5. 主执行入口 ==========
 
 !(async () => {
   // 1. 检查是否在允许的推送时间内
