@@ -1,20 +1,21 @@
 [Plugin]
-name = 热搜监控
-desc = 监控抖音、快手、小红书、微博等平台热榜，支持关键词过滤与即时跳转。
+name = 多平台热榜监控
+desc = 监控微博、知乎、百度、抖音等平台热榜，支持关键词过滤与即时跳转。
 author = @心事全在脸上
 homepage = https://t.me/Santiagocell
 icon = https://raw.githubusercontent.com/NobyDa/mini/master/Color/wanan.png
+version = 2025-11-28
 
 [Argument]
 # === 核心设置 ===
 hot_keywords = input, "", tag=监控关键词, desc=多个关键词用英文逗号或空格分隔
-hot_push_hours = input, "8,12,18,20", tag=推送小时, desc=填写需要推送的小时(0-23)，用逗号分隔。例如：8,12,18。若留空则每小时都推。
+hot_push_hours = input, "8,12,18,20", tag=推送小时, desc=填写需要推送的小时(0-23)，用逗号分隔。例如：8, 12, 18。若留空则每小时都推。
 hot_attach_link = switch, true, tag=通知附带跳转, desc=开启后通知点击可跳转APP
 
 # === 平台开关 ===
 # 微博
 hot_weibo_enable = switch, true, tag=微博-启用
-hot_weibo_split = switch, false, tag=微博-单条推送
+hot_weibo_split = switch, false, tag=微博-单条推送, desc=开启后每条热搜单独推送，关闭则合并
 hot_weibo_ignore = switch, true, tag=微博-无词推新
 hot_weibo_count = input, "3", tag=微博-获取数量
 
@@ -67,6 +68,5 @@ hot_xhs_ignore = switch, false, tag=小红书-无词推新
 hot_xhs_count = input, "3", tag=小红书-获取数量
 
 [Script]
-# 这里的 cron 设置为每小时运行一次 (0 * * * *)
-# 脚本内部会检查 hot_push_hours 参数，如果不匹配当前小时，会自动跳过。
+# Cron 设置为每小时检查一次，具体是否推送由 Argument 里的“推送小时”控制
 cron "0 * * * *" script-path=https://raw.githubusercontent.com/zorro-cell/zorro/refs/heads/main/hot_loon.js, tag=多平台热榜, timeout=60
