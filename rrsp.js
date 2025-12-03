@@ -25,7 +25,7 @@ const $ = new Env("人人视频4K嗅探");
 
 // 配置 
 let USER_CONFIG = {
-    TOKEN: "rrtv-483e4fb0a5e14f0ef6e632f36db9c59704857993"
+    TOKEN: "rrtv-483e4fb0a5e14f0ef6e632f36db9c59704857993",
     UMID: "C6CFE97D-A15C-4FE0-8666-FB0036C5E32A",
     PLAYER_Code: "SenPlayer", 
     CustomScheme: "" 
