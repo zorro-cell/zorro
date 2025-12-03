@@ -8,8 +8,8 @@
  QuanX：
   需要配置脚本参数：
   let USER_CONFIG = {
-    TOKEN: "", //rrtv-483e4fb0a5e14f0ef6e632f36db9c59704857993
-    UMID: "",  //C6CFE97D-A15C-4FE0-8666-FB0036C5E32A
+    TOKEN:rrtv-483e4fb0a5e14f0ef6e632f36db9c59704857993
+    UMID:C6CFE97D-A15C-4FE0-8666-FB0036C5E32A
     PLAYER_Code: "SenPlayer", // 可以填播放器映射表中的任意播放器名称，忽略大小写，默认SenPlayer
     CustomScheme: "" // 自定义跳转Scheme，填写后优先使用，支持{url}占位符
 };
