@@ -4,7 +4,9 @@ desc = 监控微博、知乎、百度、抖音等平台热榜，支持关键词�
 author = @心事全在脸上
 homepage = https://t.me/Santiagocell
 icon = https://raw.githubusercontent.com/NobyDa/mini/master/Color/wanan.png
-version = 2025-11-28
+version = 2025-12-03
+# 必填：确保 Loon 版本足够新
+min-loon-version = 3.3.0
 
 [Argument]
 # === 核心设置 ===
