@@ -4,69 +4,70 @@ desc = 监控微博、知乎、百度、抖音等平台热榜，支持关键词�
 author = @心事全在脸上
 homepage = https://t.me/Santiagocell
 icon = https://raw.githubusercontent.com/NobyDa/mini/master/Color/wanan.png
-version = 2025-11-28
+version = 2025-12-3
+# 最低 Loon 版本需求
+min-loon-version = 3.3.0
 
 [Argument]
 # === 核心设置 ===
 hot_keywords = input, "", tag=监控关键词, desc=多个关键词用英文逗号或空格分隔
-hot_push_hours = input, "8,12,18,20", tag=推送小时, desc=填写需要推送的小时(0-23)，用逗号分隔。例如：8, 12, 18。若留空则每小时都推。
+hot_push_hours = input, "8,12,18,20", tag=推送小时, desc=填写推送小时(0-23)，逗号分隔。例：8,12,18。留空则每小时都推。
 hot_attach_link = switch, true, tag=通知附带跳转, desc=开启后通知点击可跳转APP
 
 # === 平台开关 ===
 # 微博
 hot_weibo_enable = switch, true, tag=微博-启用
-hot_weibo_split = switch, false, tag=微博-单条推送, desc=开启后每条热搜单独推送，关闭则合并
+hot_weibo_split = switch, true, tag=微博-单条推送, desc=开启后每条热搜单独推送，关闭则合并
 hot_weibo_ignore = switch, true, tag=微博-无词推新
-hot_weibo_count = input, "3", tag=微博-获取数量
+hot_weibo_count = input, 3, tag=微博-获取数量
 
 # 百度
 hot_baidu_enable = switch, true, tag=百度-启用
-hot_baidu_split = switch, false, tag=百度-单条推送
+hot_baidu_split = switch, true, tag=百度-单条推送
 hot_baidu_ignore = switch, true, tag=百度-无词推新
-hot_baidu_count = input, "3", tag=百度-获取数量
+hot_baidu_count = input, 3, tag=百度-获取数量
 
 # 抖音
 hot_douyin_enable = switch, true, tag=抖音-启用
-hot_douyin_split = switch, false, tag=抖音-单条推送
+hot_douyin_split = switch, true, tag=抖音-单条推送
 hot_douyin_ignore = switch, true, tag=抖音-无词推新
-hot_douyin_count = input, "3", tag=抖音-获取数量
+hot_douyin_count = input, 3, tag=抖音-获取数量
 
 # 知乎
 hot_zhihu_enable = switch, false, tag=知乎-启用
-hot_zhihu_split = switch, false, tag=知乎-单条推送
+hot_zhihu_split = switch, true, tag=知乎-单条推送
 hot_zhihu_ignore = switch, false, tag=知乎-无词推新
-hot_zhihu_count = input, "3", tag=知乎-获取数量
+hot_zhihu_count = input, 3, tag=知乎-获取数量
 
 # B站
 hot_bilibili_enable = switch, false, tag=B站-启用
-hot_bilibili_split = switch, false, tag=B站-单条推送
+hot_bilibili_split = switch, true, tag=B站-单条推送
 hot_bilibili_ignore = switch, false, tag=B站-无词推新
-hot_bilibili_count = input, "3", tag=B站-获取数量
+hot_bilibili_count = input, 3, tag=B站-获取数量
 
 # 36氪
 hot_36kr_enable = switch, false, tag=36氪-启用
-hot_36kr_split = switch, false, tag=36氪-单条推送
+hot_36kr_split = switch, true, tag=36氪-单条推送
 hot_36kr_ignore = switch, false, tag=36氪-无词推新
-hot_36kr_count = input, "3", tag=36氪-获取数量
+hot_36kr_count = input, 3, tag=36氪-获取数量
 
 # 今日头条
 hot_toutiao_enable = switch, false, tag=头条-启用
-hot_toutiao_split = switch, false, tag=头条-单条推送
+hot_toutiao_split = switch, true, tag=头条-单条推送
 hot_toutiao_ignore = switch, false, tag=头条-无词推新
-hot_toutiao_count = input, "3", tag=头条-获取数量
+hot_toutiao_count = input, 3, tag=头条-获取数量
 
 # 快手
 hot_kuaishou_enable = switch, false, tag=快手-启用
-hot_kuaishou_split = switch, false, tag=快手-单条推送
+hot_kuaishou_split = switch, true, tag=快手-单条推送
 hot_kuaishou_ignore = switch, false, tag=快手-无词推新
-hot_kuaishou_count = input, "3", tag=快手-获取数量
+hot_kuaishou_count = input, 3, tag=快手-获取数量
 
 # 小红书
 hot_xhs_enable = switch, false, tag=小红书-启用
-hot_xhs_split = switch, false, tag=小红书-单条推送
+hot_xhs_split = switch, true, tag=小红书-单条推送
 hot_xhs_ignore = switch, false, tag=小红书-无词推新
-hot_xhs_count = input, "3", tag=小红书-获取数量
+hot_xhs_count = input, 3, tag=小红书-获取数量
 
 [Script]
-# Cron 设置为每小时检查一次，具体是否推送由 Argument 里的“推送小时”控制
 cron "0 * * * *" script-path=https://raw.githubusercontent.com/zorro-cell/zorro/refs/heads/main/hot_loon.js, tag=多平台热榜, timeout=60
