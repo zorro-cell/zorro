@@ -1,28 +1,33 @@
 /*******************************
- * 多平台热榜 - Loon 终极修复版
- * 修复：参数传递、界面显示、关键词逻辑
+ * 多平台热榜 - Loon 终极修复版 V3
+ * 修复：双引号导致参数无法替换的问题
  *******************************/
 
 const $config = {};
 
-// 1. 参数解析 (增强版)
+// 1. 参数解析
 if (typeof $argument !== "undefined") {
-    // 调试日志：查看 Loon 到底传了什么进来
+    // 调试日志
     console.log("🟢 [原始参数]: " + $argument);
     
     $argument.split("&").forEach((item) => {
         const parts = item.split("=");
         if (parts.length >= 2) {
             const key = parts[0].trim();
-            // 兼容处理：值可能包含引号，需要去除
             let val = parts.slice(1).join("=").trim();
+            // 去除残留引号
             val = val.replace(/^["']|["']$/g, '');
             try { val = decodeURIComponent(val); } catch(e) {}
+            
+            // 【核心修复】如果参数值里包含 '{'，说明 Loon 替换失败了
+            // 此时强制设为空或默认，防止逻辑崩坏
+            if (val.includes("{") && val.includes("}")) {
+                console.log(`⚠️ 参数 [${key}] 替换失败，使用默认值`);
+                val = null; 
+            }
             $config[key] = val;
         }
     });
-} else {
-    console.log("🔴 [严重错误] 脚本未接收到参数！请检查 .plugin 文件中的 argument 字段。");
 }
 
 function getConf(key, type, defVal) {
@@ -76,7 +81,13 @@ function httpGet(url) {
 function checkTime() {
     if (!PUSH_HOURS_STR) return true;
     const h = new Date().getHours();
-    const allowed = PUSH_HOURS_STR.split(/[,，]/).map(n => parseInt(n)).filter(n => !isNaN(n));
+    // 兼容处理：支持 24 点写法，自动转为 0 点
+    const allowed = PUSH_HOURS_STR.split(/[,，]/).map(n => {
+        let val = parseInt(n);
+        if (val === 24) val = 0;
+        return val;
+    }).filter(n => !isNaN(n));
+    
     if (allowed.includes(h)) return true;
     console.log(`⏰ 当前 ${h} 点不在推送时间 ${JSON.stringify(allowed)}，跳过`);
     return false;
@@ -104,8 +115,6 @@ function getUrl(item, name) {
 
 function processItems(items, cfg) {
     if (!Array.isArray(items) || items.length === 0) return null;
-    
-    // 1. 关键词过滤
     let filtered = [];
     if (KEYWORDS.length > 0) {
         filtered = items.filter(item => {
@@ -114,10 +123,7 @@ function processItems(items, cfg) {
         });
         if (filtered.length > 0) console.log(`✅ ${cfg.name}: 命中关键词 ${filtered.length} 条`);
     }
-
-    // 2. 如果没命中关键词
     if (filtered.length === 0) {
-        // 关键修复：如果ignore=true（无词推新）或者 用户没填关键词，则推最新
         if (cfg.ignore || KEYWORDS.length === 0) {
             filtered = items;
         } else {
@@ -128,7 +134,6 @@ function processItems(items, cfg) {
     return filtered.slice(0, cfg.count);
 }
 
-// 4. 抓取逻辑
 async function fetchCommon(key) {
     const cfg = CFG[key];
     if (!cfg.enable) return;
