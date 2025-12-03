@@ -69,4 +69,4 @@ hot_xhs_count = input, "3", tag=小红书-获取数量
 [Script]
 # 这里的 cron 设置为每小时运行一次 (0 * * * *)
 # 脚本内部会检查 hot_push_hours 参数，如果不匹配当前小时，会自动跳过。
-cron "0 * * * *" script-path=hot_loon.js, tag=多平台热榜, timeout=60
+cron "0 * * * *" script-path=https://raw.githubusercontent.com/zorro-cell/zorro/refs/heads/main/hot_loon.js, tag=多平台热榜, timeout=60
