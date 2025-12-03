@@ -15,7 +15,7 @@
 };
  ==== Quantumultx ===
 [rewrite_local]
-^https?:\/\/api\.rrmj\.plus\/m-station\/drama\/(?:page|play) url script-request-header https://raw.githubusercontent.com/Yu9191/Rewrite/refs/heads/main/RRSP.js
+^https?:\/\/api\.rrmj\.plus\/m-station\/drama\/(?:page|play) url script-request-header https://raw.githubusercontent.com/zorro-cell/zorro/refs/heads/main/rrsp.js
 [mitm]
 hostname = api.rrmj.plus
 
