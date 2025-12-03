@@ -1,15 +1,15 @@
-name = 多平台热榜监控
-desc = 监控微博、知乎、百度、抖音等平台热榜，支持关键词过滤与即时跳转。
-author = @心事全在脸上
-homepage = https://t.me/Santiagocell
-icon = https://raw.githubusercontent.com/NobyDa/mini/master/Color/wanan.png
-version = 2025-12-03
-min-loon-version = 3.3.0
+#!name = 多平台热搜监控
+#!desc = 监控微博、知乎、百度、抖音等平台热榜，支持关键词过滤与即时跳转。
+#!author = @心事全在脸上
+#!homepage = https://t.me/Santiagocell
+#!icon = https://raw.githubusercontent.com/NobyDa/mini/master/Color/wanan.png
+#!date = 2025-12-03
+#!version = 3.0
 
 [Argument]
 # === 核心设置 ===
 hot_keywords = input, "", tag=监控关键词, desc=多关键词用逗号分隔
-hot_push_hours = input, "8,12,18,20", tag=推送小时, desc=填写推送小时(0-23)，逗号分隔
+hot_push_hours = input, "8,12,18,20", tag=推送小时, desc=填写推送小时(0-23)
 hot_attach_link = switch, true, tag=通知附带跳转
 
 # === 微博 ===
@@ -31,13 +31,13 @@ hot_douyin_ignore = switch, true, tag=抖音-无词推新
 hot_douyin_count = input, 3, tag=抖音-获取数量
 
 # === 知乎 ===
-hot_zhihu_enable = switch, false, tag=知乎-启用
+hot_zhihu_enable = switch, true, tag=知乎-启用
 hot_zhihu_split = switch, true, tag=知乎-单条推送
 hot_zhihu_ignore = switch, true, tag=知乎-无词推新
 hot_zhihu_count = input, 3, tag=知乎-获取数量
 
 # === B站 ===
-hot_bilibili_enable = switch, false, tag=B站-启用
+hot_bilibili_enable = switch, true, tag=B站-启用
 hot_bilibili_split = switch, true, tag=B站-单条推送
 hot_bilibili_ignore = switch, true, tag=B站-无词推新
 hot_bilibili_count = input, 3, tag=B站-获取数量
@@ -67,5 +67,5 @@ hot_xhs_ignore = switch, true, tag=小红书-无词推新
 hot_xhs_count = input, 3, tag=小红书-获取数量
 
 [Script]
-# Cron 定时检查
-cron "0 * * * *" script-path=https://raw.githubusercontent.com/zorro-cell/zorro/refs/heads/main/hot_loon.js, tag=多平台热榜, timeout=120
+# 这里的 argument 字段是关键，它把界面上的 {变量} 传给脚本
+cron "0 * * * *" script-path=hot_loon.js, tag=多平台热榜, timeout=120, argument="hot_keywords={hot_keywords}&hot_push_hours={hot_push_hours}&hot_attach_link={hot_attach_link}&hot_weibo_enable={hot_weibo_enable}&hot_weibo_split={hot_weibo_split}&hot_weibo_ignore={hot_weibo_ignore}&hot_weibo_count={hot_weibo_count}&hot_baidu_enable={hot_baidu_enable}&hot_baidu_split={hot_baidu_split}&hot_baidu_ignore={hot_baidu_ignore}&hot_baidu_count={hot_baidu_count}&hot_douyin_enable={hot_douyin_enable}&hot_douyin_split={hot_douyin_split}&hot_douyin_ignore={hot_douyin_ignore}&hot_douyin_count={hot_douyin_count}&hot_zhihu_enable={hot_zhihu_enable}&hot_zhihu_split={hot_zhihu_split}&hot_zhihu_ignore={hot_zhihu_ignore}&hot_zhihu_count={hot_zhihu_count}&hot_bilibili_enable={hot_bilibili_enable}&hot_bilibili_split={hot_bilibili_split}&hot_bilibili_ignore={hot_bilibili_ignore}&hot_bilibili_count={hot_bilibili_count}&hot_36kr_enable={hot_36kr_enable}&hot_36kr_split={hot_36kr_split}&hot_36kr_ignore={hot_36kr_ignore}&hot_36kr_count={hot_36kr_count}&hot_toutiao_enable={hot_toutiao_enable}&hot_toutiao_split={hot_toutiao_split}&hot_toutiao_ignore={hot_toutiao_ignore}&hot_toutiao_count={hot_toutiao_count}&hot_kuaishou_enable={hot_kuaishou_enable}&hot_kuaishou_split={hot_kuaishou_split}&hot_kuaishou_ignore={hot_kuaishou_ignore}&hot_kuaishou_count={hot_kuaishou_count}&hot_xhs_enable={hot_xhs_enable}&hot_xhs_split={hot_xhs_split}&hot_xhs_ignore={hot_xhs_ignore}&hot_xhs_count={hot_xhs_count}"
