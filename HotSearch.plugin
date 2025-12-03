@@ -1,0 +1,68 @@
+[Plugin]
+name = 多平台热榜监控
+desc = 监控微博、知乎、百度、抖音等平台热榜，支持关键词过滤与即时跳转。
+author = 心事全在脸上
+icon = https://raw.githubusercontent.com/NobyDa/mini/master/Color/wanan.png
+
+[Argument]
+# 全局设置
+hot_keywords = input, "", tag=监控关键词, desc=多个关键词用英文逗号或空格分隔
+hot_attach_link = switch, true, tag=通知附带跳转, desc=开启后通知点击可跳转APP
+
+# 微博
+hot_weibo_enable = switch, true, tag=微博-启用
+hot_weibo_split = switch, false, tag=微博-单条推送, desc=开启后每条热搜单独推送
+hot_weibo_ignore = switch, true, tag=微博-无词推新, desc=无关键词匹配时推送最新内容
+hot_weibo_count = input, "3", tag=微博-获取数量
+
+# 百度
+hot_baidu_enable = switch, true, tag=百度-启用
+hot_baidu_split = switch, false, tag=百度-单条推送
+hot_baidu_ignore = switch, true, tag=百度-无词推新
+hot_baidu_count = input, "3", tag=百度-获取数量
+
+# 抖音
+hot_douyin_enable = switch, true, tag=抖音-启用
+hot_douyin_split = switch, false, tag=抖音-单条推送
+hot_douyin_ignore = switch, true, tag=抖音-无词推新
+hot_douyin_count = input, "3", tag=抖音-获取数量
+
+# 知乎
+hot_zhihu_enable = switch, false, tag=知乎-启用
+hot_zhihu_split = switch, false, tag=知乎-单条推送
+hot_zhihu_ignore = switch, false, tag=知乎-无词推新
+hot_zhihu_count = input, "3", tag=知乎-获取数量
+
+# B站
+hot_bilibili_enable = switch, false, tag=B站-启用
+hot_bilibili_split = switch, false, tag=B站-单条推送
+hot_bilibili_ignore = switch, false, tag=B站-无词推新
+hot_bilibili_count = input, "3", tag=B站-获取数量
+
+# 36氪
+hot_36kr_enable = switch, false, tag=36氪-启用
+hot_36kr_split = switch, false, tag=36氪-单条推送
+hot_36kr_ignore = switch, false, tag=36氪-无词推新
+hot_36kr_count = input, "3", tag=36氪-获取数量
+
+# 今日头条
+hot_toutiao_enable = switch, false, tag=头条-启用
+hot_toutiao_split = switch, false, tag=头条-单条推送
+hot_toutiao_ignore = switch, false, tag=头条-无词推新
+hot_toutiao_count = input, "3", tag=头条-获取数量
+
+# 快手
+hot_kuaishou_enable = switch, false, tag=快手-启用
+hot_kuaishou_split = switch, false, tag=快手-单条推送
+hot_kuaishou_ignore = switch, false, tag=快手-无词推新
+hot_kuaishou_count = input, "3", tag=快手-获取数量
+
+# 小红书
+hot_xhs_enable = switch, false, tag=小红书-启用
+hot_xhs_split = switch, false, tag=小红书-单条推送
+hot_xhs_ignore = switch, false, tag=小红书-无词推新
+hot_xhs_count = input, "3", tag=小红书-获取数量
+
+[Script]
+# 定时任务：每天8点到22点，每2小时运行一次（可自行修改 cron 表达式）
+cron "0 8-22/2 * * *" script-path=hot_loon.js, tag=多平台热榜, timeout=60
