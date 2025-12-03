@@ -65,4 +65,4 @@ hot_xhs_count = input, "3", tag=小红书-获取数量
 
 [Script]
 # 定时任务：每天8点到22点，每2小时运行一次（可自行修改 cron 表达式）
-cron "0 8-22/2 * * *" script-path=hot_loon.js, tag=多平台热榜, timeout=60
+cron "0 8-22/2 * * *" script-path=https://raw.githubusercontent.com/zorro-cell/zorro/refs/heads/main/hot_loon.js, tag=多平台热榜, timeout=60
