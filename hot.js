@@ -104,8 +104,13 @@ const CFG = {
   },
   bilibili: {
     name: 'B站热门',
-    // 使用聚合接口
-    url: 'https://api.pearktrue.cn/api/dailyhot/?title=%E5%93%94%E5%93%A9%E5%93%94%E5%93%A9',
+    // 使用聚合接口（正确的参数名称是 bilibili，返回含链接的热点数据）
+    // 为提高稳定性，配置多个接口，按顺序尝试
+    urls: [
+      'https://api.pearktrue.cn/api/dailyhot/?title=bilibili',
+      // 备用：小小 API 的哔哩哔哩热度榜，返回 data 数组为字符串列表
+      'https://v2.xxapi.cn/api/bilibilihot',
+    ],
     enable: getConf('hot_bilibili_enable', 'bool', true),
     split: getConf('hot_bilibili_split', 'bool', true),
     ignore: getConf('hot_bilibili_ignore', 'bool', true),
@@ -113,8 +118,13 @@ const CFG = {
   },
   kr36: {
     name: '36氪热榜',
-    // 使用聚合接口
-    url: 'https://v2.xxapi.cn/api/hot36kr',
+    // 为提高稳定性，配置多个接口，按顺序尝试
+    urls: [
+      // PearKtrue 提供的 36Kr 热榜，返回 data 数组
+      'https://api.pearktrue.cn/api/dailyhot/?title=36kr',
+      // 备用：小小 API 的 36 氪热榜，返回 data.itemList 数组
+      'https://v2.xxapi.cn/api/hot36kr',
+    ],
     enable: getConf('hot_36kr_enable', 'bool', true),
     split: getConf('hot_36kr_split', 'bool', true),
     ignore: getConf('hot_36kr_ignore', 'bool', true),
@@ -353,40 +363,46 @@ function processList(name, list, cfg) {
 async function fetchCommon(key) {
   const cfg = CFG[key];
   if (!cfg.enable) return;
-  try {
-    console.log(`🚀 开始抓取: ${cfg.name}`);
-    // 获取原始响应体
-    const raw = await httpGet(cfg.url);
-    let data;
+  const urls = Array.isArray(cfg.urls) && cfg.urls.length > 0 ? cfg.urls : [cfg.url];
+  let lastError = null;
+  for (const u of urls) {
     try {
-      // 若返回的是字符串，尝试解析为 JSON；解析失败则保留原字符串
-      if (typeof raw === 'string') {
-        const trimmed = raw.trim();
-        if (trimmed && trimmed[0] !== '<') {
-          data = JSON.parse(trimmed);
+      console.log(`🚀 开始抓取: ${cfg.name}`);
+      const raw = await httpGet(u);
+      let data;
+      try {
+        if (typeof raw === 'string') {
+          const trimmed = raw.trim();
+          if (trimmed && trimmed[0] !== '<') {
+            data = JSON.parse(trimmed);
+          } else {
+            data = raw;
+          }
         } else {
-          // HTML 或空串直接赋值
           data = raw;
         }
-      } else {
+      } catch (e) {
+        console.log(`❌ ${cfg.name} 返回内容无法解析为 JSON: ${e}`);
         data = raw;
       }
-    } catch (e) {
-      // 解析失败时，将报错信息作为字符串传递
-      console.log(`❌ ${cfg.name} 返回内容无法解析为 JSON: ${e}`);
-      data = raw;
-    }
-    const finalItems = processList(cfg.name, data, cfg);
-    if (finalItems && finalItems.length > 0) {
-      if (cfg.split) {
-        finalItems.forEach((item, idx) => notify(`${cfg.name} Top${idx + 1}`, item.title, ATTACH_LINK ? item.url : ''));
-      } else {
-        const body = finalItems.map((i, idx) => `${idx + 1}. ${i.title}`).join('\n');
-        notify(`${cfg.name} Top${finalItems.length}`, body, '');
+      const finalItems = processList(cfg.name, data, cfg);
+      if (finalItems && finalItems.length > 0) {
+        if (cfg.split) {
+          finalItems.forEach((item, idx) => notify(`${cfg.name} Top${idx + 1}`, item.title, ATTACH_LINK ? item.url : ''));
+        } else {
+          const body = finalItems.map((i, idx) => `${idx + 1}. ${i.title}`).join('\n');
+          notify(`${cfg.name} Top${finalItems.length}`, body, '');
+        }
+        return;
       }
+    } catch (err) {
+      // 保存最后一次错误，用于全部尝试失败时输出
+      lastError = err;
+      // 尝试下一个接口
     }
-  } catch (e) {
-    console.log(`❌ ${cfg.name} 错误: ${e}`);
+  }
+  if (lastError) {
+    console.log(`❌ ${cfg.name} 错误: ${lastError}`);
   }
 }
 
