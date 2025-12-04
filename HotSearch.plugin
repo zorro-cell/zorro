@@ -1,0 +1,73 @@
+#!name = 多平台热榜监控
+#!desc = 监控微博、百度、抖音、知乎、B站、36氪、今日头条、小红书、快手等多个平台的热榜，并按关键词和时间过滤进行通知推送。
+#!author = @心事全在脸上
+#!homepage = https://t.me/Santiagocell
+#!version = 6.0
+#!date = 2025-12-04
+#!icon = https://raw.githubusercontent.com/NobyDa/mini/master/Color/wanan.png
+
+# 本插件使用 Loon 3.2.1+ 引入的 [Argument] 功能。面板里填写的值会自动
+# 传递给脚本 `$argument` 对象。参数顺序和名称必须与脚本中读取一致。
+
+[Argument]
+hot_keywords      = input,   "",    tag=监控关键词, desc=多个关键词用中文逗号或英文逗号分隔，留空则不限定关键词
+hot_push_hours    = input,   "",    tag=推送小时,   desc=指定推送的小时数，留空则全天推送；多个小时用逗号分隔（0-23）
+hot_attach_link   = switch,  true,   tag=通知附带跳转, desc=推送时是否在通知中附带跳转链接
+
+# 微博热搜相关开关
+hot_weibo_enable  = switch,  true,   tag=微博-启用,       desc=是否抓取微博热搜
+hot_weibo_split   = switch,  true,   tag=微博-单条推送,   desc=开启后每条热搜单独通知，否则合并推送
+hot_weibo_ignore  = switch,  true,   tag=微博-无词推新,   desc=未命中关键词时是否也推送最新榜单
+hot_weibo_count   = input,   3,      tag=微博-获取数量,   desc=推送条数，默认为 3 条
+
+# 百度热搜相关开关
+hot_baidu_enable  = switch,  true,   tag=百度-启用
+hot_baidu_split   = switch,  true,   tag=百度-单条推送
+hot_baidu_ignore  = switch,  true,   tag=百度-无词推新
+hot_baidu_count   = input,   3,      tag=百度-获取数量
+
+# 抖音热榜相关开关
+hot_douyin_enable = switch,  true,   tag=抖音-启用
+hot_douyin_split  = switch,  true,   tag=抖音-单条推送
+hot_douyin_ignore = switch,  true,   tag=抖音-无词推新
+hot_douyin_count  = input,   3,      tag=抖音-获取数量
+
+# 知乎热榜相关开关
+hot_zhihu_enable  = switch,  true,   tag=知乎-启用
+hot_zhihu_split   = switch,  true,   tag=知乎-单条推送
+hot_zhihu_ignore  = switch,  true,   tag=知乎-无词推新
+hot_zhihu_count   = input,   3,      tag=知乎-获取数量
+
+# B站热门相关开关
+hot_bilibili_enable = switch,  true,  tag=B站-启用
+hot_bilibili_split  = switch,  true,  tag=B站-单条推送
+hot_bilibili_ignore = switch,  true,  tag=B站-无词推新
+hot_bilibili_count  = input,   3,     tag=B站-获取数量
+
+# 36氪快讯相关开关
+hot_36kr_enable   = switch,  false,  tag=36氪-启用
+hot_36kr_split    = switch,  true,   tag=36氪-单条推送
+hot_36kr_ignore   = switch,  true,   tag=36氪-无词推新
+hot_36kr_count    = input,   3,      tag=36氪-获取数量
+
+# 今日头条相关开关
+hot_toutiao_enable = switch, false, tag=头条-启用
+hot_toutiao_split  = switch, true,  tag=头条-单条推送
+hot_toutiao_ignore = switch, true,  tag=头条-无词推新
+hot_toutiao_count  = input,  3,     tag=头条-获取数量
+
+# 快手热榜相关开关
+hot_kuaishou_enable = switch, false, tag=快手-启用
+hot_kuaishou_split  = switch, true,  tag=快手-单条推送
+hot_kuaishou_ignore = switch, true,  tag=快手-无词推新
+hot_kuaishou_count  = input,  3,     tag=快手-获取数量
+
+# 小红书热榜相关开关
+hot_xhs_enable    = switch,  false,  tag=小红书-启用
+hot_xhs_split     = switch,  true,   tag=小红书-单条推送
+hot_xhs_ignore    = switch,  true,   tag=小红书-无词推新
+hot_xhs_count     = input,   3,      tag=小红书-获取数量
+
+[Script]
+# 使用官方推荐的逗号分隔语法传递参数。顺序要与 [Argument] 中字段一致。
+cron "0 * * * *" script-path=https://raw.githubusercontent.com/zorro-cell/zorro/refs/heads/main/hot_loon.js, tag=多平台热榜监控, timeout=120, argument=[{hot_keywords},{hot_push_hours},{hot_attach_link},{hot_weibo_enable},{hot_weibo_split},{hot_weibo_ignore},{hot_weibo_count},{hot_baidu_enable},{hot_baidu_split},{hot_baidu_ignore},{hot_baidu_count},{hot_douyin_enable},{hot_douyin_split},{hot_douyin_ignore},{hot_douyin_count},{hot_zhihu_enable},{hot_zhihu_split},{hot_zhihu_ignore},{hot_zhihu_count},{hot_bilibili_enable},{hot_bilibili_split},{hot_bilibili_ignore},{hot_bilibili_count},{hot_36kr_enable},{hot_36kr_split},{hot_36kr_ignore},{hot_36kr_count},{hot_toutiao_enable},{hot_toutiao_split},{hot_toutiao_ignore},{hot_toutiao_count},{hot_kuaishou_enable},{hot_kuaishou_split},{hot_kuaishou_ignore},{hot_kuaishou_count},{hot_xhs_enable},{hot_xhs_split},{hot_xhs_ignore},{hot_xhs_count}]
