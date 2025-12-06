@@ -1,5 +1,5 @@
 /*
- * 多平台热榜 - Loon 参数化版本（新版）
+ * 多平台热榜 - Loon 优化无数版本（新版）
  *
  * 修改版：为了提高可靠性，新增了额外的备用接口，确保快手、知乎、今日头条等热榜在原接口失效时仍可抓取。
  * 新增的接口包括:
@@ -253,6 +253,11 @@ function normalizeItems(name, list) {
       return { title, url };
     });
   } else if (typeof list === 'string') {
+    // 如果字符串包含 HTML 标签，则视为无效（比如接口返回了 HTML 错误页），直接返回 null
+    const lower = list.trim().toLowerCase();
+    if (lower.startsWith('<') || lower.includes('<html') || lower.includes('<head') || lower.includes('<!doctype')) {
+      return null;
+    }
     // 比如 bilibili 接口返回字符串用、号分隔
     const parts = list.split(/[、,，]/).map((x) => x.trim()).filter(Boolean);
     items = parts.map((t) => ({
@@ -368,7 +373,9 @@ async function fetchKuaishou() {
   const cfg = CFG.kuaishou;
   if (!cfg.enable) return;
   const urls = [
-    // 新增 lolimi 与 guole 的快手接口
+    // 新增 suyanw 快手热榜接口（返回文本格式）
+    'https://api.suyanw.cn/api/kuaishou_hot_search.php',
+    // 其他聚合接口
     'https://v2.xxapi.cn/api/kuaishouhot',
     'https://tenapi.cn/v2/kuaishouhot',
     'https://api.vvhan.com/api/hotlist?type=ks',
@@ -380,28 +387,56 @@ async function fetchKuaishou() {
     try {
       console.log(' 开始抓取: 快手');
       const res = await httpGet(url);
-      let list;
-      if (res) {
-        if (Array.isArray(res.data)) list = res.data;
-        else if (Array.isArray(res)) list = res;
-        else if (res.result && Array.isArray(res.result.data)) list = res.result.data;
-        else list = res;
-      }
-      const items = normalizeItems('快手热榜', list);
-      if (items && items.length > 0) {
-        const finalItems = items.slice(0, cfg.count);
-        if (cfg.split) {
-          finalItems.forEach((item, idx) => notify(`快手热榜 Top${idx + 1}`, item.title, ATTACH_LINK ? item.url : ''));
-        } else {
-          notify(
-            `快手热榜 Top${finalItems.length}`,
-            finalItems.map((i, idx) => `${idx + 1}. ${i.title}`).join('\n'),
-            '',
-          );
+      // 如果返回的是 HTML（包含 <html> 或 <head>），直接跳过，避免解析错误
+      if (typeof res === 'string') {
+        const lower = res.toLowerCase();
+        if (lower.includes('<html') || lower.includes('<head') || lower.includes('<!doctype')) {
+          console.log(`⚠️ 快手接口返回 HTML，跳过 ${url}`);
+          continue;
         }
-        return;
       }
-    } catch (_) {}
+        // 当 suyanw 返回纯文本形式（包含"---快手热搜榜---"）时，按行解析
+        let parsedItems = null;
+        if (typeof res === 'string' && res.includes('快手热搜榜')) {
+          const lines = res.split('\n');
+          const titles = [];
+          for (const ln of lines) {
+            const m = ln.trim().match(/^[0-9]+[:：]\s*(.+)$/);
+            if (m) {
+              titles.push(m[1]);
+            }
+          }
+          if (titles.length > 0) {
+            parsedItems = titles.map((t) => ({ title: t, url: '' }));
+          }
+        }
+        let list;
+        if (res) {
+          if (Array.isArray(res.data)) list = res.data;
+          else if (Array.isArray(res)) list = res;
+          else if (res.result && Array.isArray(res.result.data)) list = res.result.data;
+          else list = res;
+        }
+        let items;
+        if (parsedItems) {
+          items = parsedItems;
+        } else {
+          items = normalizeItems('快手热榜', list);
+        }
+        if (items && items.length > 0) {
+          const finalItems = items.slice(0, cfg.count);
+          if (cfg.split) {
+            finalItems.forEach((item, idx) => notify(`快手热榜 Top${idx + 1}`, item.title, ATTACH_LINK ? item.url : ''));
+          } else {
+            notify(
+              `快手热榜 Top${finalItems.length}`,
+              finalItems.map((i, idx) => `${idx + 1}. ${i.title}`).join('\n'),
+              '',
+            );
+          }
+          return;
+        }
+      } catch (_) {}
   }
   console.log('❌ 快手失败');
 }
