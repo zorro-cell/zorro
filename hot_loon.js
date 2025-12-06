@@ -1,5 +1,5 @@
 /*
- * 多平台热榜 - Loon 优化无数版本（新版）
+ * 多平台热榜 - Loon 参数化版本（新版）
  *
  * 修改版：为了提高可靠性，新增了额外的备用接口，确保快手、知乎、今日头条等热榜在原接口失效时仍可抓取。
  * 新增的接口包括:
@@ -156,8 +156,11 @@ const CFG = {
     count: getConf('hot_toutiao_count', 'int', 3),
   },
   xhs: {
-    name: '小红书',
+    // 修改名称为小红书热榜，并在接口列表首位加入顺为数据提供的热点接口
+    name: '小红书热榜',
     urls: [
+      // 顺为数据小红书热点接口，需填写用户key。免费额度有限，如需长期使用请自行购买套餐。
+      'https://api.itapi.cn/api/hotnews/xiaohongshu?key=8BheThaS4E4msRqzttdh6JzaKO',
       'https://xzdx.top/api/tophub?type=xhs',
       'https://v2.xxapi.cn/api/xhshot',
       'https://api.vvhan.com/api/hotlist?type=xhs',
