@@ -120,8 +120,8 @@ const CFG = {
   },
   bilibili: {
     name: 'B站热门',
-    // 默认跳转地址：B站热门页
-    home: 'bilibili://popular',
+    // 默认跳转地址：B站热搜页
+    home: 'bilibili://search/trending',
     urls: [
       'https://xzdx.top/api/tophub?type=bilihot',
       'https://v.api.aa1.cn/api/bilibili-rs/',
@@ -153,8 +153,8 @@ const CFG = {
   },
   toutiao: {
     name: '头条热榜',
-    // 默认跳转地址：今日头条热榜页面（应用内可能自动进入热榜）
-    home: 'snssdk141://',
+    // 默认跳转地址：今日头条热榜页（尝试使用热搜词榜页面）
+    home: 'snssdk141://search/trending',
     urls: [
       // 新增 guole 与 lolimi 提供的头条热榜
       'https://xzdx.top/api/tophub?type=toutiao',
@@ -173,8 +173,8 @@ const CFG = {
   xhs: {
     // 修改名称为小红书热榜，并在接口列表首位加入顺为数据提供的热点接口
     name: '小红书热榜',
-    // 默认跳转地址：小红书发现页
-    home: 'xhsdiscover://',
+    // 默认跳转地址：小红书发现页（探索推荐）
+    home: 'xhsdiscover://home/explore',
     urls: [
       // 顺为数据小红书热点接口，需填写用户key。免费额度有限，如需长期使用请自行购买套餐。
       'https://api.itapi.cn/api/hotnews/xiaohongshu?key=8BheThaS4E4msRqzttdh6JzaKO',
@@ -191,8 +191,8 @@ const CFG = {
   },
   kuaishou: {
     name: '快手热榜',
-    // 默认跳转地址：快手话题榜页面
-    home: 'kwai://search/topicRank',
+    // 默认跳转地址：快手热搜页
+    home: 'kwai://home/hot',
     enable: getConf('hot_kuaishou_enable', 'bool', true),
     split: getConf('hot_kuaishou_split', 'bool', true),
     ignore: getConf('hot_kuaishou_ignore', 'bool', true),
@@ -205,8 +205,23 @@ const UA = {
   Referer: 'https://www.baidu.com',
 };
 function notify(title, body, url) {
-  if (typeof $notification !== 'undefined') {
-    $notification.post(title, '', body, url || '');
+  // 构建通知选项，统一使用 open-url 以兼容 Loon/Surge/Quantumult 等
+  const opts = {};
+  if (url) {
+    opts['open-url'] = url;
+  }
+  if (typeof $notification !== 'undefined' && typeof $notification.post === 'function') {
+    // Loon/Surge 兼容
+    try {
+      $notification.post(title, '', body, opts);
+      return;
+    } catch (e) {
+      // 忽略异常，fallback 到 $notify
+    }
+  }
+  if (typeof $notify !== 'undefined' && typeof $notify === 'function') {
+    // Quantumult X/Shadowrocket 兼容
+    $notify(title, '', body, opts);
   } else {
     console.log(`[推送] ${title}: ${body}`);
   }
