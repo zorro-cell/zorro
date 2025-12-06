@@ -120,8 +120,8 @@ const CFG = {
   },
   bilibili: {
     name: 'B站热门',
-    // 默认跳转地址：B站热搜页
-    home: 'bilibili://search/trending',
+    // 默认跳转地址：B站热门/热门话题列表
+    home: 'bilibili://pegasus/hottopic',
     urls: [
       'https://xzdx.top/api/tophub?type=bilihot',
       'https://v.api.aa1.cn/api/bilibili-rs/',
@@ -153,8 +153,8 @@ const CFG = {
   },
   toutiao: {
     name: '头条热榜',
-    // 默认跳转地址：今日头条热榜页（尝试使用热搜词榜页面）
-    home: 'snssdk141://search/trending',
+    // 默认跳转地址：今日头条首页（热榜暂无公开 scheme）
+    home: 'snssdk141://',
     urls: [
       // 新增 guole 与 lolimi 提供的头条热榜
       'https://xzdx.top/api/tophub?type=toutiao',
@@ -205,25 +205,29 @@ const UA = {
   Referer: 'https://www.baidu.com',
 };
 function notify(title, body, url) {
-  // 构建通知选项，统一使用 open-url 以兼容 Loon/Surge/Quantumult 等
+  // 构建通知选项
+  // 为兼容不同脚本环境，仅设置 openUrl 和 open-url 两个字段
   const opts = {};
   if (url) {
+    // Loon 使用 openUrl，Quantumult X 使用 open-url
     opts['open-url'] = url;
+    opts.openUrl = url;
   }
+  // Loon 和 Surge 使用 $notification.post
   if (typeof $notification !== 'undefined' && typeof $notification.post === 'function') {
-    // Loon/Surge 兼容
     try {
       $notification.post(title, '', body, opts);
       return;
     } catch (e) {
-      // 忽略异常，fallback 到 $notify
+      // 如果 $notification.post 调用失败，则尝试 $notify
     }
   }
+  // Quantumult X 使用 $notify
   if (typeof $notify !== 'undefined' && typeof $notify === 'function') {
-    // Quantumult X/Shadowrocket 兼容
     $notify(title, '', body, opts);
   } else {
-    console.log(`[推送] ${title}: ${body}`);
+    // 无法调用通知 API 时输出日志
+    console.log(`[推送] ${title}: ${body} ${url || ''}`);
   }
 }
 // HTTP GET with timeout and JSON parse fallback
