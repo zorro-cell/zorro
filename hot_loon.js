@@ -52,6 +52,8 @@ console.log(`[配置生效]: 关键词[${KEYWORDS}], 时间[${PUSH_HOURS_STR || 
 const CFG = {
   weibo: {
     name: '微博热搜',
+    // 默认跳转地址：微博热搜榜首页
+    home: 'sinaweibo://pageinfo?containerid=106003type%3D25%26t%3D3%26disable_hot%3D1%26filter_type%3Drealtimehot',
     urls: [
       'https://xzdx.top/api/tophub?type=weibo',
       'https://v2.xxapi.cn/api/weibohot',
@@ -66,6 +68,9 @@ const CFG = {
   },
   baidu: {
     name: '百度热搜',
+    // 默认跳转地址：百度热榜首页
+    // baiduboxapp 跳转地址需要编码后的链接；此处直接填入编码后的 URL
+    home: 'baiduboxapp://v1/easybrowse/open?url=https%3A%2F%2Ftop.baidu.com%2Fboard%3Ftab%3Drealtime',
     urls: [
       'https://xzdx.top/api/tophub?type=baidu',
       'https://v2.xxapi.cn/api/baiduhot',
@@ -80,6 +85,8 @@ const CFG = {
   },
   douyin: {
     name: '抖音热榜',
+    // 默认跳转地址：抖音热榜页
+    home: 'snssdk1128://search/trending',
     urls: [
       'https://xzdx.top/api/tophub?type=douyin',
       'https://v2.xxapi.cn/api/douyinhot',
@@ -94,6 +101,8 @@ const CFG = {
   },
   zhihu: {
     name: '知乎热榜',
+    // 默认跳转地址：知乎热榜页
+    home: 'zhihu://topstory/hot-list',
     urls: [
       // 新增 api.guole.fun 和知乎官方接口，提高稳定性
       'https://xzdx.top/api/tophub?type=zhihu',
@@ -111,6 +120,8 @@ const CFG = {
   },
   bilibili: {
     name: 'B站热门',
+    // 默认跳转地址：B站热门页
+    home: 'bilibili://popular',
     urls: [
       'https://xzdx.top/api/tophub?type=bilihot',
       'https://v.api.aa1.cn/api/bilibili-rs/',
@@ -126,6 +137,8 @@ const CFG = {
   },
   kr36: {
     name: '36氪热榜',
+    // 默认跳转地址：36氪新闻快讯
+    home: 'https://36kr.com/newsflashes',
     urls: [
       'https://xzdx.top/api/tophub?type=36kr',
       'https://v2.xxapi.cn/api/hot36kr',
@@ -140,6 +153,8 @@ const CFG = {
   },
   toutiao: {
     name: '头条热榜',
+    // 默认跳转地址：今日头条热榜页面（应用内可能自动进入热榜）
+    home: 'snssdk141://',
     urls: [
       // 新增 guole 与 lolimi 提供的头条热榜
       'https://xzdx.top/api/tophub?type=toutiao',
@@ -158,6 +173,8 @@ const CFG = {
   xhs: {
     // 修改名称为小红书热榜，并在接口列表首位加入顺为数据提供的热点接口
     name: '小红书热榜',
+    // 默认跳转地址：小红书发现页
+    home: 'xhsdiscover://',
     urls: [
       // 顺为数据小红书热点接口，需填写用户key。免费额度有限，如需长期使用请自行购买套餐。
       'https://api.itapi.cn/api/hotnews/xiaohongshu?key=8BheThaS4E4msRqzttdh6JzaKO',
@@ -174,6 +191,8 @@ const CFG = {
   },
   kuaishou: {
     name: '快手热榜',
+    // 默认跳转地址：快手话题榜页面
+    home: 'kwai://search/topicRank',
     enable: getConf('hot_kuaishou_enable', 'bool', true),
     split: getConf('hot_kuaishou_split', 'bool', true),
     ignore: getConf('hot_kuaishou_ignore', 'bool', true),
@@ -358,10 +377,13 @@ async function fetchCommon(key) {
       if (items && items.length > 0) {
         const finalItems = items.slice(0, cfg.count);
         if (cfg.split) {
+          // 单条推送：若开启附带链接，则使用每条的 URL，否则留空
           finalItems.forEach((item, idx) => notify(`${cfg.name} Top${idx + 1}`, item.title, ATTACH_LINK ? item.url : ''));
         } else {
+          // 合集推送：使用平台默认跳转地址（home）
           const body = finalItems.map((i, idx) => `${idx + 1}. ${i.title}`).join('\n');
-          notify(`${cfg.name} Top${finalItems.length}`, body, '');
+          const homeUrl = cfg.home || '';
+          notify(`${cfg.name} Top${finalItems.length}`, body, ATTACH_LINK ? homeUrl : '');
         }
         return;
       }
@@ -429,13 +451,17 @@ async function fetchKuaishou() {
         if (items && items.length > 0) {
           const finalItems = items.slice(0, cfg.count);
           if (cfg.split) {
-            finalItems.forEach((item, idx) => notify(`快手热榜 Top${idx + 1}`, item.title, ATTACH_LINK ? item.url : ''));
+            // 单条推送：附带每条 URL（如果设置了 ATTACH_LINK），否则留空
+            finalItems.forEach((item, idx) => {
+              notify(`快手热榜 Top${idx + 1}`, item.title, ATTACH_LINK ? item.url : '');
+            });
           } else {
-            notify(
-              `快手热榜 Top${finalItems.length}`,
-              finalItems.map((i, idx) => `${idx + 1}. ${i.title}`).join('\n'),
-              '',
-            );
+            // 合集推送：使用平台默认跳转地址
+            const body = finalItems
+              .map((i, idx) => `${idx + 1}. ${i.title}`)
+              .join('\n');
+            const homeUrl = cfg.home || '';
+            notify(`快手热榜 Top${finalItems.length}`, body, ATTACH_LINK ? homeUrl : '');
           }
           return;
         }
