@@ -53,10 +53,11 @@ const CFG = {
   weibo: {
     name: '微博热搜',
     urls: [
+      'https://xzdx.top/api/tophub?type=weibo',
       'https://v2.xxapi.cn/api/weibohot',
       'https://api.vvhan.com/api/hotlist?type=weibo',
       'https://tenapi.cn/v2/weibohot',
-      'https://api-hot.imsyy.top/weibo',
+      'https://api-hot.imsyy.top/weibo'
     ],
     enable: getConf('hot_weibo_enable', 'bool', true),
     split: getConf('hot_weibo_split', 'bool', true),
@@ -66,10 +67,11 @@ const CFG = {
   baidu: {
     name: '百度热搜',
     urls: [
+      'https://xzdx.top/api/tophub?type=baidu',
       'https://v2.xxapi.cn/api/baiduhot',
       'https://api.vvhan.com/api/hotlist?type=baiduRD',
       'https://tenapi.cn/v2/baiduhot',
-      'https://api-hot.imsyy.top/baidu',
+      'https://api-hot.imsyy.top/baidu'
     ],
     enable: getConf('hot_baidu_enable', 'bool', true),
     split: getConf('hot_baidu_split', 'bool', true),
@@ -79,10 +81,11 @@ const CFG = {
   douyin: {
     name: '抖音热榜',
     urls: [
+      'https://xzdx.top/api/tophub?type=douyin',
       'https://v2.xxapi.cn/api/douyinhot',
       'https://api.vvhan.com/api/hotlist?type=douyin',
       'https://tenapi.cn/v2/douyinhot',
-      'https://api-hot.imsyy.top/douyin',
+      'https://api-hot.imsyy.top/douyin'
     ],
     enable: getConf('hot_douyin_enable', 'bool', true),
     split: getConf('hot_douyin_split', 'bool', true),
@@ -92,10 +95,11 @@ const CFG = {
   zhihu: {
     name: '知乎热榜',
     urls: [
+      'https://xzdx.top/api/tophub?type=zhihu',
       'https://v2.xxapi.cn/api/zhihuhot',
       'https://api.vvhan.com/api/hotlist?type=zhihu',
       'https://tenapi.cn/v2/zhihuhot',
-      'https://api-hot.imsyy.top/zhihu',
+      'https://api-hot.imsyy.top/zhihu'
     ],
     enable: getConf('hot_zhihu_enable', 'bool', true),
     split: getConf('hot_zhihu_split', 'bool', true),
@@ -105,10 +109,12 @@ const CFG = {
   bilibili: {
     name: 'B站热门',
     urls: [
+      'https://xzdx.top/api/tophub?type=bilihot',
+      'https://v.api.aa1.cn/api/bilibili-rs/',
       'https://v2.xxapi.cn/api/bilibilihot',
       'https://api.vvhan.com/api/hotlist?type=bilibili',
       'https://tenapi.cn/v2/bilihot',
-      'https://api-hot.imsyy.top/bilibili',
+      'https://api-hot.imsyy.top/bilibili'
     ],
     enable: getConf('hot_bilibili_enable', 'bool', true),
     split: getConf('hot_bilibili_split', 'bool', true),
@@ -118,10 +124,11 @@ const CFG = {
   kr36: {
     name: '36氪热榜',
     urls: [
+      'https://xzdx.top/api/tophub?type=36kr',
       'https://v2.xxapi.cn/api/hot36kr',
       'https://api.vvhan.com/api/hotlist?type=36kr',
       'https://tenapi.cn/v2/36krhot',
-      'https://api-hot.imsyy.top/36kr',
+      'https://api-hot.imsyy.top/36kr'
     ],
     enable: getConf('hot_36kr_enable', 'bool', true),
     split: getConf('hot_36kr_split', 'bool', true),
@@ -131,10 +138,11 @@ const CFG = {
   toutiao: {
     name: '头条热榜',
     urls: [
+      'https://xzdx.top/api/tophub?type=toutiao',
       'https://v2.xxapi.cn/api/toutiaohot',
       'https://api.vvhan.com/api/hotlist?type=toutiao',
       'https://tenapi.cn/v2/toutiaohot',
-      'https://api-hot.imsyy.top/toutiao',
+      'https://api-hot.imsyy.top/toutiao'
     ],
     enable: getConf('hot_toutiao_enable', 'bool', true),
     split: getConf('hot_toutiao_split', 'bool', true),
@@ -144,10 +152,11 @@ const CFG = {
   xhs: {
     name: '小红书',
     urls: [
+      'https://xzdx.top/api/tophub?type=xhs',
       'https://v2.xxapi.cn/api/xhshot',
       'https://api.vvhan.com/api/hotlist?type=xhs',
       'https://tenapi.cn/v2/xhshot',
-      'https://api-hot.imsyy.top/xhs',
+      'https://api-hot.imsyy.top/xhs'
     ],
     enable: getConf('hot_xhs_enable', 'bool', true),
     split: getConf('hot_xhs_split', 'bool', true),
