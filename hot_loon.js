@@ -1,15 +1,15 @@
 /*
  * 多平台热榜 - Loon 参数化版本（新版）
  *
- * 说明：
- *   由于 api.vvhan.com、tenapi.cn 等接口在部分环境下无
- *   法连通，导致请求超时/SSL 握手错误。本版本改用
- *   xxapi.cn 的免费接口作为主要数据源，并保留此前
- *   vvhan/tenapi/imsyy 作为备用。若所有接口均失败，则
- *   不推送该平台热榜。
- *
- * 更新日期：2025‑12‑05
+ * 修改版：为了提高可靠性，新增了额外的备用接口，确保快手、知乎、今日头条等热榜在原接口失效时仍可抓取。
+ * 新增的接口包括:
+ *   - 知乎：api.guole.fun 和知乎官方接口
+ *   - 今日头条：api.guole.fun 和 lolimi 的聚合接口
+ *   - 快手：lolimi 和 guole 的聚合接口
+ * 其它逻辑保持不变。
+ * 更新日期：2025‑12‑06
  */
+
 const $config = {};
 // 解析 Loon 参数
 if (typeof $argument !== 'undefined') {
@@ -95,11 +95,14 @@ const CFG = {
   zhihu: {
     name: '知乎热榜',
     urls: [
+      // 新增 api.guole.fun 和知乎官方接口，提高稳定性
       'https://xzdx.top/api/tophub?type=zhihu',
       'https://v2.xxapi.cn/api/zhihuhot',
       'https://api.vvhan.com/api/hotlist?type=zhihu',
       'https://tenapi.cn/v2/zhihuhot',
-      'https://api-hot.imsyy.top/zhihu'
+      'https://api-hot.imsyy.top/zhihu',
+      'https://api.guole.fun/zhihu',
+      'https://api.zhihu.com/topstory/hot-lists/total?limit=50'
     ],
     enable: getConf('hot_zhihu_enable', 'bool', true),
     split: getConf('hot_zhihu_split', 'bool', true),
@@ -138,11 +141,14 @@ const CFG = {
   toutiao: {
     name: '头条热榜',
     urls: [
+      // 新增 guole 与 lolimi 提供的头条热榜
       'https://xzdx.top/api/tophub?type=toutiao',
       'https://v2.xxapi.cn/api/toutiaohot',
       'https://api.vvhan.com/api/hotlist?type=toutiao',
       'https://tenapi.cn/v2/toutiaohot',
-      'https://api-hot.imsyy.top/toutiao'
+      'https://api-hot.imsyy.top/toutiao',
+      'https://api.guole.fun/toutiao',
+      'https://api.lolimi.cn/API/jhrb/?hot=%E4%BB%8A%E6%97%A5%E5%A4%B4%E6%9D%A1'
     ],
     enable: getConf('hot_toutiao_enable', 'bool', true),
     split: getConf('hot_toutiao_split', 'bool', true),
@@ -362,10 +368,13 @@ async function fetchKuaishou() {
   const cfg = CFG.kuaishou;
   if (!cfg.enable) return;
   const urls = [
+    // 新增 lolimi 与 guole 的快手接口
     'https://v2.xxapi.cn/api/kuaishouhot',
     'https://tenapi.cn/v2/kuaishouhot',
     'https://api.vvhan.com/api/hotlist?type=ks',
     'https://api-hot.imsyy.top/kuaishou',
+    'https://api.lolimi.cn/API/jhrb/?hot=%E5%BF%AB%E6%89%8B',
+    'https://api.guole.fun/kuaishou'
   ];
   for (const url of urls) {
     try {
