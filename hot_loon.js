@@ -7,7 +7,7 @@
  *   - 今日头条：api.guole.fun 和 lolimi 的聚合接口
  *   - 快手：lolimi 和 guole 的聚合接口
  * 其它逻辑保持不变。
- * 更新日期：2025‑12‑06
+ * 更新日期：2025‑12‑07
  */
 
 const $config = {};
@@ -355,6 +355,48 @@ function normalizeItems(name, list) {
   // 过滤无标题
   items = items.filter((x) => x.title);
   if (items.length === 0) return null;
+
+  // 根据平台覆盖 item.url 为 App 内搜索地址，以便单条推送能直接跳转至对应的热搜词界面
+  try {
+    items = items.map((it) => {
+      const t = it.title || '';
+      // 默认使用现有 url
+      let newUrl = it.url || '';
+      // 微博：使用微博搜索 Scheme
+      if (name === '微博热搜') {
+        newUrl = `sinaweibo://searchall?q=${encodeURIComponent(t)}`;
+      }
+      // 抖音：使用抖音搜索 Scheme
+      else if (name === '抖音热榜') {
+        newUrl = `snssdk1128://search?keyword=${encodeURIComponent(t)}`;
+      }
+      // 头条：使用今日头条搜索 Scheme
+      else if (name === '头条热榜') {
+        newUrl = `snssdk141://search?keyword=${encodeURIComponent(t)}`;
+      }
+      // 快手：使用快手搜索 Scheme
+      else if (name === '快手热榜') {
+        newUrl = `kwai://search?keyword=${encodeURIComponent(t)}`;
+      }
+      // 小红书：使用小红书搜索结果页 Scheme
+      else if (name === '小红书热榜' || name === '小红书') {
+        newUrl = `xhsdiscover://search/result?keyword=${encodeURIComponent(t)}`;
+      }
+      // 百度：使用百度 App 搜索 Scheme
+      else if (name === '百度热搜') {
+        newUrl = `baiduboxapp://search?word=${encodeURIComponent(t)}`;
+      }
+      // B站：使用 B站搜索 Scheme
+      else if (name === 'B站热门') {
+        newUrl = `bilibili://search?keyword=${encodeURIComponent(t)}`;
+      }
+      // 36氪：无深度链接，保留原链接
+      it.url = newUrl;
+      return it;
+    });
+  } catch (ex) {
+    console.log('⚠️ URL override error:', ex);
+  }
   // 关键词筛选
   let filtered = [];
   if (KEYWORDS.length > 0) {
