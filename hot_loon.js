@@ -4,12 +4,12 @@
  * 本版本基于用户提供的修改版 hot_loon.js，并进一步修复了通知跳转问题。
  * 主要调整：
  *   1. 在通知中同时设置 `open-url` 和 `openUrl` 两个字段，以兼容 Quantumult X 与 Loon。
- *   2. 36 氪单条 / 合集通知都优先拉起 36 氪 App（通过通用链接 https://36kr.com/p/...）。
+ *   2. 保持其他逻辑不变，包括各平台的备用接口、热榜抓取和关键字筛选。
  *
  * 更新日期：2025-12-07
  */
 
-// 以下代码从修订版 hot_loon_modified.js 拷贝，并修改了 notify() + 36 氪相关逻辑。
+// 以下代码从修订版 hot_loon_modified.js 拷贝，并仅修改了 notify() 函数 + 个别平台 home 配置。
 
 const $config = {};
 // 解析 Loon 参数
@@ -134,8 +134,8 @@ const CFG = {
   },
   kr36: {
     name: '36氪热榜',
-    // 合集通知默认跳转：rebang 聚合页（保持和原版 hot.js 类似的行为）
-    home: 'https://rebang.today/?tab=36kr',
+    // 整体通知：通过 36kr 通用链接拉起 App（首页），不再跳 H5 热榜页
+    home: 'https://36kr.com/',
     urls: [
       'https://xzdx.top/api/tophub?type=36kr',
       'https://v2.xxapi.cn/api/hot36kr',
@@ -183,7 +183,7 @@ const CFG = {
   },
   kuaishou: {
     name: '快手热榜',
-    // 使用快手 Hot 页的 Scheme 进入热榜
+    // 整体通知：直接拉起快手 App 热榜
     home: 'kwai://home/hot',
     enable: getConf('hot_kuaishou_enable', 'bool', true),
     split: getConf('hot_kuaishou_split', 'bool', true),
@@ -198,31 +198,28 @@ const UA = {
 };
 
 function notify(title, body, url) {
-  // 优先兼容 Loon/Surge：$notification.post(title, subtitle, body, urlString)
-  if (typeof $notification !== 'undefined' && typeof $notification.post === 'function') {
-    try {
-      if (url) {
-        $notification.post(title || '', '', body || '', url);
-      } else {
-        $notification.post(title || '', '', body || '');
-      }
-      return;
-    } catch (e) {
-      // 继续尝试 $notify
-    }
-  }
-  // 兼容 Quantumult X：$notify(title, subtitle, body, { 'open-url': url, openUrl: url })
+  // 构建通知选项
   const opts = {};
   if (url) {
+    // 同时设置 open-url 与 openUrl，兼容不同脚本环境
     opts['open-url'] = url;
     opts['openUrl'] = url;
   }
+  // 优先使用 $notify，再尝试使用 $notification.post
   if (typeof $notify === 'function') {
     try {
       $notify(title || '', '', body || '', opts);
       return;
     } catch (e) {
-      // ignore
+      // 忽略异常，继续使用其他 API
+    }
+  }
+  if (typeof $notification !== 'undefined' && typeof $notification.post === 'function') {
+    try {
+      $notification.post(title || '', '', body || '', opts);
+      return;
+    } catch (e) {
+      // 忽略通知异常
     }
   }
   console.log(`[推送] ${title}: ${body} ${url || ''}`);
@@ -278,8 +275,7 @@ function normalizeItems(name, list) {
         } else if (name === 'B站热门') {
           url = `bilibili://search?keyword=${encodeURIComponent(title)}`;
         } else if (name === '36氪热榜') {
-          // 36 氪单条跳转：在对象分支中会用 route 构造文章链接，这里不再强制热榜 H5
-          url = '';
+          url = 'https://36kr.com/hot-list-m?channel=copy_url';
         } else if (name === '头条热榜') {
           url = `snssdk1128://search?keyword=${encodeURIComponent(title)}`;
         } else if (name === '小红书') {
@@ -300,21 +296,11 @@ function normalizeItems(name, list) {
     }));
   } else {
     if (name === '36氪热榜') {
-      const arr = list.data?.itemList || list.itemList || [];
-      items = arr.map((x) => {
-        const title =
-          x.templateMaterial?.widgetTitle ||
-          x.title ||
-          (x.templateMaterial && x.templateMaterial.title) ||
-          '';
-        let url = '';
-        const route = x.route || x.templateMaterial?.route;
-        if (route && /detail_article\?itemId=\d+/.test(route)) {
-          const m = route.match(/detail_article\?itemId=(\d+)/);
-          if (m) url = `https://36kr.com/p/${m[1]}`;
-        }
-        return { title, url };
-      });
+      const arr = list.data?.itemList || [];
+      items = arr.map((x) => ({
+        title: x.templateMaterial?.widgetTitle || x.title,
+        url: 'https://36kr.com/hot-list-m?channel=copy_url',
+      }));
     } else if (name === 'B站热门') {
       const arr = list.data?.list || [];
       items = arr.map((x) => ({
@@ -422,12 +408,8 @@ async function fetchCommon(key) {
           finalItems.forEach((item, idx) => notify(`${cfg.name} Top${idx + 1}`, item.title, ATTACH_LINK ? item.url : ''));
         } else {
           const body = finalItems.map((i, idx) => `${idx + 1}. ${i.title}`).join('\n');
-          let jumpUrl = cfg.home || '';
-          // 36氪整体通知：优先使用第一条的文章链接（通用链接可拉起 App）
-          if (cfg.name === '36氪热榜' && finalItems[0] && finalItems[0].url) {
-            jumpUrl = finalItems[0].url;
-          }
-          notify(`${cfg.name} Top${finalItems.length}`, body, ATTACH_LINK ? jumpUrl : '');
+          const homeUrl = cfg.home || '';
+          notify(`${cfg.name} Top${finalItems.length}`, body, ATTACH_LINK ? homeUrl : '');
         }
         return;
       }
