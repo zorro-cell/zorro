@@ -141,8 +141,8 @@ const CFG = {
   },
   kr36: {
     name: '36氪热榜',
-    // 默认跳转地址：36氪新闻快讯
-    home: 'https://36kr.com/newsflashes',
+    // 默认跳转地址：36氪热榜 H5 页。此页面展示 36 氪实时热榜，使用官方移动端路径。
+    home: 'https://36kr.com/hot-list-m?channel=copy_url',
     urls: [
       'https://xzdx.top/api/tophub?type=36kr',
       'https://v2.xxapi.cn/api/hot36kr',
@@ -196,7 +196,8 @@ const CFG = {
   kuaishou: {
     name: '快手热榜',
     // 默认跳转地址：快手热搜页
-    home: 'kwai://home/hot',
+    // 使用原版脚本中的跳转地址，通过 kwai://search/topicRank 打开快手热榜页
+    home: 'kwai://search/topicRank',
     enable: getConf('hot_kuaishou_enable', 'bool', true),
     split: getConf('hot_kuaishou_split', 'bool', true),
     ignore: getConf('hot_kuaishou_ignore', 'bool', true),
@@ -290,7 +291,8 @@ function normalizeItems(name, list) {
         } else if (name === 'B站热门') {
           url = `bilibili://search?keyword=${encodeURIComponent(title)}`;
         } else if (name === '36氪热榜') {
-          url = 'https://36kr.com/newsflashes';
+          // 36氪：使用热榜 H5 页面作为跳转地址
+          url = 'https://36kr.com/hot-list-m?channel=copy_url';
         } else if (name === '头条热榜') {
           url = `snssdk1128://search?keyword=${encodeURIComponent(title)}`;
         } else if (name === '小红书') {
@@ -317,7 +319,8 @@ function normalizeItems(name, list) {
       const arr = list.data?.itemList || [];
       items = arr.map((x) => ({
         title: x.templateMaterial?.widgetTitle || x.title,
-        url: 'https://36kr.com/newsflashes',
+        // 使用热榜 H5 页面作为跳转地址
+        url: 'https://36kr.com/hot-list-m?channel=copy_url',
       }));
     } else if (name === 'B站热门') {
       const arr = list.data?.list || [];
