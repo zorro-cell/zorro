@@ -134,8 +134,9 @@ const CFG = {
   },
   kr36: {
     name: '36氪热榜',
-    // 使用官方移动端热榜页面
-    home: 'https://36kr.com/hot-list-m?channel=copy_url',
+    // 快手需求：尽量使用应用内跳转。36氪官方没有公开的热榜深链，
+    // 因此改为尝试使用 36kr:// scheme 调起 App。实际效果取决于 App 是否注册了此 Scheme。
+    home: '36kr://',
     urls: [
       'https://xzdx.top/api/tophub?type=36kr',
       'https://v2.xxapi.cn/api/hot36kr',
@@ -184,7 +185,8 @@ const CFG = {
   kuaishou: {
     name: '快手热榜',
     // 使用原版脚本中的跳转地址
-    home: 'kwai://search/topicRank',
+    // 使用快手 Hot 页的 Scheme（home/hot）以直接进入热榜
+    home: 'kwai://home/hot',
     enable: getConf('hot_kuaishou_enable', 'bool', true),
     split: getConf('hot_kuaishou_split', 'bool', true),
     ignore: getConf('hot_kuaishou_ignore', 'bool', true),
@@ -198,30 +200,42 @@ const UA = {
 };
 
 function notify(title, body, url) {
-  // 构建通知选项
-  const opts = {};
-  if (url) {
-    // 同时设置 open-url 与 openUrl，兼容不同脚本环境
-    opts['open-url'] = url;
-    opts['openUrl'] = url;
+  /**
+   * 发送通知并附带跳转链接。
+   *
+   * Loon 环境建议使用 $notification.post 第四个参数为字符串形式的 URL，
+   * Quantumult X / Surge 环境则使用 $notify 并通过对象指定 open-url 或 openUrl。
+   */
+  // 若存在 Loon 的 $notification API，则优先使用
+  if (
+    typeof $notification !== 'undefined' &&
+    typeof $notification.post === 'function'
+  ) {
+    try {
+      // 在 Loon 中第四个参数为字符串时即为跳转链接
+      $notification.post(title || '', '', body || '', url || '');
+      return;
+    } catch (e) {
+      // 若调用失败则降级处理
+    }
   }
-  // 优先使用 $notify，再尝试使用 $notification.post
+  // Quantumult X / Surge 使用 $notify（兼容 open-url/openUrl 键）
   if (typeof $notify === 'function') {
     try {
+      const opts = {};
+      if (url) {
+        // 为兼容 Quantumult X 与 Surge，使用 open-url 作为 URL 键
+        opts['open-url'] = url;
+        // 一些环境可能识别 openUrl，所以也同时设置
+        opts['openUrl'] = url;
+      }
       $notify(title || '', '', body || '', opts);
       return;
     } catch (e) {
-      // 忽略异常，继续使用其他 API
+      // 忽略异常
     }
   }
-  if (typeof $notification !== 'undefined' && typeof $notification.post === 'function') {
-    try {
-      $notification.post(title || '', '', body || '', opts);
-      return;
-    } catch (e) {
-      // 忽略通知异常
-    }
-  }
+  // 无法调用系统通知时，降级打印日志
   console.log(`[推送] ${title}: ${body} ${url || ''}`);
 }
 
@@ -275,7 +289,8 @@ function normalizeItems(name, list) {
         } else if (name === 'B站热门') {
           url = `bilibili://search?keyword=${encodeURIComponent(title)}`;
         } else if (name === '36氪热榜') {
-          url = 'https://36kr.com/hot-list-m?channel=copy_url';
+          // 36氪没有公开深度链接，使用应用 scheme 尝试直接打开 App
+          url = '36kr://';
         } else if (name === '头条热榜') {
           url = `snssdk1128://search?keyword=${encodeURIComponent(title)}`;
         } else if (name === '小红书') {
