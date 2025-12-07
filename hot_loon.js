@@ -3,13 +3,13 @@
  *
  * 本版本基于用户提供的修改版 hot_loon.js，并进一步修复了通知跳转问题。
  * 主要调整：
- *   1. 在通知中同时设置 `open-url` 和 `openUrl` 两个字段，以兼容 Quantumult X 与 Loon。
+ *   1. 在通知中同时设置/兼容 URL 跳转，优先适配 Loon 直接拉起 App。
  *   2. 保持其他逻辑不变，包括各平台的备用接口、热榜抓取和关键字筛选。
  *
  * 更新日期：2025-12-07
  */
 
-// 以下代码从修订版 hot_loon_modified.js 拷贝，并仅修改了 notify() 函数。
+// 以下代码从修订版 hot_loon_modified.js 拷贝，并修改了 notify() 函数与 36氪整体跳转地址。
 
 const $config = {};
 // 解析 Loon 参数
@@ -134,7 +134,7 @@ const CFG = {
   },
   kr36: {
     name: '36氪热榜',
-    // 默认跳转地址：36氪新闻快讯
+    // 默认跳转地址：36氪新闻快讯（iOS 有可能用通用链接拉起 App）
     home: 'https://36kr.com/newsflashes',
     urls: [
       'https://xzdx.top/api/tophub?type=36kr',
@@ -183,7 +183,7 @@ const CFG = {
   },
   kuaishou: {
     name: '快手热榜',
-    // 使用原版脚本中的跳转地址
+    // 使用快手 Hot 页的 Scheme 进入热榜
     home: 'kwai://home/hot',
     enable: getConf('hot_kuaishou_enable', 'bool', true),
     split: getConf('hot_kuaishou_split', 'bool', true),
@@ -198,25 +198,28 @@ const UA = {
 };
 
 function notify(title, body, url) {
-  // 构建通知选项
+  // 在 Loon / Surge 下，优先使用字符串 URL 作为第四个参数，点击后由系统直接处理跳转
+  if (typeof $notification !== 'undefined' && typeof $notification.post === 'function') {
+    try {
+      if (url) {
+        $notification.post(title || '', '', body || '', url);
+      } else {
+        $notification.post(title || '', '', body || '');
+      }
+      return;
+    } catch (e) {
+      // 忽略异常，继续尝试使用 $notify
+    }
+  }
+  // 兼容 Quantumult X：使用 open-url / openUrl 字段
   const opts = {};
   if (url) {
-    // 同时设置 open-url 与 openUrl，兼容不同脚本环境
     opts['open-url'] = url;
     opts['openUrl'] = url;
   }
-  // 优先使用 $notify，再尝试使用 $notification.post
   if (typeof $notify === 'function') {
     try {
       $notify(title || '', '', body || '', opts);
-      return;
-    } catch (e) {
-      // 忽略异常，继续使用其他 API
-    }
-  }
-  if (typeof $notification !== 'undefined' && typeof $notification.post === 'function') {
-    try {
-      $notification.post(title || '', '', body || '', opts);
       return;
     } catch (e) {
       // 忽略通知异常
