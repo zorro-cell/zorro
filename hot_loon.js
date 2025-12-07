@@ -7,7 +7,7 @@
  *   - 今日头条：api.guole.fun 和 lolimi 的聚合接口
  *   - 快手：lolimi 和 guole 的聚合接口
  * 其它逻辑保持不变。
- * 更新日期：2025‑12‑07
+ * 更新日期：2025‑12‑06
  */
 
 const $config = {};
@@ -205,30 +205,30 @@ const UA = {
   Referer: 'https://www.baidu.com',
 };
 function notify(title, body, url) {
-  // 构建通知选项
-  // 为兼容不同脚本环境，仅设置 openUrl 和 open-url 两个字段
+  // 构建通知选项，仅设置 open-url 字段以兼容 Loon/Surge/Quantumult X
   const opts = {};
   if (url) {
-    // Loon 使用 openUrl，Quantumult X 使用 open-url
     opts['open-url'] = url;
-    opts.openUrl = url;
   }
-  // Loon 和 Surge 使用 $notification.post
+  // 优先使用 $notify（Quantumult X 与 Loon 兼容），若不可用则尝试 $notification.post
+  if (typeof $notify === 'function') {
+    try {
+      $notify(title, '', body, opts);
+      return;
+    } catch (_) {
+      // 如果调用失败则继续使用 $notification
+    }
+  }
   if (typeof $notification !== 'undefined' && typeof $notification.post === 'function') {
     try {
       $notification.post(title, '', body, opts);
       return;
-    } catch (e) {
-      // 如果 $notification.post 调用失败，则尝试 $notify
+    } catch (_) {
+      // 忽略通知异常
     }
   }
-  // Quantumult X 使用 $notify
-  if (typeof $notify !== 'undefined' && typeof $notify === 'function') {
-    $notify(title, '', body, opts);
-  } else {
-    // 无法调用通知 API 时输出日志
-    console.log(`[推送] ${title}: ${body} ${url || ''}`);
-  }
+  // 如果两种 API 都不可用，输出日志
+  console.log(`[推送] ${title}: ${body} ${url || ''}`);
 }
 // HTTP GET with timeout and JSON parse fallback
 function httpGet(url) {
@@ -376,7 +376,9 @@ function normalizeItems(name, list) {
       }
       // 快手：使用快手搜索 Scheme
       else if (name === '快手热榜') {
-        newUrl = `kwai://search?keyword=${encodeURIComponent(t)}`;
+        // 快手搜索 URL Scheme 经测试对中文关键字无需编码，直接传递原始标题可以正确跳转。
+        // 编码后的关键字（%E9%85%B8%EF%BC%8C%E7%94%BB%E7%89%87等）有时会导致快手无法识别，因此这里不进行 encodeURIComponent 处理。
+        newUrl = `kwai://search?keyword=${t}`;
       }
       // 小红书：使用小红书搜索结果页 Scheme
       else if (name === '小红书热榜' || name === '小红书') {
@@ -505,7 +507,8 @@ async function fetchKuaishou() {
         }
         let items;
         if (parsedItems) {
-          items = parsedItems;
+          // 对文本解析出的列表再次调用 normalizeItems，以统一 URL 构建逻辑
+          items = normalizeItems('快手热榜', parsedItems);
         } else {
           items = normalizeItems('快手热榜', list);
         }
