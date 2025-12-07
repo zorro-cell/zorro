@@ -209,10 +209,12 @@ const UA = {
   Referer: 'https://www.baidu.com',
 };
 function notify(title, body, url) {
-  // 构建通知选项，仅设置 open-url 字段以兼容 Loon/Surge/Quantumult X
+  // 构建通知选项，兼容 Loon、Surge、Quantumult X 等。按官方文档，Loon 使用 openUrl 字段，
+  // Quantumult X 使用 open-url 字段。因此同时设置两个字段。
   const opts = {};
   if (url) {
-    opts['open-url'] = url;
+    opts['open-url'] = url;  // Quantumult X / Surge
+    opts['openUrl'] = url;   // Loon
   }
   // 优先使用 $notify（Quantumult X 与 Loon 兼容），若不可用则尝试 $notification.post
   if (typeof $notify === 'function') {
