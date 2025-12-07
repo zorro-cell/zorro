@@ -120,8 +120,9 @@ const CFG = {
   },
   bilibili: {
     name: 'B站热门',
-    // 默认跳转地址：B站热门/热门话题列表
-    home: 'bilibili://pegasus/hottopic',
+    // 默认跳转地址：B站热搜榜页面（使用 B 站短链 b23.tv 重定向到热搜榜）
+    // 若应用支持，打开该链接将直接进入 B 站热搜榜；否则将在浏览器中打开页面
+    home: 'https://b23.tv/Ic0bARY',
     urls: [
       'https://xzdx.top/api/tophub?type=bilihot',
       'https://v.api.aa1.cn/api/bilibili-rs/',
