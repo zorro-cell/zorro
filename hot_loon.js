@@ -210,31 +210,31 @@ const UA = {
   Referer: 'https://www.baidu.com',
 };
 function notify(title, body, url) {
-  // 统一构建通知选项，默认仅使用 open-url 字段以兼容 Loon/Surge/Quantumult X 等客户端。
-  // 根据 Loon 官方脚本说明，点击通知时所打开的链接需放在 open-url 字段中。
+  // 构建通知选项，兼容 Loon、Surge、Quantumult X 等。按官方文档，Loon 使用 openUrl 字段，
+  // Quantumult X 使用 open-url 字段。因此同时设置两个字段。
   const opts = {};
   if (url) {
-    // 仅设置 open-url，一个字段即可兼容大部分客户端，避免混淆。
-    opts['open-url'] = url;
+    opts['open-url'] = url;  // Quantumult X / Surge
+    opts['openUrl'] = url;   // Loon
   }
-  // 优先调用 $notify，如果不存在则退回到 $notification.post。两者使用相同的参数结构。
+  // 优先使用 $notify（Quantumult X 与 Loon 兼容），若不可用则尝试 $notification.post
   if (typeof $notify === 'function') {
     try {
-      $notify(title || '', '', body || '', opts);
+      $notify(title, '', body, opts);
       return;
-    } catch (e) {
-      // 如果调用失败则继续使用 $notification.post
+    } catch (_) {
+      // 如果调用失败则继续使用 $notification
     }
   }
   if (typeof $notification !== 'undefined' && typeof $notification.post === 'function') {
     try {
-      $notification.post(title || '', '', body || '', opts);
+      $notification.post(title, '', body, opts);
       return;
-    } catch (e) {
+    } catch (_) {
       // 忽略通知异常
     }
   }
-  // 如果脚本环境不支持通知，则在控制台输出日志
+  // 如果两种 API 都不可用，输出日志
   console.log(`[推送] ${title}: ${body} ${url || ''}`);
 }
 // HTTP GET with timeout and JSON parse fallback
