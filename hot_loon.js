@@ -120,9 +120,12 @@ const CFG = {
   },
   bilibili: {
     name: 'B站热门',
-    // 默认跳转地址：B站热搜榜页面（使用 B 站短链 b23.tv 重定向到热搜榜）
-    // 若应用支持，打开该链接将直接进入 B 站热搜榜；否则将在浏览器中打开页面
-    home: 'https://b23.tv/Ic0bARY',
+    // 默认跳转地址：B 站热门/热搜页面。通过 bilibili 内置浏览器 Scheme 打开官方 H5 热搜榜，
+    // 避免使用短链导致 Loon 识别失败。使用浏览器形式可直接加载活动页而不会出现搜索框：
+    // bilibili://browser?url=URLENCODE("https://www.bilibili.com/blackboard/activity-trending-topic.html")
+    // 其中 https://www.bilibili.com/blackboard/activity-trending-topic.html 为 B 站官方热搜榜 H5 页面，
+    // 已经按 URL 编码编码成参数。
+    home: 'bilibili://browser?url=https%3A%2F%2Fwww.bilibili.com%2Fblackboard%2Factivity-trending-topic.html',
     urls: [
       'https://xzdx.top/api/tophub?type=bilihot',
       'https://v.api.aa1.cn/api/bilibili-rs/',
