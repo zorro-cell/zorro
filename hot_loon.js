@@ -9,7 +9,7 @@
  * 更新日期：2025-12-07
  */
 
-// 以下代码从修订版 hot_loon_modified.js 拷贝，并仅修改了 notify() 函数 + 个别平台 home 配置。
+// 以下代码从修订版 hot_loon_modified.js 拷贝，并仅修改了 notify() 函数。
 
 const $config = {};
 // 解析 Loon 参数
@@ -134,8 +134,8 @@ const CFG = {
   },
   kr36: {
     name: '36氪热榜',
-    // 整体通知：通过 36kr 通用链接拉起 App（首页），不再跳 H5 热榜页
-    home: 'https://36kr.com/',
+    // 默认跳转地址：36氪新闻快讯
+    home: 'https://36kr.com/newsflashes',
     urls: [
       'https://xzdx.top/api/tophub?type=36kr',
       'https://v2.xxapi.cn/api/hot36kr',
@@ -183,7 +183,7 @@ const CFG = {
   },
   kuaishou: {
     name: '快手热榜',
-    // 整体通知：直接拉起快手 App 热榜
+    // 使用原版脚本中的跳转地址
     home: 'kwai://home/hot',
     enable: getConf('hot_kuaishou_enable', 'bool', true),
     split: getConf('hot_kuaishou_split', 'bool', true),
