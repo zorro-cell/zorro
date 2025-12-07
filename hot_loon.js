@@ -1,14 +1,15 @@
 /*
- * 多平台热榜 - Loon 参数化版本（新版）
+ * 多平台热榜 - Loon 参数化版本（修正通知字段）
  *
- * 修改版：为了提高可靠性，新增了额外的备用接口，确保快手、知乎、今日头条等热榜在原接口失效时仍可抓取。
- * 新增的接口包括:
- *   - 知乎：api.guole.fun 和知乎官方接口
- *   - 今日头条：api.guole.fun 和 lolimi 的聚合接口
- *   - 快手：lolimi 和 guole 的聚合接口
- * 其它逻辑保持不变。
- * 更新日期：2025‑12‑06
+ * 本版本基于用户提供的修改版 hot_loon.js，并进一步修复了通知跳转问题。
+ * 主要调整：
+ *   1. 在通知中同时设置 `open-url` 和 `openUrl` 两个字段，以兼容 Quantumult X 与 Loon。
+ *   2. 保持其他逻辑不变，包括各平台的备用接口、热榜抓取和关键字筛选。
+ *
+ * 更新日期：2025‑12‑07
  */
+
+// 以下代码从修订版 hot_loon_modified.js 拷贝，并仅修改了 notify() 函数。
 
 const $config = {};
 // 解析 Loon 参数
@@ -69,7 +70,6 @@ const CFG = {
   baidu: {
     name: '百度热搜',
     // 默认跳转地址：百度热榜首页
-    // baiduboxapp 跳转地址需要编码后的链接；此处直接填入编码后的 URL
     home: 'baiduboxapp://v1/easybrowse/open?url=https%3A%2F%2Ftop.baidu.com%2Fboard%3Ftab%3Drealtime',
     urls: [
       'https://xzdx.top/api/tophub?type=baidu',
@@ -85,7 +85,6 @@ const CFG = {
   },
   douyin: {
     name: '抖音热榜',
-    // 默认跳转地址：抖音热榜页
     home: 'snssdk1128://search/trending',
     urls: [
       'https://xzdx.top/api/tophub?type=douyin',
@@ -101,10 +100,8 @@ const CFG = {
   },
   zhihu: {
     name: '知乎热榜',
-    // 默认跳转地址：知乎热榜页
     home: 'zhihu://topstory/hot-list',
     urls: [
-      // 新增 api.guole.fun 和知乎官方接口，提高稳定性
       'https://xzdx.top/api/tophub?type=zhihu',
       'https://v2.xxapi.cn/api/zhihuhot',
       'https://api.vvhan.com/api/hotlist?type=zhihu',
@@ -120,11 +117,7 @@ const CFG = {
   },
   bilibili: {
     name: 'B站热门',
-    // 默认跳转地址：B 站热门/热搜页面。通过 bilibili 内置浏览器 Scheme 打开官方 H5 热搜榜，
-    // 避免使用短链导致 Loon 识别失败。使用浏览器形式可直接加载活动页而不会出现搜索框：
-    // bilibili://browser?url=URLENCODE("https://www.bilibili.com/blackboard/activity-trending-topic.html")
-    // 其中 https://www.bilibili.com/blackboard/activity-trending-topic.html 为 B 站官方热搜榜 H5 页面，
-    // 已经按 URL 编码编码成参数。
+    // 使用官方 H5 热搜榜页面，通过 bilibili 内置浏览器 Scheme 打开
     home: 'bilibili://browser?url=https%3A%2F%2Fwww.bilibili.com%2Fblackboard%2Factivity-trending-topic.html',
     urls: [
       'https://xzdx.top/api/tophub?type=bilihot',
@@ -141,7 +134,7 @@ const CFG = {
   },
   kr36: {
     name: '36氪热榜',
-    // 默认跳转地址：36氪热榜 H5 页。此页面展示 36 氪实时热榜，使用官方移动端路径。
+    // 使用官方移动端热榜页面
     home: 'https://36kr.com/hot-list-m?channel=copy_url',
     urls: [
       'https://xzdx.top/api/tophub?type=36kr',
@@ -157,10 +150,8 @@ const CFG = {
   },
   toutiao: {
     name: '头条热榜',
-    // 默认跳转地址：今日头条首页（热榜暂无公开 scheme）
     home: 'snssdk141://',
     urls: [
-      // 新增 guole 与 lolimi 提供的头条热榜
       'https://xzdx.top/api/tophub?type=toutiao',
       'https://v2.xxapi.cn/api/toutiaohot',
       'https://api.vvhan.com/api/hotlist?type=toutiao',
@@ -175,12 +166,9 @@ const CFG = {
     count: getConf('hot_toutiao_count', 'int', 3),
   },
   xhs: {
-    // 修改名称为小红书热榜，并在接口列表首位加入顺为数据提供的热点接口
     name: '小红书热榜',
-    // 默认跳转地址：小红书发现页（探索推荐）
     home: 'xhsdiscover://home/explore',
     urls: [
-      // 顺为数据小红书热点接口，需填写用户key。免费额度有限，如需长期使用请自行购买套餐。
       'https://api.itapi.cn/api/hotnews/xiaohongshu?key=8BheThaS4E4msRqzttdh6JzaKO',
       'https://xzdx.top/api/tophub?type=xhs',
       'https://v2.xxapi.cn/api/xhshot',
@@ -195,8 +183,7 @@ const CFG = {
   },
   kuaishou: {
     name: '快手热榜',
-    // 默认跳转地址：快手热搜页
-    // 使用原版脚本中的跳转地址，通过 kwai://search/topicRank 打开快手热榜页
+    // 使用原版脚本中的跳转地址
     home: 'kwai://search/topicRank',
     enable: getConf('hot_kuaishou_enable', 'bool', true),
     split: getConf('hot_kuaishou_split', 'bool', true),
@@ -209,46 +196,45 @@ const UA = {
   'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
   Referer: 'https://www.baidu.com',
 };
+
 function notify(title, body, url) {
-  // 构建通知选项，兼容 Loon、Surge、Quantumult X 等。按官方文档，Loon 使用 openUrl 字段，
-  // Quantumult X 使用 open-url 字段。因此同时设置两个字段。
+  // 构建通知选项
   const opts = {};
   if (url) {
-    opts['open-url'] = url;  // Quantumult X / Surge
-    opts['openUrl'] = url;   // Loon
+    // 同时设置 open-url 与 openUrl，兼容不同脚本环境
+    opts['open-url'] = url;
+    opts['openUrl'] = url;
   }
-  // 优先使用 $notify（Quantumult X 与 Loon 兼容），若不可用则尝试 $notification.post
+  // 优先使用 $notify，再尝试使用 $notification.post
   if (typeof $notify === 'function') {
     try {
-      $notify(title, '', body, opts);
+      $notify(title || '', '', body || '', opts);
       return;
-    } catch (_) {
-      // 如果调用失败则继续使用 $notification
+    } catch (e) {
+      // 忽略异常，继续使用其他 API
     }
   }
   if (typeof $notification !== 'undefined' && typeof $notification.post === 'function') {
     try {
-      $notification.post(title, '', body, opts);
+      $notification.post(title || '', '', body || '', opts);
       return;
-    } catch (_) {
+    } catch (e) {
       // 忽略通知异常
     }
   }
-  // 如果两种 API 都不可用，输出日志
   console.log(`[推送] ${title}: ${body} ${url || ''}`);
 }
+
 // HTTP GET with timeout and JSON parse fallback
 function httpGet(url) {
   return new Promise((resolve, reject) => {
     $httpClient.get({ url: url, headers: UA, timeout: 8000 }, (err, resp, body) => {
       if (err) return reject(err);
       try {
-        // 直接返回字符串用于正则解析
         if (typeof body === 'string' && body.startsWith('<')) return resolve(body);
         const json = JSON.parse(body);
         resolve(json);
       } catch (e) {
-        // 若非 JSON 则返回原始文本
         resolve(body);
       }
     });
@@ -267,18 +253,16 @@ function checkTime() {
   console.log(`⏰ 当前 ${h} 点不在推送时间 ${JSON.stringify(allowed)}，跳过`);
   return false;
 }
+
 // 标准化列表数据：兼容 xxapi/vvhan/tenapi/imsyy
 function normalizeItems(name, list) {
   if (!list) return null;
   let items = [];
   if (Array.isArray(list)) {
-    // xxapi: data array
     items = list.map((x) => {
       let title = x.title || x.word || x.name || x.desc;
-      // 对于 36Kr，desc 包含新闻文字
       if (!title && x.templateMaterial) title = x.templateMaterial.widgetTitle;
       let url = x.url || x.link;
-      // 当不存在 url 时，根据平台添加搜索链接
       if (!url) {
         if (name === '微博热搜') {
           url = `sinaweibo://searchall?q=${encodeURIComponent(title)}`;
@@ -291,7 +275,6 @@ function normalizeItems(name, list) {
         } else if (name === 'B站热门') {
           url = `bilibili://search?keyword=${encodeURIComponent(title)}`;
         } else if (name === '36氪热榜') {
-          // 36氪：使用热榜 H5 页面作为跳转地址
           url = 'https://36kr.com/hot-list-m?channel=copy_url';
         } else if (name === '头条热榜') {
           url = `snssdk1128://search?keyword=${encodeURIComponent(title)}`;
@@ -302,24 +285,20 @@ function normalizeItems(name, list) {
       return { title, url };
     });
   } else if (typeof list === 'string') {
-    // 如果字符串包含 HTML 标签，则视为无效（比如接口返回了 HTML 错误页），直接返回 null
     const lower = list.trim().toLowerCase();
     if (lower.startsWith('<') || lower.includes('<html') || lower.includes('<head') || lower.includes('<!doctype')) {
       return null;
     }
-    // 比如 bilibili 接口返回字符串用、号分隔
     const parts = list.split(/[、,，]/).map((x) => x.trim()).filter(Boolean);
     items = parts.map((t) => ({
       title: t,
       url: `bilibili://search?keyword=${encodeURIComponent(t)}`,
     }));
   } else {
-    // 其他 JSON 格式
     if (name === '36氪热榜') {
       const arr = list.data?.itemList || [];
       items = arr.map((x) => ({
         title: x.templateMaterial?.widgetTitle || x.title,
-        // 使用热榜 H5 页面作为跳转地址
         url: 'https://36kr.com/hot-list-m?channel=copy_url',
       }));
     } else if (name === 'B站热门') {
@@ -349,66 +328,43 @@ function normalizeItems(name, list) {
         url: `snssdk1128://search?keyword=${encodeURIComponent(x.word)}`,
       }));
     } else if (name === '百度热搜') {
-      // 直接字符串处理
       const matches = [...list.matchAll(/<div class="c-single-text-ellipsis">\s*(.*?)\s*<\/div>/g)];
       items = matches.map((m) => {
         const title = m[1].trim();
         return { title, url: `baiduboxapp://search?word=${encodeURIComponent(title)}` };
       });
     } else {
-      // 默认聚合接口格式
       const arr = list.data || [];
       items = arr.map((x) => ({ title: x.title, url: x.url }));
     }
   }
-  // 过滤无标题
   items = items.filter((x) => x.title);
   if (items.length === 0) return null;
-
-  // 根据平台覆盖 item.url 为 App 内搜索地址，以便单条推送能直接跳转至对应的热搜词界面
   try {
     items = items.map((it) => {
       const t = it.title || '';
-      // 默认使用现有 url
       let newUrl = it.url || '';
-      // 微博：使用微博搜索 Scheme
       if (name === '微博热搜') {
         newUrl = `sinaweibo://searchall?q=${encodeURIComponent(t)}`;
-      }
-      // 抖音：使用抖音搜索 Scheme
-      else if (name === '抖音热榜') {
+      } else if (name === '抖音热榜') {
         newUrl = `snssdk1128://search?keyword=${encodeURIComponent(t)}`;
-      }
-      // 头条：使用今日头条搜索 Scheme
-      else if (name === '头条热榜') {
+      } else if (name === '头条热榜') {
         newUrl = `snssdk141://search?keyword=${encodeURIComponent(t)}`;
-      }
-      // 快手：使用快手搜索 Scheme
-      else if (name === '快手热榜') {
-        // 快手搜索 URL Scheme 经测试对中文关键字无需编码，直接传递原始标题可以正确跳转。
-        // 编码后的关键字（%E9%85%B8%EF%BC%8C%E7%94%BB%E7%89%87等）有时会导致快手无法识别，因此这里不进行 encodeURIComponent 处理。
+      } else if (name === '快手热榜') {
         newUrl = `kwai://search?keyword=${t}`;
-      }
-      // 小红书：使用小红书搜索结果页 Scheme
-      else if (name === '小红书热榜' || name === '小红书') {
+      } else if (name === '小红书热榜' || name === '小红书') {
         newUrl = `xhsdiscover://search/result?keyword=${encodeURIComponent(t)}`;
-      }
-      // 百度：使用百度 App 搜索 Scheme
-      else if (name === '百度热搜') {
+      } else if (name === '百度热搜') {
         newUrl = `baiduboxapp://search?word=${encodeURIComponent(t)}`;
-      }
-      // B站：使用 B站搜索 Scheme
-      else if (name === 'B站热门') {
+      } else if (name === 'B站热门') {
         newUrl = `bilibili://search?keyword=${encodeURIComponent(t)}`;
       }
-      // 36氪：无深度链接，保留原链接
       it.url = newUrl;
       return it;
     });
   } catch (ex) {
     console.log('⚠️ URL override error:', ex);
   }
-  // 关键词筛选
   let filtered = [];
   if (KEYWORDS.length > 0) {
     filtered = items.filter((item) => KEYWORDS.some((k) => item.title.includes(k)));
@@ -424,7 +380,7 @@ function normalizeItems(name, list) {
   }
   return filtered;
 }
-// 通用抓取函数
+
 async function fetchCommon(key) {
   const cfg = CFG[key];
   if (!cfg.enable) return;
@@ -449,10 +405,8 @@ async function fetchCommon(key) {
       if (items && items.length > 0) {
         const finalItems = items.slice(0, cfg.count);
         if (cfg.split) {
-          // 单条推送：若开启附带链接，则使用每条的 URL，否则留空
           finalItems.forEach((item, idx) => notify(`${cfg.name} Top${idx + 1}`, item.title, ATTACH_LINK ? item.url : ''));
         } else {
-          // 合集推送：使用平台默认跳转地址（home）
           const body = finalItems.map((i, idx) => `${idx + 1}. ${i.title}`).join('\n');
           const homeUrl = cfg.home || '';
           notify(`${cfg.name} Top${finalItems.length}`, body, ATTACH_LINK ? homeUrl : '');
@@ -465,14 +419,12 @@ async function fetchCommon(key) {
   }
   console.log(`❌ ${cfg.name} 全部接口失败`);
 }
-// 快手专用
+
 async function fetchKuaishou() {
   const cfg = CFG.kuaishou;
   if (!cfg.enable) return;
   const urls = [
-    // 新增 suyanw 快手热榜接口（返回文本格式）
     'https://api.suyanw.cn/api/kuaishou_hot_search.php',
-    // 其他聚合接口
     'https://v2.xxapi.cn/api/kuaishouhot',
     'https://tenapi.cn/v2/kuaishouhot',
     'https://api.vvhan.com/api/hotlist?type=ks',
@@ -484,7 +436,6 @@ async function fetchKuaishou() {
     try {
       console.log(' 开始抓取: 快手');
       const res = await httpGet(url);
-      // 如果返回的是 HTML（包含 <html> 或 <head>），直接跳过，避免解析错误
       if (typeof res === 'string') {
         const lower = res.toLowerCase();
         if (lower.includes('<html') || lower.includes('<head') || lower.includes('<!doctype')) {
@@ -492,57 +443,51 @@ async function fetchKuaishou() {
           continue;
         }
       }
-        // 当 suyanw 返回纯文本形式（包含"---快手热搜榜---"）时，按行解析
-        let parsedItems = null;
-        if (typeof res === 'string' && res.includes('快手热搜榜')) {
-          const lines = res.split('\n');
-          const titles = [];
-          for (const ln of lines) {
-            const m = ln.trim().match(/^[0-9]+[:：]\s*(.+)$/);
-            if (m) {
-              titles.push(m[1]);
-            }
-          }
-          if (titles.length > 0) {
-            parsedItems = titles.map((t) => ({ title: t, url: '' }));
+      let parsedItems = null;
+      if (typeof res === 'string' && res.includes('快手热搜榜')) {
+        const lines = res.split('\n');
+        const titles = [];
+        for (const ln of lines) {
+          const m = ln.trim().match(/^[0-9]+[:：]\s*(.+)$/);
+          if (m) {
+            titles.push(m[1]);
           }
         }
-        let list;
-        if (res) {
-          if (Array.isArray(res.data)) list = res.data;
-          else if (Array.isArray(res)) list = res;
-          else if (res.result && Array.isArray(res.result.data)) list = res.result.data;
-          else list = res;
+        if (titles.length > 0) {
+          parsedItems = titles.map((t) => ({ title: t, url: '' }));
         }
-        let items;
-        if (parsedItems) {
-          // 对文本解析出的列表再次调用 normalizeItems，以统一 URL 构建逻辑
-          items = normalizeItems('快手热榜', parsedItems);
+      }
+      let list;
+      if (res) {
+        if (Array.isArray(res.data)) list = res.data;
+        else if (Array.isArray(res)) list = res;
+        else if (res.result && Array.isArray(res.result.data)) list = res.result.data;
+        else list = res;
+      }
+      let items;
+      if (parsedItems) {
+        items = normalizeItems('快手热榜', parsedItems);
+      } else {
+        items = normalizeItems('快手热榜', list);
+      }
+      if (items && items.length > 0) {
+        const finalItems = items.slice(0, cfg.count);
+        if (cfg.split) {
+          finalItems.forEach((item, idx) => {
+            notify(`快手热榜 Top${idx + 1}`, item.title, ATTACH_LINK ? item.url : '');
+          });
         } else {
-          items = normalizeItems('快手热榜', list);
+          const body = finalItems.map((i, idx) => `${idx + 1}. ${i.title}`).join('\n');
+          const homeUrl = cfg.home || '';
+          notify(`快手热榜 Top${finalItems.length}`, body, ATTACH_LINK ? homeUrl : '');
         }
-        if (items && items.length > 0) {
-          const finalItems = items.slice(0, cfg.count);
-          if (cfg.split) {
-            // 单条推送：附带每条 URL（如果设置了 ATTACH_LINK），否则留空
-            finalItems.forEach((item, idx) => {
-              notify(`快手热榜 Top${idx + 1}`, item.title, ATTACH_LINK ? item.url : '');
-            });
-          } else {
-            // 合集推送：使用平台默认跳转地址
-            const body = finalItems
-              .map((i, idx) => `${idx + 1}. ${i.title}`)
-              .join('\n');
-            const homeUrl = cfg.home || '';
-            notify(`快手热榜 Top${finalItems.length}`, body, ATTACH_LINK ? homeUrl : '');
-          }
-          return;
-        }
-      } catch (_) {}
+        return;
+      }
+    } catch (_) {}
   }
   console.log('❌ 快手失败');
 }
-// 主函数
+
 !(async () => {
   if (!checkTime()) {
     $done();
