@@ -2,21 +2,32 @@
  * 多平台热榜监控 - Loon 专属版
  * 
  * @author 心事全在脸上
- * @homepage  https://t.me/Santiagocell
+ * @homepage  https://github.com/zorro-cell/zorro
  * @version 7.2
- * @date 2025-12-10
  */
 
 // ==================== 配置解析 ====================
 const $config = {};
 
-if (typeof $argument !== 'undefined' && typeof $argument === 'object') {
-  Object.keys($argument).forEach(key => {
-    const val = $argument[key];
-    if (val !== undefined && val !== null && val !== '') {
-      $config[key] = val;
-    }
-  });
+// 兼容：Loon 传对象形式 & 旧脚本的 "a=1&b=2" 字符串形式
+if (typeof $argument !== 'undefined') {
+  if (typeof $argument === 'object') {
+    Object.keys($argument).forEach(key => {
+      const val = $argument[key];
+      if (val !== undefined && val !== null && val !== '') {
+        $config[key] = val;
+      }
+    });
+  } else if (typeof $argument === 'string') {
+    $argument
+      .split('&')
+      .map(p => p.trim())
+      .filter(Boolean)
+      .forEach(kv => {
+        const [k, v = ''] = kv.split('=');
+        if (k) $config[k] = decodeURIComponent(v);
+      });
+  }
 }
 
 function getConfig(key, type, defaultValue) {
@@ -93,12 +104,15 @@ const PLATFORMS = {
   zhihu: {
     name: '知乎热榜',
     home: 'zhihu://topstory/hot-list',
+    // 补齐老脚本里的备用接口（guole + 官方 zhihu）
     urls: [
       'https://xzdx.top/api/tophub?type=zhihu',
       'https://v2.xxapi.cn/api/zhihuhot',
       'https://api.vvhan.com/api/hotlist?type=zhihu',
       'https://tenapi.cn/v2/zhihuhot',
-      'https://api-hot.imsyy.top/zhihu'
+      'https://api-hot.imsyy.top/zhihu',
+      'https://api.guole.fun/zhihu',
+      'https://api.zhihu.com/topstory/hot-lists/total?limit=50'
     ],
     enable: getConfig('hot_zhihu_enable', 'bool', true),
     split: getConfig('hot_zhihu_split', 'bool', true),
@@ -139,12 +153,15 @@ const PLATFORMS = {
   toutiao: {
     name: '头条热榜',
     home: 'snssdk141://',
+    // 补齐老脚本里的备用接口（guole + lolimi）
     urls: [
       'https://xzdx.top/api/tophub?type=toutiao',
       'https://v2.xxapi.cn/api/toutiaohot',
       'https://api.vvhan.com/api/hotlist?type=toutiao',
       'https://tenapi.cn/v2/toutiaohot',
-      'https://api-hot.imsyy.top/toutiao'
+      'https://api-hot.imsyy.top/toutiao',
+      'https://api.guole.fun/toutiao',
+      'https://api.lolimi.cn/API/jhrb/?hot=%E4%BB%8A%E6%97%A5%E5%A4%B4%E6%9D%A1'
     ],
     enable: getConfig('hot_toutiao_enable', 'bool', false),
     split: getConfig('hot_toutiao_split', 'bool', true),
@@ -170,12 +187,15 @@ const PLATFORMS = {
   kuaishou: {
     name: '快手热榜',
     home: 'kwai://home/hot',
+    // 补齐老脚本快手的备用接口（lolimi + guole）
     urls: [
       'https://api.suyanw.cn/api/kuaishou_hot_search.php',
       'https://v2.xxapi.cn/api/kuaishouhot',
       'https://tenapi.cn/v2/kuaishouhot',
       'https://api.vvhan.com/api/hotlist?type=ks',
-      'https://api-hot.imsyy.top/kuaishou'
+      'https://api-hot.imsyy.top/kuaishou',
+      'https://api.lolimi.cn/API/jhrb/?hot=%E5%BF%AB%E6%89%8B',
+      'https://api.guole.fun/kuaishou'
     ],
     enable: getConfig('hot_kuaishou_enable', 'bool', false),
     split: getConfig('hot_kuaishou_split', 'bool', true),
@@ -251,7 +271,7 @@ function normalizeData(platformName, rawData) {
   
   let items = [];
 
-  // 快手热榜：部分接口返回整段字符串，这里按行拆成多条
+  // 快手热榜：有的接口返回整段字符串，这里按行拆成多条
   if (platformName === '快手热榜' && typeof rawData === 'string') {
     const lines = rawData
       .split(/\r?\n/)
@@ -259,7 +279,7 @@ function normalizeData(platformName, rawData) {
       .filter(line => line.length > 0);
 
     // 去掉头部的 ---快手热搜榜---
-    if (lines.length > 0 && lines[0].includes('快手热搜榜')) {
+    if (lines.length > 0 && lines[0].includes('快手热搜')) {
       lines.shift();
     }
 
@@ -408,6 +428,7 @@ async function fetchPlatform(platformKey) {
         const finalItems = items.slice(0, platform.count);
         
         if (platform.split) {
+          // 单条推送：微博热搜 Top1 / Top2...
           finalItems.forEach((item, index) => {
             notify(
               `${platform.name} Top${index + 1}`,
@@ -417,10 +438,10 @@ async function fetchPlatform(platformKey) {
             );
           });
         } else {
+          // 合集推送：微博热搜 Top10
           const body = finalItems
             .map((item, index) => `${index + 1}. ${item.title}`)
             .join('\n');
-          // 合集推送时，标题显示为 “快手热榜 Top10” 这种
           notify(
             `${platform.name} Top${finalItems.length}`,
             '',
