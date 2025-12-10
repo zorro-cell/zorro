@@ -250,8 +250,27 @@ function normalizeData(platformName, rawData) {
   if (!rawData) return null;
   
   let items = [];
-  
-  if (Array.isArray(rawData)) {
+
+  // 快手热榜：部分接口返回整段字符串，这里按行拆成多条
+  if (platformName === '快手热榜' && typeof rawData === 'string') {
+    const lines = rawData
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
+
+    // 去掉头部的 ---快手热搜榜---
+    if (lines.length > 0 && lines[0].includes('快手热搜榜')) {
+      lines.shift();
+    }
+
+    items = lines.map(line => {
+      // 去掉前面的编号：1: / 1：/ 1. / 1、 等
+      const match = line.match(/^\d+[:：.、]\s*(.*)$/);
+      const title = match ? match[1] : line;
+      return { title, url: '' };
+    });
+  }
+  else if (Array.isArray(rawData)) {
     items = rawData.map(item => ({
       title: item.title || item.word || item.name || item.desc || '',
       url: item.url || item.link || ''
@@ -401,7 +420,7 @@ async function fetchPlatform(platformKey) {
           const body = finalItems
             .map((item, index) => `${index + 1}. ${item.title}`)
             .join('\n');
-          // 合并推送时，标题显示成“微博热搜 Top10”这种
+          // 合集推送时，标题显示为 “快手热榜 Top10” 这种
           notify(
             `${platform.name} Top${finalItems.length}`,
             '',
