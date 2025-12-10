@@ -5,8 +5,8 @@
  * 支持微博、百度、抖音、知乎、B站、36氪、头条、小红书、快手等平台
  * 
  * @author 心事全在脸上
- * @homepage   https://t.me/Santiagocell
- * @version 7.0
+ * @homepage https://github.com/zorro-cell/zorro
+ * @version 7.1
  * @date 2025-12-10
  */
 
@@ -207,25 +207,32 @@ function notify(title, subtitle, body, url) {
 
 function httpGet(url) {
   return new Promise((resolve, reject) => {
-    $httpClient.get(
-      { url: url, headers: USER_AGENT, timeout: 8 },
-      (error, response, data) => {
-        if (error) {
-          reject(error);
+    const options = {
+      url: url,
+      headers: USER_AGENT,
+      timeout: 15  // Loon 的 timeout 单位是秒,设置为 15 秒
+    };
+    
+    $httpClient.get(options, (error, response, data) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      
+      try {
+        // 检查是否是 HTML 内容
+        if (typeof data === 'string' && data.trim().startsWith('<')) {
+          resolve(data);
           return;
         }
-        
-        try {
-          if (typeof data === 'string' && data.trim().startsWith('<')) {
-            resolve(data);
-            return;
-          }
-          resolve(JSON.parse(data));
-        } catch (e) {
-          resolve(data);
-        }
+        // 尝试解析 JSON
+        const jsonData = JSON.parse(data);
+        resolve(jsonData);
+      } catch (e) {
+        // 解析失败,返回原始数据
+        resolve(data);
       }
-    );
+    });
   });
 }
 
@@ -423,6 +430,7 @@ async function fetchPlatform(platformKey) {
       }
     } catch (error) {
       console.log(`⚠️ [${platform.name}] 接口失败: ${error.message || error}`);
+      continue; // 继续尝试下一个接口
     }
   }
   
