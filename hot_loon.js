@@ -2,7 +2,7 @@
  * 多平台热榜监控 - Loon 专属版
  * 
  * @author 心事全在脸上
- * @homepage  https://github.com/zorro-cell/zorro
+ * @homepage  https://t.me/Santiagocell
  * @version 7.2
  */
 
