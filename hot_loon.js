@@ -1,12 +1,9 @@
 /*
  * 多平台热榜监控 - Loon 专属版
  * 
- * 专为 Loon 3.2.1+ 优化设计
- * 支持微博、百度、抖音、知乎、B站、36氪、头条、小红书、快手等平台
- * 
  * @author 心事全在脸上
  * @homepage https://github.com/zorro-cell/zorro
- * @version 7.1
+ * @version 7.2
  * @date 2025-12-10
  */
 
@@ -207,32 +204,29 @@ function notify(title, subtitle, body, url) {
 
 function httpGet(url) {
   return new Promise((resolve, reject) => {
-    const options = {
-      url: url,
-      headers: USER_AGENT,
-      timeout: 15  // Loon 的 timeout 单位是秒,设置为 15 秒
-    };
-    
-    $httpClient.get(options, (error, response, data) => {
-      if (error) {
-        reject(error);
-        return;
-      }
-      
-      try {
-        // 检查是否是 HTML 内容
-        if (typeof data === 'string' && data.trim().startsWith('<')) {
-          resolve(data);
+    $httpClient.get(
+      { 
+        url: url, 
+        headers: USER_AGENT, 
+        timeout: 20  // 增加到 20 秒超时
+      },
+      (error, response, data) => {
+        if (error) {
+          reject(error);
           return;
         }
-        // 尝试解析 JSON
-        const jsonData = JSON.parse(data);
-        resolve(jsonData);
-      } catch (e) {
-        // 解析失败,返回原始数据
-        resolve(data);
+        
+        try {
+          if (typeof data === 'string' && data.trim().startsWith('<')) {
+            resolve(data);
+            return;
+          }
+          resolve(JSON.parse(data));
+        } catch (e) {
+          resolve(data);
+        }
       }
-    });
+    );
   });
 }
 
@@ -247,7 +241,7 @@ function isInPushTime() {
   
   if (allowedHours.includes(currentHour)) return true;
   
-  console.log(`⏰ 当前 ${currentHour} 点不在推送时间 [${allowedHours.join(', ')}],跳过推送`);
+  console.log(`⏰ 当前 ${currentHour} 点不在推送时间,跳过`);
   return false;
 }
 
@@ -257,14 +251,12 @@ function normalizeData(platformName, rawData) {
   
   let items = [];
   
-  // 处理数组格式
   if (Array.isArray(rawData)) {
     items = rawData.map(item => ({
       title: item.title || item.word || item.name || item.desc || '',
       url: item.url || item.link || ''
     }));
   }
-  // 处理字符串格式
   else if (typeof rawData === 'string') {
     const lower = rawData.trim().toLowerCase();
     if (lower.startsWith('<') || lower.includes('<html')) return null;
@@ -275,7 +267,6 @@ function normalizeData(platformName, rawData) {
       .filter(Boolean)
       .map(title => ({ title, url: '' }));
   }
-  // 处理对象格式
   else if (typeof rawData === 'object') {
     const dataArray = rawData.data || rawData.result?.data || [];
     
@@ -312,7 +303,6 @@ function normalizeData(platformName, rawData) {
     }
   }
   
-  // 过滤空标题
   items = items.filter(item => item.title);
   if (items.length === 0) return null;
   
@@ -354,7 +344,6 @@ function normalizeData(platformName, rawData) {
     }
   }
   
-  // 未命中关键词的处理
   if (filtered.length === 0) {
     const platformKey = Object.keys(PLATFORMS).find(
       key => PLATFORMS[key].name === platformName
@@ -375,10 +364,7 @@ function normalizeData(platformName, rawData) {
 // ==================== 抓取函数 ====================
 async function fetchPlatform(platformKey) {
   const platform = PLATFORMS[platformKey];
-  if (!platform.enable) {
-    console.log(`⏸️  [${platform.name}] 已禁用`);
-    return;
-  }
+  if (!platform.enable) return;
   
   console.log(`📡 [${platform.name}] 开始抓取...`);
   
@@ -403,7 +389,6 @@ async function fetchPlatform(platformKey) {
         const finalItems = items.slice(0, platform.count);
         
         if (platform.split) {
-          // 单条推送
           finalItems.forEach((item, index) => {
             notify(
               `${platform.name} Top${index + 1}`,
@@ -413,7 +398,6 @@ async function fetchPlatform(platformKey) {
             );
           });
         } else {
-          // 合并推送
           const body = finalItems
             .map((item, index) => `${index + 1}. ${item.title}`)
             .join('\n');
@@ -430,7 +414,7 @@ async function fetchPlatform(platformKey) {
       }
     } catch (error) {
       console.log(`⚠️ [${platform.name}] 接口失败: ${error.message || error}`);
-      continue; // 继续尝试下一个接口
+      continue;
     }
   }
   
@@ -442,7 +426,6 @@ async function fetchPlatform(platformKey) {
   console.log('🚀 ========== 多平台热榜监控启动 ==========');
   
   if (!isInPushTime()) {
-    console.log('⏸️  不在推送时间,任务结束');
     $done();
     return;
   }
