@@ -401,9 +401,10 @@ async function fetchPlatform(platformKey) {
           const body = finalItems
             .map((item, index) => `${index + 1}. ${item.title}`)
             .join('\n');
+          // 合并推送时，标题显示成“微博热搜 Top10”这种
           notify(
-            `${platform.name}`,
-            `Top ${finalItems.length}`,
+            `${platform.name} Top${finalItems.length}`,
+            '',
             body,
             platform.home
           );
