@@ -2,7 +2,7 @@
  * 多平台热榜监控 - Loon 专属版
  * 
  * @author 心事全在脸上
- * @homepage https://github.com/zorro-cell/zorro
+ * @homepage  https://t.me/Santiagocell
  * @version 7.2
  * @date 2025-12-10
  */
@@ -208,7 +208,7 @@ function httpGet(url) {
       { 
         url: url, 
         headers: USER_AGENT, 
-        timeout: 20  // 增加到 20 秒超时
+        timeout: 20000  // 20 秒超时（单位 ms）
       },
       (error, response, data) => {
         if (error) {
