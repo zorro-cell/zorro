@@ -1,6 +1,6 @@
 // 多平台热榜监控 - Loon 版 (优化版)
-// 更新日期: 2025年12月
-// 作者: 优化版
+// 更新日期: 2025年12月11日
+// 作者: 心事全在脸上
 // 支持平台: 微博热搜, 百度热搜, 抖音热榜, 知乎热榜, B站热门, 36氪热榜, 头条热榜, 小红书热榜, 快手热榜
 
 // ========== 参数解析 ==========
@@ -48,6 +48,9 @@ const ATTACH_LINK    = getConfig('hot_attach_link', 'bool', true);
 const ENABLE_RETRY   = getConfig('hot_enable_retry', 'bool', true);
 // 默认只重试 1 次（总共最多 2 轮）
 const MAX_RETRIES    = getConfig('hot_max_retries', 'int', 1);
+
+// 是否打印详细 HTTP 日志（可选开关，默认 false）
+const DETAIL_LOG     = getConfig('hot_log_detail', 'bool', false);
 
 console.log(`🎯 [配置] 关键词: ${KEYWORDS.length ? KEYWORDS.join(', ') : '全部'}`);
 console.log(`⏰ [配置] 推送时间: ${PUSH_HOURS_STR || '全天'}`);
@@ -226,9 +229,8 @@ async function httpGet(url) {
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      if (attempt > 0) {
+      if (attempt > 0 && DETAIL_LOG) {
         console.log(`🔄 [重试] ${url} 第 ${attempt} 次重试...`);
-        await sleep(1000 * attempt);
       }
 
       return await new Promise((resolve, reject) => {
@@ -240,12 +242,33 @@ async function httpGet(url) {
           },
           (err, resp, data) => {
             if (err) {
-              reject(err);
+              if (attempt < maxRetries) {
+                if (DETAIL_LOG) {
+                  console.log(`⚠️ [HTTP] ${url} 失败(${err.message || err})，准备重试...`);
+                }
+                reject(new Error(`RETRYABLE: ${err.message || err}`));
+              } else {
+                if (DETAIL_LOG) {
+                  console.log(`❌ [HTTP] ${url} 最终失败: ${err.message || err}`);
+                }
+                reject(err);
+              }
               return;
             }
 
             if (!resp || resp.status !== 200) {
-              reject(new Error(`HTTP ${resp ? resp.status : 'NO_RESP'}`));
+              const e = new Error(`HTTP ${resp ? resp.status : 'NO_RESP'}`);
+              if (attempt < maxRetries) {
+                if (DETAIL_LOG) {
+                  console.log(`⚠️ [HTTP] ${url} 失败(${e.message})，准备重试...`);
+                }
+                reject(new Error(`RETRYABLE: ${e.message}`));
+              } else {
+                if (DETAIL_LOG) {
+                  console.log(`❌ [HTTP] ${url} 最终失败: ${e.message}`);
+                }
+                reject(e);
+              }
               return;
             }
 
@@ -264,10 +287,10 @@ async function httpGet(url) {
       });
     } catch (error) {
       const msg = error.message || String(error);
-      if (attempt >= maxRetries) {
+      if (attempt >= maxRetries || !msg.includes('RETRYABLE')) {
         throw error;
       }
-      console.log(`⚠️ [HTTP] ${url} 失败(${msg})，准备重试...`);
+      // 继续重试，日志已在上面打印
     }
   }
 }
@@ -281,6 +304,30 @@ function inPushTime() {
   if (hours.includes(h)) return true;
   console.log(`⏰ 当前 ${h} 点不在推送时间 ${hours.join(',')}，跳过本次`);
   return false;
+}
+
+// 把英文错误信息翻译成简单中文
+function getErrorSummary(msg) {
+  if (!msg) return '未知原因';
+  const m = String(msg).toLowerCase();
+
+  if (m.includes('empty dns') || m.includes('dns')) {
+    return 'DNS 解析失败';
+  }
+  if (m.includes('network is unreachable') || m.includes('unreachable')) {
+    return '网络不可达';
+  }
+  if (m.includes('timeout')) {
+    return '请求超时';
+  }
+  const httpMatch = m.match(/http\s+(\d{3})/i);
+  if (httpMatch) {
+    const code = httpMatch[1];
+    if (code.startsWith('5')) return `服务器错误（HTTP ${code}）`;
+    if (code.startsWith('4')) return `请求异常（HTTP ${code}）`;
+    return `HTTP 错误（HTTP ${code}）`;
+  }
+  return '接口异常';
 }
 
 // ========== 数据标准化 ==========
@@ -396,7 +443,7 @@ function normalizeList(platformName, rawData) {
   items = items.filter((x) => x.title && x.title.trim().length > 0);
   if (!items.length) return null;
 
-  // ===== 关键修改：强制覆盖 URL 为 App Scheme，避免被 H5 链接劫持 =====
+  // 强制覆盖 URL 为 App Scheme，避免被 H5 链接劫持
   items = items.map((item) => {
     const t = (item.title || '').trim();
     const enc = encodeURIComponent(t);
@@ -417,14 +464,12 @@ function normalizeList(platformName, rawData) {
     } else if (platformName === 'B站热门') {
       url = `bilibili://search?keyword=${enc}`;
     } else if (platformName === '知乎热榜') {
-      // 如果前面已经把 questions 链接转成 zhihu://questions，就保留；
       if (url && url.includes('zhihu://questions')) {
-        // no-op
+        // 保留 questions 链接
       } else {
         url = `zhihu://search?q=${enc}`;
       }
     } else if (platformName === '36氪热榜') {
-      // 36氪本身是新闻站，保留 H5，靠通用链接拉起 App
       url = url || 'https://36kr.com/hot-list-m';
     }
 
@@ -461,14 +506,16 @@ function normalizeList(platformName, rawData) {
 // ========== 抓取单个平台 ==========
 async function fetchPlatform(key) {
   const cfg = PLATFORMS[key];
-  if (!cfg || !cfg.enable) return;
+  if (!cfg || !cfg.enable) return { success: false, host: null, error: '未启用' };
 
   console.log(`📡 [${cfg.name}] 开始抓取...`);
   let lastError = null;
 
   for (const url of cfg.urls || []) {
     try {
-      console.log(`🔗 尝试接口: ${new URL(url).hostname}`);
+      if (DETAIL_LOG) {
+        console.log(`🔗 尝试接口: ${new URL(url).hostname}`);
+      }
       const raw = await httpGet(url);
 
       const items = normalizeList(cfg.name, raw);
@@ -495,16 +542,20 @@ async function fetchPlatform(key) {
         }
 
         console.log(`✅ [${cfg.name}] 推送成功 ${finalItems.length} 条 (来自: ${new URL(url).hostname})`);
-        return { success: true, host: new URL(url).hostname };
+        return { success: true, host: new URL(url).hostname, error: '' };
       } else {
-        console.log(`⚠️ [${cfg.name}] 接口无有效数据: ${new URL(url).hostname}`);
+        if (DETAIL_LOG) {
+          console.log(`⚠️ [${cfg.name}] 接口无有效数据: ${new URL(url).hostname}`);
+        }
       }
     } catch (e) {
       lastError = e;
       const errorMsg = e.message || String(e);
-      console.log(
-        `⚠️ [${cfg.name}] 接口失败: ${new URL(url).hostname} -> ${errorMsg}`
-      );
+      if (DETAIL_LOG) {
+        console.log(
+          `⚠️ [${cfg.name}] 接口失败: ${new URL(url).hostname} -> ${errorMsg}`
+        );
+      }
     }
   }
 
@@ -512,11 +563,19 @@ async function fetchPlatform(key) {
     console.log(
       `❌ [${cfg.name}] 所有接口均失败，最后一次错误: ${lastError.message || lastError}`
     );
+    return {
+      success: false,
+      host: null,
+      error: lastError.message || String(lastError),
+    };
   } else {
     console.log(`❌ [${cfg.name}] 所有接口均失败，未获取到有效数据`);
+    return {
+      success: false,
+      host: null,
+      error: '未获取到有效数据',
+    };
   }
-
-  return { success: false, host: null };
 }
 
 // ========== 主流程 ==========
@@ -544,8 +603,9 @@ async function fetchPlatform(key) {
       const result = await fetchPlatform(key);
       healthStatus[key] = {
         platform: PLATFORMS[key].name,
-        success: result.success,
-        host: result.host,
+        success: !!result.success,
+        host: result.host || null,
+        error: result.error || '',
         timestamp: Date.now()
       };
       return result;
@@ -559,12 +619,27 @@ async function fetchPlatform(key) {
   console.log(`✅ 成功: ${successCount} 个平台`);
   console.log(`❌ 失败: ${failCount} 个平台`);
 
-  console.log(`\n🏥 接口健康状态:`);
+  console.log(`\n🏥 接口健康状态(原始):`);
   Object.keys(healthStatus).forEach(key => {
     const status = healthStatus[key];
     const icon = status.success ? '✅' : '❌';
     const host = status.host ? ` (${status.host})` : '';
     console.log(`  ${icon} ${status.platform}${host}`);
+  });
+
+  // 👉 中文总结版，方便快速看懂原因
+  console.log(`\n📋 ========== 中文执行总结 ==========`);
+
+  enabled.forEach((key) => {
+    const st = healthStatus[key];
+    if (!st) return;
+    if (st.success) {
+      const host = st.host ? `，来源：${st.host}` : '';
+      console.log(`✅ ${st.platform}：成功${host}`);
+    } else {
+      const reason = getErrorSummary(st.error);
+      console.log(`❌ ${st.platform}：${reason}`);
+    }
   });
 
   console.log('\n✅ ========== 多平台热榜监控完成 ==========');
