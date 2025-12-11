@@ -1,4 +1,5 @@
-// 多平台热榜监控 - Loon 版
+// 多平台热榜监控 - Loon 版 (优化版)
+
 
 // ========== 参数解析 ==========
 const $config = {};
@@ -42,10 +43,14 @@ const KEYWORDS_STR   = getConfig('hot_keywords', 'string', '');
 const KEYWORDS       = KEYWORDS_STR.split(/[,，\s]+/).map((k) => k.trim()).filter(Boolean);
 const PUSH_HOURS_STR = getConfig('hot_push_hours', 'string', '');
 const ATTACH_LINK    = getConfig('hot_attach_link', 'bool', true);
+const ENABLE_RETRY   = getConfig('hot_enable_retry', 'bool', true);
+// 默认只重试 1 次（总共最多 2 轮）
+const MAX_RETRIES    = getConfig('hot_max_retries', 'int', 1);
 
 console.log(`🎯 [配置] 关键词: ${KEYWORDS.length ? KEYWORDS.join(', ') : '全部'}`);
 console.log(`⏰ [配置] 推送时间: ${PUSH_HOURS_STR || '全天'}`);
 console.log(`🔗 [配置] 附带链接: ${ATTACH_LINK ? '是' : '否'}`);
+console.log(`🔄 [配置] 请求重试: ${ENABLE_RETRY ? `开启 (最多${MAX_RETRIES}次)` : '关闭'}`);
 
 // ========== 平台配置 ==========
 const PLATFORMS = {
@@ -97,14 +102,14 @@ const PLATFORMS = {
   zhihu: {
     name: '知乎热榜',
     home: 'zhihu://topstory/hot-list',
-    // 对齐旧脚本，增加 guole + 官方接口兜底 :contentReference[oaicite:1]{index=1}
     urls: [
+      'https://api.vvhan.com/api/hotlist?type=zhihu',
       'https://xzdx.top/api/tophub?type=zhihu',
       'https://v2.xxapi.cn/api/zhihuhot',
-      'https://api.vvhan.com/api/hotlist?type=zhihu',
+      'https://api.oioweb.cn/api/common/hotlist/zhihu',
       'https://tenapi.cn/v2/zhihuhot',
-      'https://api-hot.imsyy.top/zhihu',
       'https://api.guole.fun/zhihu',
+      // 加回官方兜底接口，和老脚本对齐 :contentReference[oaicite:2]{index=2}
       'https://api.zhihu.com/topstory/hot-lists/total?limit=50',
     ],
     enable: getConfig('hot_zhihu_enable', 'bool', true),
@@ -116,12 +121,11 @@ const PLATFORMS = {
     name: 'B站热门',
     home: 'bilibili://browser?url=https%3A%2F%2Fwww.bilibili.com%2Fblackboard%2Factivity-trending-topic.html',
     urls: [
+      'https://api.vvhan.com/api/hotlist?type=bilibili',
       'https://xzdx.top/api/tophub?type=bilihot',
       'https://v.api.aa1.cn/api/bilibili-rs/',
       'https://v2.xxapi.cn/api/bilibilihot',
-      'https://api.vvhan.com/api/hotlist?type=bilibili',
       'https://tenapi.cn/v2/bilihot',
-      'https://api-hot.imsyy.top/bilibili',
     ],
     enable: getConfig('hot_bilibili_enable', 'bool', true),
     split:  getConfig('hot_bilibili_split',  'bool', true),
@@ -131,12 +135,16 @@ const PLATFORMS = {
   kr36: {
     name: '36氪热榜',
     home: 'https://36kr.com/newsflashes',
+    // 合并老脚本稳定源 + DeepSeek 新增源，优先 vvhan + xxapi + tenapi + xzdx，再到其他 :contentReference[oaicite:3]{index=3}
     urls: [
-      'https://xzdx.top/api/tophub?type=36kr',
-      'https://v2.xxapi.cn/api/hot36kr',
       'https://api.vvhan.com/api/hotlist?type=36kr',
+      'https://v2.xxapi.cn/api/hot36kr',
       'https://tenapi.cn/v2/36krhot',
+      'https://xzdx.top/api/tophub?type=36kr',
       'https://api-hot.imsyy.top/36kr',
+      'https://api.oioweb.cn/api/common/hotlist/36kr',
+      'https://api-bz.ayou.xyz/v1/news/36kr',
+      'https://api.gumengya.com/Api/36Kr',
     ],
     enable: getConfig('hot_36kr_enable', 'bool', true),
     split:  getConfig('hot_36kr_split',  'bool', true),
@@ -146,15 +154,12 @@ const PLATFORMS = {
   toutiao: {
     name: '头条热榜',
     home: 'snssdk141://',
-    // 对齐旧脚本，增加 guole + lolimi :contentReference[oaicite:2]{index=2}
     urls: [
+      'https://api.vvhan.com/api/hotlist?type=toutiao',
       'https://xzdx.top/api/tophub?type=toutiao',
       'https://v2.xxapi.cn/api/toutiaohot',
-      'https://api.vvhan.com/api/hotlist?type=toutiao',
-      'https://tenapi.cn/v2/toutiaohot',
-      'https://api-hot.imsyy.top/toutiao',
+      'https://api.oioweb.cn/api/common/hotlist/toutiao',
       'https://api.guole.fun/toutiao',
-      'https://api.lolimi.cn/API/jhrb/?hot=%E4%BB%8A%E6%97%A5%E5%A4%B4%E6%9D%A1',
     ],
     enable: getConfig('hot_toutiao_enable', 'bool', true),
     split:  getConfig('hot_toutiao_split',  'bool', true),
@@ -165,12 +170,11 @@ const PLATFORMS = {
     name: '小红书热榜',
     home: 'xhsdiscover://home/explore',
     urls: [
+      'https://api.vvhan.com/api/hotlist?type=xhs',
       'https://api.itapi.cn/api/hotnews/xiaohongshu?key=8BheThaS4E4msRqzttdh6JzaKO',
       'https://xzdx.top/api/tophub?type=xhs',
       'https://v2.xxapi.cn/api/xhshot',
-      'https://api.vvhan.com/api/hotlist?type=xhs',
       'https://tenapi.cn/v2/xhshot',
-      'https://api-hot.imsyy.top/xhs',
     ],
     enable: getConfig('hot_xhs_enable', 'bool', true),
     split:  getConfig('hot_xhs_split',  'bool', true),
@@ -180,14 +184,11 @@ const PLATFORMS = {
   kuaishou: {
     name: '快手热榜',
     home: 'kwai://home/hot',
-    // 对齐旧脚本，增加 lolimi + guole :contentReference[oaicite:3]{index=3}
     urls: [
+      'https://api.vvhan.com/api/hotlist?type=ks',
       'https://api.suyanw.cn/api/kuaishou_hot_search.php',
       'https://v2.xxapi.cn/api/kuaishouhot',
       'https://tenapi.cn/v2/kuaishouhot',
-      'https://api.vvhan.com/api/hotlist?type=ks',
-      'https://api-hot.imsyy.top/kuaishou',
-      'https://api.lolimi.cn/API/jhrb/?hot=%E5%BF%AB%E6%89%8B',
       'https://api.guole.fun/kuaishou',
     ],
     enable: getConfig('hot_kuaishou_enable', 'bool', true),
@@ -199,8 +200,7 @@ const PLATFORMS = {
 
 // ========== 工具函数 ==========
 const COMMON_HEADERS = {
-  'User-Agent':
-    'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
+  'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
   Referer: 'https://www.baidu.com',
 };
 
@@ -216,28 +216,60 @@ function notify(title, body, url) {
   }
 }
 
-function httpGet(url) {
-  return new Promise((resolve, reject) => {
-    $httpClient.get(
-      {
-        url,
-        headers: COMMON_HEADERS,
-        timeout: 20000, // 20 秒，Loon 文档里 timeout 单位为 ms
-      },
-      (err, resp, data) => {
-        if (err) return reject(err);
-        try {
-          if (typeof data === 'string' && data.trim().startsWith('<')) {
-            resolve(data);
-          } else {
-            resolve(JSON.parse(data));
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// 10 秒超时 + 最多重试 1 次
+async function httpGet(url) {
+  const maxRetries = ENABLE_RETRY ? MAX_RETRIES : 0;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      if (attempt > 0) {
+        console.log(`🔄 [重试] ${url} 第 ${attempt} 次重试...`);
+        await sleep(1000 * attempt); // 简单退避
+      }
+
+      return await new Promise((resolve, reject) => {
+        $httpClient.get(
+          {
+            url,
+            headers: COMMON_HEADERS,
+            timeout: 10000, // 10 秒
+          },
+          (err, resp, data) => {
+            if (err) {
+              reject(err);
+              return;
+            }
+
+            if (!resp || resp.status !== 200) {
+              reject(new Error(`HTTP ${resp ? resp.status : 'NO_RESP'}`));
+              return;
+            }
+
+            try {
+              const ct = (resp.headers['Content-Type'] || resp.headers['content-type'] || '').toLowerCase();
+              if (ct.includes('application/json') || (typeof data === 'string' && data.trim().startsWith('{'))) {
+                resolve(JSON.parse(data));
+              } else {
+                resolve(data);
+              }
+            } catch {
+              resolve(data);
+            }
           }
-        } catch (_) {
-          resolve(data);
-        }
-      },
-    );
-  });
+        );
+      });
+    } catch (error) {
+      const msg = error.message || String(error);
+      if (attempt >= maxRetries) {
+        throw error;
+      }
+      console.log(`⚠️ [HTTP] ${url} 失败(${msg})，准备重试...`);
+    }
+  }
 }
 
 function inPushTime() {
@@ -256,7 +288,7 @@ function normalizeList(platformName, rawData) {
   if (!rawData) return null;
   let items = [];
 
-  // 快手：有一类接口返回整段文本
+  // 快手：特殊处理文本格式
   if (platformName === '快手热榜' && typeof rawData === 'string') {
     const lines = rawData
       .split(/\r?\n/)
@@ -272,88 +304,124 @@ function normalizeList(platformName, rawData) {
       const title = m ? m[1] : line;
       return { title, url: '' };
     });
-  } else if (Array.isArray(rawData)) {
+  } 
+  // 知乎：特殊处理官方 API 格式
+  else if (platformName === '知乎热榜' && rawData.data) {
+    const dataArray = rawData.data || [];
+    items = dataArray.map((x) => {
+      const title = x.target?.title || x.title || x.target?.question?.title || '';
+      let url = x.target?.url || x.url || '';
+      if (url && url.includes('api.zhihu.com')) {
+        url = url.replace('https://api.zhihu.com/questions', 'zhihu://questions');
+      }
+      return { title, url };
+    });
+  }
+  // 36氪：处理多种接口格式
+  else if (platformName === '36氪热榜') {
+    let arr = [];
+    if (Array.isArray(rawData.data)) {
+      arr = rawData.data;
+    } else if (Array.isArray(rawData)) {
+      arr = rawData;
+    } else if (rawData.data && Array.isArray(rawData.data)) {
+      arr = rawData.data;
+    } else if (rawData.itemList) {
+      arr = rawData.itemList;
+    }
+
+    items = arr.map((x) => ({
+      title: x.title || x.templateMaterial?.widgetTitle || x.name || x.word || '',
+      url: x.url || x.link || 'https://36kr.com/hot-list-m'
+    }));
+  }
+  // B站：特殊处理
+  else if (platformName === 'B站热门') {
+    let arr = [];
+    if (rawData.data && Array.isArray(rawData.data)) {
+      arr = rawData.data;
+    } else if (Array.isArray(rawData)) {
+      arr = rawData;
+    }
+
+    items = arr.map((x) => ({
+      title: x.title || x.name || '',
+      url: x.short_link || x.url || ''
+    }));
+  }
+  // 微博
+  else if (platformName === '微博热搜') {
+    let arr = [];
+    if (Array.isArray(rawData.realtime)) {
+      arr = rawData.realtime;
+    } else if (Array.isArray(rawData.data)) {
+      arr = rawData.data;
+    } else if (Array.isArray(rawData)) {
+      arr = rawData;
+    }
+
+    items = arr.map((x) => ({
+      title: x.word_scheme || x.word || x.title || x.name || '',
+      url: x.url || ''
+    }));
+  }
+  // 通用数组
+  else if (Array.isArray(rawData)) {
     items = rawData.map((x) => ({
       title: x.title || x.word || x.name || x.desc || '',
-      url:   x.url   || x.link || '',
+      url: x.url || x.link || x.short_link || ''
     }));
-  } else if (typeof rawData === 'string') {
+  }
+  // 通用对象
+  else if (typeof rawData === 'object') {
+    const dataArray = rawData.data || rawData.result?.data || rawData.list || [];
+    items = dataArray.map((x) => ({
+      title: x.title || x.word || x.name || x.desc || '',
+      url: x.url || x.link || x.short_link || ''
+    }));
+  }
+  // 文本
+  else if (typeof rawData === 'string') {
     const lower = rawData.trim().toLowerCase();
     if (lower.startsWith('<') || lower.includes('<html')) return null;
+
     items = rawData
-      .split(/[、,，]/)
+      .split(/[、,，\n]/)
       .map((s) => s.trim())
       .filter(Boolean)
       .map((title) => ({ title, url: '' }));
-  } else if (typeof rawData === 'object') {
-    const dataArray = rawData.data || rawData.result?.data || [];
-
-    if (platformName === '36氪热榜') {
-      const arr = rawData.data?.itemList || [];
-      items = arr.map((x) => ({
-        title: x.templateMaterial?.widgetTitle || x.title || '',
-        url:   'https://36kr.com/hot-list-m',
-      }));
-    } else if (platformName === 'B站热门') {
-      const arr = rawData.data?.list || [];
-      items = arr.map((x) => ({
-        title: x.title || '',
-        url:   x.short_link || '',
-      }));
-    } else if (platformName === '知乎热榜') {
-      items = dataArray.map((x) => {
-        const title = x.target?.title || x.title || '';
-        let url = x.target?.url || '';
-        if (url) {
-          url = url.replace('https://api.zhihu.com/questions', 'zhihu://questions');
-        }
-        return { title, url };
-      });
-    } else if (platformName === '微博热搜') {
-      const arr = rawData.realtime || [];
-      items = arr.map((x) => ({
-        title: x.word_scheme || x.word || '',
-        url:   '',
-      }));
-    } else if (platformName === '抖音热榜') {
-      const arr = rawData.word_list || [];
-      items = arr.map((x) => ({
-        title: x.word || '',
-        url:   '',
-      }));
-    } else {
-      items = dataArray.map((x) => ({
-        title: x.title || '',
-        url:   x.url   || '',
-      }));
-    }
   }
 
-  items = items.filter((x) => x.title);
+  // 去掉空标题
+  items = items.filter((x) => x.title && x.title.trim().length > 0);
   if (!items.length) return null;
 
   // URL Scheme 统一补全
   items = items.map((item) => {
-    const t = item.title;
+    const t = item.title.trim();
     const enc = encodeURIComponent(t);
     let url = item.url || '';
 
-    if (platformName === '微博热搜') {
-      url = `sinaweibo://searchall?q=${enc}`;
-    } else if (platformName === '抖音热榜') {
-      url = `snssdk1128://search?keyword=${enc}`;
-    } else if (platformName === '头条热榜') {
-      url = `snssdk141://search?keyword=${enc}`;
-    } else if (platformName === '快手热榜') {
-      url = `kwai://search?keyword=${t}`;
-    } else if (platformName === '小红书热榜') {
-      url = `xhsdiscover://search/result?keyword=${enc}`;
-    } else if (platformName === '百度热搜') {
-      url = `baiduboxapp://search?word=${enc}`;
-    } else if (platformName === 'B站热门' && !url.includes('bilibili://')) {
-      url = `bilibili://search?keyword=${enc}`;
-    } else if (platformName === '知乎热榜' && url) {
-      url = url.replace('https://api.zhihu.com/questions', 'zhihu://questions');
+    if (!url) {
+      if (platformName === '微博热搜') {
+        url = `sinaweibo://searchall?q=${enc}`;
+      } else if (platformName === '抖音热榜') {
+        url = `snssdk1128://search?keyword=${enc}`;
+      } else if (platformName === '头条热榜') {
+        url = `snssdk141://search?keyword=${enc}`;
+      } else if (platformName === '快手热榜') {
+        url = `kwai://search?keyword=${enc}`;
+      } else if (platformName === '小红书热榜') {
+        url = `xhsdiscover://search/result?keyword=${enc}`;
+      } else if (platformName === '百度热搜') {
+        url = `baiduboxapp://search?word=${enc}`;
+      } else if (platformName === 'B站热门') {
+        url = `bilibili://search?keyword=${enc}`;
+      } else if (platformName === '知乎热榜') {
+        url = `zhihu://search?q=${enc}`;
+      } else if (platformName === '36氪热榜') {
+        url = 'https://36kr.com/hot-list-m';
+      }
     }
 
     return { title: t, url };
@@ -363,7 +431,7 @@ function normalizeList(platformName, rawData) {
   let filtered = [];
   if (KEYWORDS.length) {
     filtered = items.filter((it) =>
-      KEYWORDS.some((k) => it.title.includes(k)),
+      KEYWORDS.some((k) => it.title.includes(k))
     );
     if (filtered.length) {
       console.log(`✅ [${platformName}] 命中关键词 ${filtered.length} 条`);
@@ -372,7 +440,7 @@ function normalizeList(platformName, rawData) {
 
   if (!filtered.length) {
     const key = Object.keys(PLATFORMS).find(
-      (k) => PLATFORMS[k].name === platformName,
+      (k) => PLATFORMS[k].name === platformName
     );
     const cfg = key ? PLATFORMS[key] : null;
     if (cfg?.ignore || !KEYWORDS.length) {
@@ -393,28 +461,16 @@ async function fetchPlatform(key) {
 
   console.log(`📡 [${cfg.name}] 开始抓取...`);
   let lastError = null;
+  let successUrl = '';
 
   for (const url of cfg.urls || []) {
     try {
+      console.log(`🔗 尝试接口: ${new URL(url).hostname}`);
       const raw = await httpGet(url);
 
-      let list;
-      if (Array.isArray(raw)) {
-        list = raw;
-      } else if (raw && typeof raw === 'object') {
-        if (Array.isArray(raw.data)) {
-          list = raw.data;
-        } else if (raw.result && Array.isArray(raw.result.data)) {
-          list = raw.result.data;
-        } else {
-          list = raw;
-        }
-      } else {
-        list = raw;
-      }
-
-      const items = normalizeList(cfg.name, list);
+      const items = normalizeList(cfg.name, raw);
       if (items && items.length) {
+        successUrl = url;
         const finalItems = items.slice(0, cfg.count);
 
         if (cfg.split) {
@@ -422,7 +478,7 @@ async function fetchPlatform(key) {
             notify(
               `${cfg.name} Top${idx + 1}`,
               item.title,
-              item.url,
+              item.url
             );
           });
         } else {
@@ -432,39 +488,42 @@ async function fetchPlatform(key) {
           notify(
             `${cfg.name} Top${finalItems.length}`,
             body,
-            cfg.home,
+            cfg.home
           );
         }
 
-        console.log(`✅ [${cfg.name}] 推送成功 ${finalItems.length} 条`);
-        return;
+        console.log(`✅ [${cfg.name}] 推送成功 ${finalItems.length} 条 (来自: ${new URL(url).hostname})`);
+        return { success: true, host: new URL(url).hostname };
+      } else {
+        console.log(`⚠️ [${cfg.name}] 接口无有效数据: ${new URL(url).hostname}`);
       }
     } catch (e) {
       lastError = e;
+      const errorMsg = e.message || String(e);
       console.log(
-        `⚠️ [${cfg.name}] 接口失败: ${url} -> ${
-          e && e.message ? e.message : String(e)
-        }`,
+        `⚠️ [${cfg.name}] 接口失败: ${new URL(url).hostname} -> ${errorMsg}`
       );
     }
   }
 
   if (lastError) {
     console.log(
-      `❌ [${cfg.name}] 所有接口均失败，最后一次错误: ${
-        lastError && lastError.message ? lastError.message : String(lastError)
-      }`,
+      `❌ [${cfg.name}] 所有接口均失败，最后一次错误: ${lastError.message || lastError}`
     );
   } else {
     console.log(`❌ [${cfg.name}] 所有接口均失败，未获取到有效数据`);
   }
+
+  return { success: false, host: null };
 }
 
 // ========== 主流程 ==========
 (async () => {
   console.log('🚀 ========== 多平台热榜监控启动 ==========');
+  console.log(`📅 当前时间: ${new Date().toLocaleString()}`);
 
   if (!inPushTime()) {
+    console.log('⏰ 不在推送时间，脚本结束');
     $done();
     return;
   }
@@ -473,11 +532,39 @@ async function fetchPlatform(key) {
   console.log(
     `📊 已启用平台: ${enabled
       .map((k) => PLATFORMS[k].name)
-      .join(', ')}`,
+      .join(', ')}`
   );
 
-  await Promise.all(enabled.map((k) => fetchPlatform(k)));
+  const healthStatus = {};
 
-  console.log('✅ ========== 多平台热榜监控完成 ==========');
+  const results = await Promise.allSettled(
+    enabled.map(async (key) => {
+      const result = await fetchPlatform(key);
+      healthStatus[key] = {
+        platform: PLATFORMS[key].name,
+        success: result.success,
+        host: result.host,
+        timestamp: Date.now()
+      };
+      return result;
+    })
+  );
+
+  const successCount = results.filter(r => r.status === 'fulfilled' && r.value?.success).length;
+  const failCount = enabled.length - successCount;
+
+  console.log(`\n📊 ========== 执行结果统计 ==========`);
+  console.log(`✅ 成功: ${successCount} 个平台`);
+  console.log(`❌ 失败: ${failCount} 个平台`);
+
+  console.log(`\n🏥 接口健康状态:`);
+  Object.keys(healthStatus).forEach(key => {
+    const status = healthStatus[key];
+    const icon = status.success ? '✅' : '❌';
+    const host = status.host ? ` (${status.host})` : '';
+    console.log(`  ${icon} ${status.platform}${host}`);
+  });
+
+  console.log('\n✅ ========== 多平台热榜监控完成 ==========');
   $done();
 })();
