@@ -1,5 +1,7 @@
 // 多平台热榜监控 - Loon 版 (优化版)
-
+// 更新日期: 2025年12月
+// 作者: 优化版
+// 支持平台: 微博热搜, 百度热搜, 抖音热榜, 知乎热榜, B站热门, 36氪热榜, 头条热榜, 小红书热榜, 快手热榜
 
 // ========== 参数解析 ==========
 const $config = {};
@@ -109,7 +111,6 @@ const PLATFORMS = {
       'https://api.oioweb.cn/api/common/hotlist/zhihu',
       'https://tenapi.cn/v2/zhihuhot',
       'https://api.guole.fun/zhihu',
-      // 加回官方兜底接口，和老脚本对齐 :contentReference[oaicite:2]{index=2}
       'https://api.zhihu.com/topstory/hot-lists/total?limit=50',
     ],
     enable: getConfig('hot_zhihu_enable', 'bool', true),
@@ -135,7 +136,6 @@ const PLATFORMS = {
   kr36: {
     name: '36氪热榜',
     home: 'https://36kr.com/newsflashes',
-    // 合并老脚本稳定源 + DeepSeek 新增源，优先 vvhan + xxapi + tenapi + xzdx，再到其他 :contentReference[oaicite:3]{index=3}
     urls: [
       'https://api.vvhan.com/api/hotlist?type=36kr',
       'https://v2.xxapi.cn/api/hot36kr',
@@ -228,7 +228,7 @@ async function httpGet(url) {
     try {
       if (attempt > 0) {
         console.log(`🔄 [重试] ${url} 第 ${attempt} 次重试...`);
-        await sleep(1000 * attempt); // 简单退避
+        await sleep(1000 * attempt);
       }
 
       return await new Promise((resolve, reject) => {
@@ -305,7 +305,7 @@ function normalizeList(platformName, rawData) {
       return { title, url: '' };
     });
   } 
-  // 知乎：特殊处理官方 API 格式
+  // 知乎：官方 API 格式
   else if (platformName === '知乎热榜' && rawData.data) {
     const dataArray = rawData.data || [];
     items = dataArray.map((x) => {
@@ -317,7 +317,7 @@ function normalizeList(platformName, rawData) {
       return { title, url };
     });
   }
-  // 36氪：处理多种接口格式
+  // 36氪：多种接口格式
   else if (platformName === '36氪热榜') {
     let arr = [];
     if (Array.isArray(rawData.data)) {
@@ -332,7 +332,7 @@ function normalizeList(platformName, rawData) {
 
     items = arr.map((x) => ({
       title: x.title || x.templateMaterial?.widgetTitle || x.name || x.word || '',
-      url: x.url || x.link || 'https://36kr.com/hot-list-m'
+      url: x.url || x.link || 'https://36kr.com/hot-list-m',
     }));
   }
   // B站：特殊处理
@@ -346,7 +346,7 @@ function normalizeList(platformName, rawData) {
 
     items = arr.map((x) => ({
       title: x.title || x.name || '',
-      url: x.short_link || x.url || ''
+      url: x.short_link || x.url || '',
     }));
   }
   // 微博
@@ -362,14 +362,14 @@ function normalizeList(platformName, rawData) {
 
     items = arr.map((x) => ({
       title: x.word_scheme || x.word || x.title || x.name || '',
-      url: x.url || ''
+      url: x.url || '',
     }));
   }
   // 通用数组
   else if (Array.isArray(rawData)) {
     items = rawData.map((x) => ({
       title: x.title || x.word || x.name || x.desc || '',
-      url: x.url || x.link || x.short_link || ''
+      url: x.url || x.link || x.short_link || '',
     }));
   }
   // 通用对象
@@ -377,7 +377,7 @@ function normalizeList(platformName, rawData) {
     const dataArray = rawData.data || rawData.result?.data || rawData.list || [];
     items = dataArray.map((x) => ({
       title: x.title || x.word || x.name || x.desc || '',
-      url: x.url || x.link || x.short_link || ''
+      url: x.url || x.link || x.short_link || '',
     }));
   }
   // 文本
@@ -396,32 +396,36 @@ function normalizeList(platformName, rawData) {
   items = items.filter((x) => x.title && x.title.trim().length > 0);
   if (!items.length) return null;
 
-  // URL Scheme 统一补全
+  // ===== 关键修改：强制覆盖 URL 为 App Scheme，避免被 H5 链接劫持 =====
   items = items.map((item) => {
-    const t = item.title.trim();
+    const t = (item.title || '').trim();
     const enc = encodeURIComponent(t);
     let url = item.url || '';
 
-    if (!url) {
-      if (platformName === '微博热搜') {
-        url = `sinaweibo://searchall?q=${enc}`;
-      } else if (platformName === '抖音热榜') {
-        url = `snssdk1128://search?keyword=${enc}`;
-      } else if (platformName === '头条热榜') {
-        url = `snssdk141://search?keyword=${enc}`;
-      } else if (platformName === '快手热榜') {
-        url = `kwai://search?keyword=${enc}`;
-      } else if (platformName === '小红书热榜') {
-        url = `xhsdiscover://search/result?keyword=${enc}`;
-      } else if (platformName === '百度热搜') {
-        url = `baiduboxapp://search?word=${enc}`;
-      } else if (platformName === 'B站热门') {
-        url = `bilibili://search?keyword=${enc}`;
-      } else if (platformName === '知乎热榜') {
+    if (platformName === '微博热搜') {
+      url = `sinaweibo://searchall?q=${enc}`;
+    } else if (platformName === '抖音热榜') {
+      url = `snssdk1128://search?keyword=${enc}`;
+    } else if (platformName === '头条热榜') {
+      url = `snssdk141://search?keyword=${enc}`;
+    } else if (platformName === '快手热榜') {
+      url = `kwai://search?keyword=${t}`;
+    } else if (platformName === '小红书热榜') {
+      url = `xhsdiscover://search/result?keyword=${enc}`;
+    } else if (platformName === '百度热搜') {
+      url = `baiduboxapp://search?word=${enc}`;
+    } else if (platformName === 'B站热门') {
+      url = `bilibili://search?keyword=${enc}`;
+    } else if (platformName === '知乎热榜') {
+      // 如果前面已经把 questions 链接转成 zhihu://questions，就保留；
+      if (url && url.includes('zhihu://questions')) {
+        // no-op
+      } else {
         url = `zhihu://search?q=${enc}`;
-      } else if (platformName === '36氪热榜') {
-        url = 'https://36kr.com/hot-list-m';
       }
+    } else if (platformName === '36氪热榜') {
+      // 36氪本身是新闻站，保留 H5，靠通用链接拉起 App
+      url = url || 'https://36kr.com/hot-list-m';
     }
 
     return { title: t, url };
@@ -461,7 +465,6 @@ async function fetchPlatform(key) {
 
   console.log(`📡 [${cfg.name}] 开始抓取...`);
   let lastError = null;
-  let successUrl = '';
 
   for (const url of cfg.urls || []) {
     try {
@@ -470,7 +473,6 @@ async function fetchPlatform(key) {
 
       const items = normalizeList(cfg.name, raw);
       if (items && items.length) {
-        successUrl = url;
         const finalItems = items.slice(0, cfg.count);
 
         if (cfg.split) {
