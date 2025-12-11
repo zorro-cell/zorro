@@ -1,12 +1,15 @@
-# 快手／知乎／头条备用接口域名走海外节点
-DOMAIN-SUFFIX,guole.fun      
-DOMAIN-SUFFIX,lolimi.cn
-DOMAIN-SUFFIX,suyanw.cn     
-DOMAIN-SUFFIX,xxapi.cn         
-DOMAIN-SUFFIX,vvhan.com        
-DOMAIN-SUFFIX,tenapi.cn        
-DOMAIN-SUFFIX,xzdx.top         
-DOMAIN-SUFFIX,imsyy.top      
-DOMAIN-SUFFIX,zhihu.com
-DOMAIN-SUFFIX,kuaishou.com
-# 其他接口可根据需要继续补充
+[Rule]
+# 热榜接口统一走代理
+DOMAIN,xzdx.top
+DOMAIN,v2.xxapi.cn
+DOMAIN,api.vvhan.com
+DOMAIN,tenapi.cn
+DOMAIN,api-hot.imsyy.top
+DOMAIN,v.api.aa1.cn
+DOMAIN,api.oioweb.cn
+DOMAIN,api.guole.fun
+DOMAIN,api-bz.ayou.xyz
+DOMAIN,api.gumengya.com
+DOMAIN,api.itapi.cn
+DOMAIN,api.suyanw.cn
+DOMAIN,api.zhihu.com
