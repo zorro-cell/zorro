@@ -1,7 +1,5 @@
-// 多平台热榜监控 - Loon 版 (优化版)
+// 多平台热榜监控 - Loon 版 (优化懒人版)
 // 更新日期: 2025年12月11日
-// 作者: 心事全在脸上
-// 支持平台: 微博热搜, 百度热搜, 抖音热榜, 知乎热榜, B站热门, 36氪热榜, 头条热榜, 小红书热榜, 快手热榜
 
 // ========== 参数解析 ==========
 const $config = {};
@@ -48,14 +46,16 @@ const ATTACH_LINK    = getConfig('hot_attach_link', 'bool', true);
 const ENABLE_RETRY   = getConfig('hot_enable_retry', 'bool', true);
 // 默认只重试 1 次（总共最多 2 轮）
 const MAX_RETRIES    = getConfig('hot_max_retries', 'int', 1);
-
 // 是否打印详细 HTTP 日志（可选开关，默认 false）
 const DETAIL_LOG     = getConfig('hot_log_detail', 'bool', false);
+// 额外保险丝超时时间（毫秒），防止回调不触发，比如 12000
+const GUARD_TIMEOUT  = getConfig('hot_guard_timeout', 'int', 12000);
 
 console.log(`🎯 [配置] 关键词: ${KEYWORDS.length ? KEYWORDS.join(', ') : '全部'}`);
 console.log(`⏰ [配置] 推送时间: ${PUSH_HOURS_STR || '全天'}`);
 console.log(`🔗 [配置] 附带链接: ${ATTACH_LINK ? '是' : '否'}`);
 console.log(`🔄 [配置] 请求重试: ${ENABLE_RETRY ? `开启 (最多${MAX_RETRIES}次)` : '关闭'}`);
+console.log(`⏱ [配置] 自定义超时保护: ${GUARD_TIMEOUT} ms`);
 
 // ========== 平台配置 ==========
 const PLATFORMS = {
@@ -187,12 +187,13 @@ const PLATFORMS = {
   kuaishou: {
     name: '快手热榜',
     home: 'kwai://home/hot',
+    // 调整顺序：优先 xxapi / tenapi / guole，vvhan 放最后，减少“卡死在第一条”的概率
     urls: [
-      'https://api.vvhan.com/api/hotlist?type=ks',
-      'https://api.suyanw.cn/api/kuaishou_hot_search.php',
       'https://v2.xxapi.cn/api/kuaishouhot',
       'https://tenapi.cn/v2/kuaishouhot',
       'https://api.guole.fun/kuaishou',
+      'https://api.suyanw.cn/api/kuaishou_hot_search.php',
+      'https://api.vvhan.com/api/hotlist?type=ks',
     ],
     enable: getConfig('hot_kuaishou_enable', 'bool', true),
     split:  getConfig('hot_kuaishou_split',  'bool', true),
@@ -223,7 +224,32 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// 10 秒超时 + 最多重试 1 次
+// 把英文错误信息翻译成简单中文
+function getErrorSummary(msg) {
+  if (!msg) return '未知原因';
+  const m = String(msg).toLowerCase();
+
+  if (m.includes('timeout_guard')) return '请求超时';
+  if (m.includes('empty dns') || m.includes('dns')) {
+    return 'DNS 解析失败';
+  }
+  if (m.includes('network is unreachable') || m.includes('unreachable')) {
+    return '网络不可达';
+  }
+  if (m.includes('timeout')) {
+    return '请求超时';
+  }
+  const httpMatch = m.match(/http\s+(\d{3})/i);
+  if (httpMatch) {
+    const code = httpMatch[1];
+    if (code.startsWith('5')) return `服务器错误（HTTP ${code}）`;
+    if (code.startsWith('4')) return `请求异常（HTTP ${code}）`;
+    return `HTTP 错误（HTTP ${code}）`;
+  }
+  return '接口异常';
+}
+
+// 10 秒超时 + 最多重试 1 次 + 保险丝超时保护
 async function httpGet(url) {
   const maxRetries = ENABLE_RETRY ? MAX_RETRIES : 0;
 
@@ -234,13 +260,26 @@ async function httpGet(url) {
       }
 
       return await new Promise((resolve, reject) => {
+        let finished = false;
+
+        // 保险丝：Loon 偶尔不按 timeout 回调，这里自己掐掉
+        const guard = setTimeout(() => {
+          if (finished) return;
+          finished = true;
+          reject(new Error('TIMEOUT_GUARD'));
+        }, GUARD_TIMEOUT);
+
         $httpClient.get(
           {
             url,
             headers: COMMON_HEADERS,
-            timeout: 10000, // 10 秒
+            timeout: 10000, // Loon 内部超时
           },
           (err, resp, data) => {
+            if (finished) return;
+            finished = true;
+            clearTimeout(guard);
+
             if (err) {
               if (attempt < maxRetries) {
                 if (DETAIL_LOG) {
@@ -304,30 +343,6 @@ function inPushTime() {
   if (hours.includes(h)) return true;
   console.log(`⏰ 当前 ${h} 点不在推送时间 ${hours.join(',')}，跳过本次`);
   return false;
-}
-
-// 把英文错误信息翻译成简单中文
-function getErrorSummary(msg) {
-  if (!msg) return '未知原因';
-  const m = String(msg).toLowerCase();
-
-  if (m.includes('empty dns') || m.includes('dns')) {
-    return 'DNS 解析失败';
-  }
-  if (m.includes('network is unreachable') || m.includes('unreachable')) {
-    return '网络不可达';
-  }
-  if (m.includes('timeout')) {
-    return '请求超时';
-  }
-  const httpMatch = m.match(/http\s+(\d{3})/i);
-  if (httpMatch) {
-    const code = httpMatch[1];
-    if (code.startsWith('5')) return `服务器错误（HTTP ${code}）`;
-    if (code.startsWith('4')) return `请求异常（HTTP ${code}）`;
-    return `HTTP 错误（HTTP ${code}）`;
-  }
-  return '接口异常';
 }
 
 // ========== 数据标准化 ==========
@@ -623,7 +638,7 @@ async function fetchPlatform(key) {
   Object.keys(healthStatus).forEach(key => {
     const status = healthStatus[key];
     const icon = status.success ? '✅' : '❌';
-    const host = status.host ? ` (${status.host})` : '';
+    const host = status.host ? ` (${hostShort(status.host)})` : '';
     console.log(`  ${icon} ${status.platform}${host}`);
   });
 
@@ -634,7 +649,7 @@ async function fetchPlatform(key) {
     const st = healthStatus[key];
     if (!st) return;
     if (st.success) {
-      const host = st.host ? `，来源：${st.host}` : '';
+      const host = st.host ? `，来源：${hostShort(st.host)}` : '';
       console.log(`✅ ${st.platform}：成功${host}`);
     } else {
       const reason = getErrorSummary(st.error);
@@ -645,3 +660,12 @@ async function fetchPlatform(key) {
   console.log('\n✅ ========== 多平台热榜监控完成 ==========');
   $done();
 })();
+
+function hostShort(host) {
+  if (!host) return '';
+  try {
+    return String(host).replace(/^www\./, '');
+  } catch {
+    return host;
+  }
+}
