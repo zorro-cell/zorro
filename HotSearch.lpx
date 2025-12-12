@@ -1,5 +1,5 @@
 #!name = 多平台热榜监控
-#!desc = 监控多个平台的热榜
+#!desc = 监控多个平台的热榜（抖音·快手·B站·小红书·微博·知乎·36氪·头条·百度）
 #!author = @心事全在脸上
 #!homepage = https://t.me/Santiagocell
 #!icon = https://raw.githubusercontent.com/NobyDa/mini/master/Color/wanan.png
@@ -10,6 +10,12 @@
 hot_keywords = input, "", tag=监控关键词, desc=多个关键词用中文逗号或英文逗号分隔,留空则不限定关键词
 hot_push_hours = input, "", tag=推送时间, desc=指定推送的小时数,留空则全天推送;多个小时用逗号分隔(0-23)
 hot_attach_link = switch, true, tag=通知附带跳转, desc=推送时是否在通知中附带跳转链接
+
+# 稳定性/调试（新增）
+hot_enable_retry = switch, true, tag=稳定性-启用重试, desc=接口请求失败(超时/5xx等)时是否自动重试
+hot_max_retries = select, "1","0","2","3", tag=稳定性-重试次数, desc=每个接口失败后最多重试次数(0=不重试)
+hot_log_detail = switch, false, tag=调试-详细日志, desc=开启后输出每个接口尝试/失败原因(排查用,平时建议关)
+hot_guard_timeout = select, "12000","8000","10000","15000","20000", tag=稳定性-保险丝超时(ms), desc=脚本最长运行保护,超过该毫秒数强制结束避免卡死
 
 # 微博热搜
 hot_weibo_enable = switch, true, tag=微博-启用, desc=是否抓取微博热搜
@@ -66,4 +72,4 @@ hot_xhs_ignore = switch, true, tag=小红书-无词推新
 hot_xhs_count = input, 3, tag=小红书-获取数量
 
 [Script]
-cron "0 * * * *" script-path=https://raw.githubusercontent.com/zorro-cell/zorro/refs/heads/main/hot_loon.js, tag=多平台热榜监控, timeout=120, argument=[{hot_keywords},{hot_push_hours},{hot_attach_link},{hot_weibo_enable},{hot_weibo_split},{hot_weibo_ignore},{hot_weibo_count},{hot_baidu_enable},{hot_baidu_split},{hot_baidu_ignore},{hot_baidu_count},{hot_douyin_enable},{hot_douyin_split},{hot_douyin_ignore},{hot_douyin_count},{hot_zhihu_enable},{hot_zhihu_split},{hot_zhihu_ignore},{hot_zhihu_count},{hot_bilibili_enable},{hot_bilibili_split},{hot_bilibili_ignore},{hot_bilibili_count},{hot_36kr_enable},{hot_36kr_split},{hot_36kr_ignore},{hot_36kr_count},{hot_toutiao_enable},{hot_toutiao_split},{hot_toutiao_ignore},{hot_toutiao_count},{hot_kuaishou_enable},{hot_kuaishou_split},{hot_kuaishou_ignore},{hot_kuaishou_count},{hot_xhs_enable},{hot_xhs_split},{hot_xhs_ignore},{hot_xhs_count}]
+cron "0 * * * *" script-path=https://raw.githubusercontent.com/zorro-cell/zorro/refs/heads/main/hot_loon.js, tag=多平台热榜监控, timeout=120, argument=[{hot_keywords},{hot_push_hours},{hot_attach_link},{hot_enable_retry},{hot_max_retries},{hot_log_detail},{hot_guard_timeout},{hot_weibo_enable},{hot_weibo_split},{hot_weibo_ignore},{hot_weibo_count},{hot_baidu_enable},{hot_baidu_split},{hot_baidu_ignore},{hot_baidu_count},{hot_douyin_enable},{hot_douyin_split},{hot_douyin_ignore},{hot_douyin_count},{hot_zhihu_enable},{hot_zhihu_split},{hot_zhihu_ignore},{hot_zhihu_count},{hot_bilibili_enable},{hot_bilibili_split},{hot_bilibili_ignore},{hot_bilibili_count},{hot_36kr_enable},{hot_36kr_split},{hot_36kr_ignore},{hot_36kr_count},{hot_toutiao_enable},{hot_toutiao_split},{hot_toutiao_ignore},{hot_toutiao_count},{hot_kuaishou_enable},{hot_kuaishou_split},{hot_kuaishou_ignore},{hot_kuaishou_count},{hot_xhs_enable},{hot_xhs_split},{hot_xhs_ignore},{hot_xhs_count}]
