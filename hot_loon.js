@@ -312,9 +312,15 @@ async function httpGet(url) {
             }
 
             try {
+              // ✅ 修复点 #1：支持数组 JSON（'['）+ 兼容少量接口 Content-Type 不规范
+              if (data && typeof data === 'object') {
+                resolve(data);
+                return;
+              }
               const ct = (resp.headers['Content-Type'] || resp.headers['content-type'] || '').toLowerCase();
-              if (ct.includes('application/json') || (typeof data === 'string' && data.trim().startsWith('{'))) {
-                resolve(JSON.parse(data));
+              const s = typeof data === 'string' ? data.trim().replace(/^\uFEFF/, '') : '';
+              if (ct.includes('application/json') || (s && (s[0] === '{' || s[0] === '['))) {
+                resolve(JSON.parse(s));
               } else {
                 resolve(data);
               }
@@ -366,7 +372,7 @@ function normalizeList(platformName, rawData) {
       const title = m ? m[1] : line;
       return { title, url: '' };
     });
-  } 
+  }
   // 知乎：官方 API 格式
   else if (platformName === '知乎热榜' && rawData.data) {
     const dataArray = rawData.data || [];
@@ -423,7 +429,8 @@ function normalizeList(platformName, rawData) {
     }
 
     items = arr.map((x) => ({
-      title: x.word_scheme || x.word || x.title || x.name || '',
+      // ✅ 修复点 #2：标题优先取“词本身”，避免 word_scheme 抢占标题
+      title: x.word || x.title || x.name || x.word_scheme || '',
       url: x.url || '',
     }));
   }
@@ -471,7 +478,8 @@ function normalizeList(platformName, rawData) {
     } else if (platformName === '头条热榜') {
       url = `snssdk141://search?keyword=${enc}`;
     } else if (platformName === '快手热榜') {
-      url = `kwai://search?keyword=${t}`;
+      // ✅ 修复点 #3：快手 scheme 参数做 URL 编码
+      url = `kwai://search?keyword=${enc}`;
     } else if (platformName === '小红书热榜') {
       url = `xhsdiscover://search/result?keyword=${enc}`;
     } else if (platformName === '百度热搜') {
