@@ -1,6 +1,5 @@
 #!name = 多平台热榜监控
-#!desc = 监控多个平台的热榜
-（抖音、快手、B站、小红书、微博、知乎、36氪、头条、百度）
+#!desc = 监控多个平台的热榜（抖音、快手、B站、小红书、微博、知乎、36氪、头条、百度）
 #!author =@心事全在脸上
 #!homepage = https://t.me/Santiagocell
 #!icon = https://raw.githubusercontent.com/NobyDa/mini/master/Color/wanan.png
