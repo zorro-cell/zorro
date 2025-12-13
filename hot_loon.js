@@ -1,10 +1,10 @@
-// 多平台热榜监控 - Loon 版（加强版）
+// 多平台热榜监控 - Loon 版（加强修复版）
 // 更新日期: 2025-12-13
-// 重点修复：
-// 1) 通知顺序统一调整：倒序发送，让 Top1 始终出现在通知顶端（iOS 最新在上）
-// 2) B站改为「全站热榜（排行榜）」数据源：优先官方 ranking/v2 接口
-// 3) B站单条通知：点击直达视频（bilibili://video/{BV... 或 av...}）
-// 4) B站合集通知：打开「全站热榜」页面（优先 Universal Link，避免打开内置网页）
+// 修复点：
+// 1) 全平台 Top1 通知置顶（倒序发送通知）
+// 2) B站：改为“全站热榜/排行榜”数据源（ranking/v2 全站）
+// 3) B站：单条通知点击直达视频（bilibili://video/...）
+// 4) B站：合集通知点击优先拉起“App 原生排行榜页”（默认 bilibili://rank），避免网页/白底 WebView
 
 // ========== 参数解析 ==========
 const $config = {};
@@ -53,9 +53,6 @@ const KEYWORDS = KEYWORDS_STR
 const PUSH_HOURS_STR = getConfig("hot_push_hours", "string", "");
 const ATTACH_LINK = getConfig("hot_attach_link", "bool", true);
 
-// ✅ 强制 Top1 在通知顶端：倒序发送（TopN -> Top1）
-const TOP1_ON_TOP = getConfig("hot_top1_on_top", "bool", true);
-
 const ENABLE_RETRY = getConfig("hot_enable_retry", "bool", true);
 // 默认只重试 1 次（总共最多 2 轮）
 const MAX_RETRIES = getConfig("hot_max_retries", "int", 1);
@@ -64,16 +61,23 @@ const DETAIL_LOG = getConfig("hot_log_detail", "bool", false);
 // 额外保险丝超时时间（毫秒），防止回调不触发，比如 12000
 const GUARD_TIMEOUT = getConfig("hot_guard_timeout", "int", 12000);
 
+// ✅ B站合集通知打开的“原生排行榜页” URL（可用参数覆盖）
+// 你要第三张那种“排行榜原生页”，必须走 bilibili:// 这类内部路由，不能用 https / bilibili://browser
+// 如果你发现 bilibili://rank 在你设备上不是排行榜页，可以尝试改成（任选其一）：
+// - bilibili://rank/
+// - bilibili://popular
+// - bilibili://main/home/
+// 但默认优先 bilibili://rank（最像“排行榜入口”）
+const BILIBILI_HOME = getConfig("hot_bilibili_home", "string", "bilibili://rank");
+
 console.log(`🎯 [配置] 关键词: ${KEYWORDS.length ? KEYWORDS.join(", ") : "全部"}`);
 console.log(`⏰ [配置] 推送时间: ${PUSH_HOURS_STR || "全天"}`);
 console.log(`🔗 [配置] 附带链接: ${ATTACH_LINK ? "是" : "否"}`);
-console.log(`🔔 [配置] Top1置顶(倒序发送): ${TOP1_ON_TOP ? "是" : "否"}`);
 console.log(`🔄 [配置] 请求重试: ${ENABLE_RETRY ? `开启 (最多${MAX_RETRIES}次)` : "关闭"}`);
 console.log(`⏱ [配置] 自定义超时保护: ${GUARD_TIMEOUT} ms`);
+console.log(`📌 [B站] 合集跳转: ${BILIBILI_HOME}`);
 
 // ========== 平台配置 ==========
-const BILI_RANK_WEB = "https://www.bilibili.com/v/popular/rank/all";
-
 const PLATFORMS = {
   weibo: {
     name: "微博热搜",
@@ -141,20 +145,17 @@ const PLATFORMS = {
     count: getConfig("hot_zhihu_count", "int", 3),
   },
 
+  // ✅ B站：改为“全站热榜/排行榜”
   bilibili: {
-    // ✅ 按你截图的「全站热榜 / 排行榜」口径
     name: "B站全站热榜",
-    // ✅ 合集通知：优先用 Universal Link（避免 bilibili://browser 触发「白色网页」）
-    //    目标：尽量拉起 APP 并落到原生排行榜页（你第三张图的样子）
-    home: BILI_RANK_WEB,
+    // ✅ 合集通知：优先打开 App 原生排行榜页（避免 https / browser webview）
+    home: BILIBILI_HOME,
     urls: [
-      // ✅ 官方接口：全站排行榜（与你第三张图一致）
-      "https://api.bilibili.com/x/web-interface/ranking/v2?rid=0&type=all&web_location=333.934",
-      // ✅ 备用：不带 web_location（部分环境可能更稳）
+      // ✅ 1) 官方：全站排行榜（你截图第三张“排行榜/全站”对齐这个）
       "https://api.bilibili.com/x/web-interface/ranking/v2?rid=0&type=all",
-      // 兜底：综合热门（若你更想要“热门流”可把它挪到第一位）
+      // ✅ 2) 备用：综合热门（万一排行榜接口临时异常）
       "https://api.bilibili.com/x/web-interface/popular?ps=50&pn=1",
-      // 最后兜底：第三方聚合接口（极端情况下才会用到）
+      // 兜底：第三方聚合接口
       "https://api.vvhan.com/api/hotlist?type=bilibili",
       "https://xzdx.top/api/tophub?type=bilihot",
       "https://v.api.aa1.cn/api/bilibili-rs/",
@@ -164,6 +165,7 @@ const PLATFORMS = {
     enable: getConfig("hot_bilibili_enable", "bool", true),
     split: getConfig("hot_bilibili_split", "bool", true),
     ignore: getConfig("hot_bilibili_ignore", "bool", true),
+    // 你想要 Top10 就设置 hot_bilibili_count=10
     count: getConfig("hot_bilibili_count", "int", 10),
   },
 
@@ -221,7 +223,6 @@ const PLATFORMS = {
   kuaishou: {
     name: "快手热榜",
     home: "kwai://home/hot",
-    // 调整顺序：优先 xxapi / tenapi / guole，vvhan 放最后，减少“卡死在第一条”的概率
     urls: [
       "https://v2.xxapi.cn/api/kuaishouhot",
       "https://tenapi.cn/v2/kuaishouhot",
@@ -235,6 +236,8 @@ const PLATFORMS = {
     count: getConfig("hot_kuaishou_count", "int", 3),
   },
 };
+
+const BILI_NAME = PLATFORMS.bilibili.name;
 
 // ========== 工具函数 ==========
 const COMMON_HEADERS = {
@@ -327,14 +330,10 @@ async function httpGet(url) {
 
             if (err) {
               if (attempt < maxRetries) {
-                if (DETAIL_LOG) {
-                  console.log(`⚠️ [HTTP] ${url} 失败(${err.message || err})，准备重试...`);
-                }
+                if (DETAIL_LOG) console.log(`⚠️ [HTTP] ${url} 失败(${err.message || err})，准备重试...`);
                 reject(new Error(`RETRYABLE: ${err.message || err}`));
               } else {
-                if (DETAIL_LOG) {
-                  console.log(`❌ [HTTP] ${url} 最终失败: ${err.message || err}`);
-                }
+                if (DETAIL_LOG) console.log(`❌ [HTTP] ${url} 最终失败: ${err.message || err}`);
                 reject(err);
               }
               return;
@@ -343,14 +342,10 @@ async function httpGet(url) {
             if (!resp || resp.status !== 200) {
               const e = new Error(`HTTP ${resp ? resp.status : "NO_RESP"}`);
               if (attempt < maxRetries) {
-                if (DETAIL_LOG) {
-                  console.log(`⚠️ [HTTP] ${url} 失败(${e.message})，准备重试...`);
-                }
+                if (DETAIL_LOG) console.log(`⚠️ [HTTP] ${url} 失败(${e.message})，准备重试...`);
                 reject(new Error(`RETRYABLE: ${e.message}`));
               } else {
-                if (DETAIL_LOG) {
-                  console.log(`❌ [HTTP] ${url} 最终失败: ${e.message}`);
-                }
+                if (DETAIL_LOG) console.log(`❌ [HTTP] ${url} 最终失败: ${e.message}`);
                 reject(e);
               }
               return;
@@ -380,7 +375,6 @@ async function httpGet(url) {
       if (attempt >= maxRetries || !msg.includes("RETRYABLE")) {
         throw error;
       }
-      // 继续重试
       await sleep(80);
     }
   }
@@ -399,25 +393,35 @@ function inPushTime() {
   return false;
 }
 
-// 从 URL 提取 BV / av（增强兜底命中率）
-function extractBiliVid(u) {
+// ========== B站链接生成（关键：单条直达视频，合集直达排行榜） ==========
+function toHttps(u) {
   if (!u) return "";
-  try {
-    let s = String(u).trim();
-    if (s.startsWith("//")) s = "https:" + s;
+  let s = String(u).trim();
+  if (!s) return "";
+  if (s.startsWith("//")) s = "https:" + s;
+  return s;
+}
 
-    // 常见：/video/BVxxxx 或 /video/av123
-    const m = s.match(/\/video\/((BV|bv)[0-9A-Za-z]+|av\d+)/);
-    if (m && m[1]) return m[1];
+function buildBiliVideoDeepLink(item) {
+  // 优先 aid（最稳），其次 bvid
+  const aid = item && item.aid ? String(item.aid).replace(/^av/i, "") : "";
+  const bvid = item && item.bvid ? String(item.bvid) : "";
 
-    // 兼容：av 可能是纯数字
-    const m2 = s.match(/\/video\/(AV|av)?(\d+)/);
-    if (m2 && m2[2]) return "av" + m2[2];
+  if (aid && /^\d+$/.test(aid)) return `bilibili://video/${aid}`;
+  if (bvid && /^BV/i.test(bvid)) return `bilibili://video/${bvid}`;
 
-    return "";
-  } catch (_) {
-    return "";
+  // 再从 url 里尝试解析
+  const u = toHttps(item && item.url ? item.url : "");
+  if (u) {
+    const mBV = u.match(/\/video\/(BV[0-9A-Za-z]+)\b/);
+    if (mBV) return `bilibili://video/${mBV[1]}`;
+    const mAV = u.match(/\/video\/av(\d+)\b/i);
+    if (mAV) return `bilibili://video/${mAV[1]}`;
   }
+
+  // 最后兜底：搜索
+  const title = item && item.title ? String(item.title).trim() : "";
+  return `bilibili://search?keyword=${encodeURIComponent(title)}`;
 }
 
 // ========== 数据标准化 ==========
@@ -475,11 +479,11 @@ function normalizeList(platformName, rawData) {
     }));
   }
 
-  // ✅ B站：全站热榜（排行榜 / 热门）结构，保留 BV/AV
-  else if (platformName === "B站全站热榜") {
+  // ✅ B站：全站热榜/排行榜（ranking/v2 & popular）
+  else if (platformName === BILI_NAME) {
     let arr = [];
 
-    // 官方 popular / ranking：data.list
+    // ranking/v2 或 popular：data.list
     if (rawData.data && Array.isArray(rawData.data.list)) {
       arr = rawData.data.list;
     }
@@ -501,9 +505,10 @@ function normalizeList(platformName, rawData) {
       const bvid = x.bvid || x.bv_id || x.bv || "";
       const aid = x.aid || x.av || x.id || "";
 
+      // 尽量保留原始链接（后续会统一改成 bilibili://video/...）
       let url = x.short_link || x.shortLink || x.url || x.link || x.share_url || "";
 
-      // 如果没给直链但给了 bvid/aid，就拼出网页视频链接（后面还会转 scheme）
+      // 如果没给直链但给了 bvid/aid，就拼出 https 备用
       if (!url) {
         if (bvid) url = `https://www.bilibili.com/video/${bvid}`;
         else if (aid) url = `https://www.bilibili.com/video/av${aid}`;
@@ -525,7 +530,6 @@ function normalizeList(platformName, rawData) {
     }
 
     items = arr.map((x) => ({
-      // 标题优先取“词本身”，避免 word_scheme 抢占标题
       title: x.word || x.title || x.name || x.word_scheme || "",
       url: x.url || "",
     }));
@@ -582,33 +586,9 @@ function normalizeList(platformName, rawData) {
       url = `xhsdiscover://search/result?keyword=${enc}`;
     } else if (platformName === "百度热搜") {
       url = `baiduboxapp://search?word=${enc}`;
-    } else if (platformName === "B站全站热榜") {
-      // ✅ B站：单条通知尽量直达视频（原生播放页），不要 browser 网页
-      const bvid = item.bvid || "";
-      const aid = item.aid || "";
-
-      if (bvid) {
-        url = `bilibili://video/${bvid}`;
-      } else if (aid) {
-        url = `bilibili://video/av${aid}`;
-      } else if (url) {
-        let u = String(url).trim();
-        if (u.startsWith("//")) u = "https:" + u;
-
-        if (u.startsWith("bilibili://")) {
-          // 已是 scheme
-          url = u;
-        } else if (u.startsWith("http")) {
-          // 尝试从链接里抽 BV/AV，抽到就直达；抽不到就保留 https（交给 iOS Universal Link）
-          const vid = extractBiliVid(u);
-          if (vid) url = `bilibili://video/${vid}`;
-          else url = u;
-        } else {
-          url = `bilibili://search?keyword=${enc}`;
-        }
-      } else {
-        url = `bilibili://search?keyword=${enc}`;
-      }
+    } else if (platformName === BILI_NAME) {
+      // ✅ 关键修复：B站单条通知 = 直达视频（bilibili://video/...），避免 bilibili://browser 白底网页
+      url = buildBiliVideoDeepLink(item);
     } else if (platformName === "知乎热榜") {
       if (url && url.includes("zhihu://questions")) {
         // 保留 questions 链接
@@ -619,6 +599,7 @@ function normalizeList(platformName, rawData) {
       url = url || "https://36kr.com/hot-list-m";
     }
 
+    // ✅ 保留其他字段（例如 B站的 aid/bvid）
     return { ...item, title: t, url };
   });
 
@@ -626,9 +607,7 @@ function normalizeList(platformName, rawData) {
   let filtered = [];
   if (KEYWORDS.length) {
     filtered = items.filter((it) => KEYWORDS.some((k) => it.title.includes(k)));
-    if (filtered.length) {
-      console.log(`✅ [${platformName}] 命中关键词 ${filtered.length} 条`);
-    }
+    if (filtered.length) console.log(`✅ [${platformName}] 命中关键词 ${filtered.length} 条`);
   }
 
   if (!filtered.length) {
@@ -643,8 +622,7 @@ function normalizeList(platformName, rawData) {
     }
   }
 
-  // 最终只保留 title / url（避免不同接口字段差异带来的后续混乱）
-  return filtered.map((x) => ({ title: x.title, url: x.url }));
+  return filtered;
 }
 
 // ========== 抓取单个平台 ==========
@@ -657,9 +635,7 @@ async function fetchPlatform(key) {
 
   for (const url of cfg.urls || []) {
     try {
-      if (DETAIL_LOG) {
-        console.log(`🔗 尝试接口: ${new URL(url).hostname}`);
-      }
+      if (DETAIL_LOG) console.log(`🔗 尝试接口: ${new URL(url).hostname}`);
 
       const raw = await httpGet(url);
       const items = normalizeList(cfg.name, raw);
@@ -668,20 +644,13 @@ async function fetchPlatform(key) {
         const finalItems = items.slice(0, cfg.count);
 
         if (cfg.split) {
-          // ✅ 倒序发送：TopN -> Top1（让 Top1 在通知顶端）
-          if (TOP1_ON_TOP) {
-            for (let i = finalItems.length - 1; i >= 0; i--) {
-              const item = finalItems[i];
-              notify(`${cfg.name} Top${i + 1}`, item.title, item.url);
-              await sleep(30); // 微小间隔，降低系统合并/乱序概率
-            }
-          } else {
-            finalItems.forEach((item, idx) => {
-              notify(`${cfg.name} Top${idx + 1}`, item.title, item.url);
-            });
+          // ✅ 关键修复：倒序发送，保证 Top1 在通知顶端
+          for (let i = finalItems.length - 1; i >= 0; i--) {
+            const item = finalItems[i];
+            // Top 的序号必须是原始排名 i+1
+            notify(`${cfg.name} Top${i + 1}`, item.title, item.url);
           }
         } else {
-          // 合集通知：点击打开平台主页
           const body = finalItems.map((item, idx) => `${idx + 1}. ${item.title}`).join("\n");
           notify(`${cfg.name} Top${finalItems.length}`, body, cfg.home);
         }
@@ -689,16 +658,12 @@ async function fetchPlatform(key) {
         console.log(`✅ [${cfg.name}] 推送成功 ${finalItems.length} 条 (来自: ${new URL(url).hostname})`);
         return { success: true, host: new URL(url).hostname, error: "" };
       } else {
-        if (DETAIL_LOG) {
-          console.log(`⚠️ [${cfg.name}] 接口无有效数据: ${new URL(url).hostname}`);
-        }
+        if (DETAIL_LOG) console.log(`⚠️ [${cfg.name}] 接口无有效数据: ${new URL(url).hostname}`);
       }
     } catch (e) {
       lastError = e;
       const errorMsg = e.message || String(e);
-      if (DETAIL_LOG) {
-        console.log(`⚠️ [${cfg.name}] 接口失败: ${new URL(url).hostname} -> ${errorMsg}`);
-      }
+      if (DETAIL_LOG) console.log(`⚠️ [${cfg.name}] 接口失败: ${new URL(url).hostname} -> ${errorMsg}`);
     }
   }
 
