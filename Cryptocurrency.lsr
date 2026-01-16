@@ -1,56 +1,35 @@
-# NAME: Cryptocurrency
-# AUTHOR: blackmatrix7 (base) + HTX/Huobi additions (custom)
-# REPO: https://github.com/blackmatrix7/ios_rule_script
-# CUSTOM UPDATED: 2026-01-04
-# DOMAIN: 4
-# DOMAIN-SUFFIX: 63
-# TOTAL: 67
+# > Crypto / Exchange / DeFi / Explorer Ruleset for Loon (.lsr)
+# > Use in Loon: [Remote Rule] <raw_url>, policy=Crypto, tag=Crypto, enabled=true
 
+# ------------------------
+# > Binance (core + assets + risk/telemetry)
+# ------------------------
+DOMAIN-SUFFIX,binance.com
+DOMAIN-SUFFIX,binance.us
+DOMAIN-SUFFIX,binance.cc
+DOMAIN-SUFFIX,binance.cloud
+DOMAIN-SUFFIX,binance.im
+DOMAIN-SUFFIX,binance.me
+DOMAIN-SUFFIX,bnbstatic.com
+DOMAIN-SUFFIX,bscdnweb.com
+DOMAIN-SUFFIX,binance.vision
+DOMAIN-SUFFIX,forter.com
+DOMAIN-SUFFIX,saasexch.com
+DOMAIN-SUFFIX,saasexch.io
+DOMAIN-SUFFIX,saasexch.co
+DOMAIN-SUFFIX,saasexch.cc
+DOMAIN-SUFFIX,saasexch.info
+DOMAIN-SUFFIX,bnappzh.co
+DOMAIN-SUFFIX,bnappzh.com
+DOMAIN-SUFFIX,bntrace.com
+
+# ------------------------
+# > HTX / Huobi
+# ------------------------
 DOMAIN,app-static-1306115679.file.myqcloud.com
 DOMAIN,htxcfg-1306115679.cos.ap-beijing.myqcloud.com
 DOMAIN,huobicfg.s3.ap-northeast-1.amazonaws.com
 DOMAIN,license.vod2.myqcloud.com
-
-DOMAIN-SUFFIX,88maru.com
-DOMAIN-SUFFIX,aex.com
-DOMAIN-SUFFIX,aglmt.com
-DOMAIN-SUFFIX,aicoin.com
-DOMAIN-SUFFIX,aimoon.com
-DOMAIN-SUFFIX,apru88.com
-DOMAIN-SUFFIX,bbagl.com
-DOMAIN-SUFFIX,bibox.com
-DOMAIN-SUFFIX,binance.cc
-DOMAIN-SUFFIX,binance.cloud
-DOMAIN-SUFFIX,binance.com
-DOMAIN-SUFFIX,binance.im
-DOMAIN-SUFFIX,binance.me
-DOMAIN-SUFFIX,binance.us
-DOMAIN-SUFFIX,bitcointalk.org
-DOMAIN-SUFFIX,bitfinex.com
-DOMAIN-SUFFIX,bithumb.com
-DOMAIN-SUFFIX,bitmex.com
-DOMAIN-SUFFIX,bitstamp.net
-DOMAIN-SUFFIX,bittrex.com
-DOMAIN-SUFFIX,bnappzh.co
-DOMAIN-SUFFIX,bnappzh.com
-DOMAIN-SUFFIX,bnbstatic.com
-DOMAIN-SUFFIX,bntrace.com
-DOMAIN-SUFFIX,btcgateway.pro
-DOMAIN-SUFFIX,bybit.com
-DOMAIN-SUFFIX,coinbase.com
-DOMAIN-SUFFIX,coincheck.com
-DOMAIN-SUFFIX,coingecko.com
-DOMAIN-SUFFIX,coinmarketcap.com
-DOMAIN-SUFFIX,coinone.co.kr
-DOMAIN-SUFFIX,daumoon.com
-DOMAIN-SUFFIX,debank.com
-DOMAIN-SUFFIX,etherscan.io
-DOMAIN-SUFFIX,ftx.com
-DOMAIN-SUFFIX,gate.io
-DOMAIN-SUFFIX,gemini.com
-DOMAIN-SUFFIX,hbdm.com
-DOMAIN-SUFFIX,hbg.com
-DOMAIN-SUFFIX,hbfile.net
 DOMAIN-SUFFIX,htx.com
 DOMAIN-SUFFIX,htx.com.am
 DOMAIN-SUFFIX,htx.com.bz
@@ -60,17 +39,80 @@ DOMAIN-SUFFIX,htx.com.gt
 DOMAIN-SUFFIX,htx.com.lv
 DOMAIN-SUFFIX,huobi.com
 DOMAIN-SUFFIX,huobi.pro
+DOMAIN-SUFFIX,hbdm.com
+DOMAIN-SUFFIX,hbg.com
+DOMAIN-SUFFIX,hbfile.net
+
+# ------------------------
+# > Exchanges / Trading
+# ------------------------
+DOMAIN-SUFFIX,aex.com
+DOMAIN-SUFFIX,bibox.com
+DOMAIN-SUFFIX,bitfinex.com
+DOMAIN-SUFFIX,bithumb.com
+DOMAIN-SUFFIX,bitmex.com
+DOMAIN-SUFFIX,bitstamp.net
+DOMAIN-SUFFIX,bittrex.com
+DOMAIN-SUFFIX,bybit.com
+DOMAIN-SUFFIX,coinbase.com
+DOMAIN-SUFFIX,coincheck.com
+DOMAIN-SUFFIX,coinone.co.kr
+DOMAIN-SUFFIX,gate.io
+DOMAIN-SUFFIX,gemini.com
 DOMAIN-SUFFIX,korbit.co.kr
 DOMAIN-SUFFIX,kraken.com
 DOMAIN-SUFFIX,kucoin.com
 DOMAIN-SUFFIX,liquid.com
-DOMAIN-SUFFIX,octu88.com
 DOMAIN-SUFFIX,okex.com
 DOMAIN-SUFFIX,okx.com
-DOMAIN-SUFFIX,pancakeswap.finance
 DOMAIN-SUFFIX,poloniex.com
+DOMAIN-SUFFIX,zb.com
+DOMAIN-SUFFIX,ftx.com
+
+# ------------------------
+# > Market data / Community / Tools
+# ------------------------
+DOMAIN-SUFFIX,aicoin.com
+DOMAIN-SUFFIX,coingecko.com
+DOMAIN-SUFFIX,coinmarketcap.com
+DOMAIN-SUFFIX,debank.com
+DOMAIN-SUFFIX,bitcointalk.org
+DOMAIN-SUFFIX,woodpeckerlog.com
+
+# ------------------------
+# > Explorers
+# ------------------------
+DOMAIN-SUFFIX,etherscan.io
+
+# ------------------------
+# > DeFi
+# ------------------------
+DOMAIN-SUFFIX,pancakeswap.finance
 DOMAIN-SUFFIX,sushi.com
 DOMAIN-SUFFIX,uniswap.org
-DOMAIN-SUFFIX,woodpeckerlog.com
-DOMAIN-SUFFIX,zb.com
+
+# ------------------------
+# > Misc (as provided)
+# ------------------------
+DOMAIN-SUFFIX,88maru.com
+DOMAIN-SUFFIX,aglmt.com
+DOMAIN-SUFFIX,aimoon.com
+DOMAIN-SUFFIX,apru88.com
+DOMAIN-SUFFIX,bbagl.com
+DOMAIN-SUFFIX,btcgateway.pro
+DOMAIN-SUFFIX,daumoon.com
+DOMAIN-SUFFIX,octu88.com
 DOMAIN-SUFFIX,zztfly.com
+
+# ------------------------
+# > Optional / Debug (disabled by default)
+# ------------------------
+
+# DNS/DoH (only if you explicitly want it under Crypto policy)
+# DOMAIN,dns.alidns.com
+
+# Single pinned IP (often expires / may misroute)
+# IP-CIDR,47.106.171.207/32,no-resolve
+
+# Catch-all keyword (debug only; may include phishing lookalikes)
+# DOMAIN-KEYWORD,binance
