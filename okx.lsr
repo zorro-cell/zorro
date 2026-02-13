@@ -1,0 +1,24 @@
+# =========================
+# OKX / 欧易 (优化提速版)
+# =========================
+# 核心主域名与关键字兜底
+DOMAIN-SUFFIX,okx.com
+DOMAIN-SUFFIX,okex.com
+DOMAIN-SUFFIX,okx-dns.com
+DOMAIN-SUFFIX,okx-dns1.com
+DOMAIN-SUFFIX,okx-dns2.com
+DOMAIN-SUFFIX,coinall.ltd
+DOMAIN-KEYWORD,okx
+
+# 核心风控与依赖 (极度重要：不走代理会导致无法登录、滑块验证码刷不出、App假死)
+DOMAIN-SUFFIX,online-metrix.net
+DOMAIN-SUFFIX,geetest.com
+DOMAIN-SUFFIX,bytepluscdn.com
+
+# 欧易 App 大陆特供防屏蔽 API (App硬编码，必须保留并走代理，否则打开极慢)
+DOMAIN-SUFFIX,cnouyi.pizza
+DOMAIN-SUFFIX,dwsrdo.com
+DOMAIN-SUFFIX,gihiji.com
+DOMAIN-SUFFIX,zylj1cf.com
+DOMAIN-SUFFIX,huiqianfan.com
+DOMAIN-SUFFIX,ynhf1jp.com
