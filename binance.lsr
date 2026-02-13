@@ -1,0 +1,31 @@
+# ------------------------
+# Binance (Optimized for Speed)
+# ------------------------
+# 核心主域名
+DOMAIN-SUFFIX,binance.com
+DOMAIN-SUFFIX,binance.cloud
+DOMAIN-SUFFIX,binance.me
+DOMAIN-SUFFIX,binance.info
+DOMAIN-SUFFIX,binance.net
+DOMAIN-SUFFIX,binance.org
+DOMAIN-SUFFIX,binance.vision
+DOMAIN-SUFFIX,binance.us
+
+# API、静态资源与数据遥测 (解决 App 转圈卡顿的关键)
+DOMAIN-SUFFIX,binanceapi.com
+DOMAIN-SUFFIX,binancecnt.com
+DOMAIN-SUFFIX,bnbstatic.com
+DOMAIN-SUFFIX,bntrace.com
+
+# 币安企业/云服务及第三方风控依赖 (防机器人验证，不通会导致无法登录或交易)
+DOMAIN-SUFFIX,saasexch.com
+DOMAIN-SUFFIX,saasexch.info
+DOMAIN-SUFFIX,commonservice.io
+DOMAIN-SUFFIX,forter.com
+
+# BSC 链及生态相关
+DOMAIN-SUFFIX,bscscan.com
+DOMAIN-SUFFIX,bsc.getblock.io
+
+# 泛解析关键字 (最强兜底：不仅能覆盖所有 binancezh 等镜像站，还能匹配未知的 CDN 节点，极大提高分流效率)
+DOMAIN-KEYWORD,binance
