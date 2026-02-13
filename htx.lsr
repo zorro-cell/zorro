@@ -1,0 +1,26 @@
+# =========================
+# Huobi / HTX / 火币 (优化提速版)
+# =========================
+# 核心主域名与关键字兜底
+DOMAIN-SUFFIX,htx.com
+DOMAIN-SUFFIX,huobi.com
+DOMAIN-SUFFIX,huobi.pro
+DOMAIN-SUFFIX,huobi.me
+DOMAIN-SUFFIX,huobitoken.com
+DOMAIN-SUFFIX,hbfile.net
+DOMAIN-KEYWORD,htx
+DOMAIN-KEYWORD,huobi
+
+# 备用防屏蔽域名 (官方保留的镜像站，加速 App 连通率)
+DOMAIN-SUFFIX,htx.com.am
+DOMAIN-SUFFIX,htx.com.bz
+DOMAIN-SUFFIX,htx.com.do
+DOMAIN-SUFFIX,htx.com.gr
+DOMAIN-SUFFIX,htx.com.gt
+DOMAIN-SUFFIX,htx.com.lv
+
+# 火币 App 核心云端配置与授权 (极其重要：存放在腾讯云/AWS，不走代理首页会转圈加载不出来)
+DOMAIN,app-static-1306115679.file.myqcloud.com
+DOMAIN,htxcfg-1306115679.cos.ap-beijing.myqcloud.com
+DOMAIN,license.vod2.myqcloud.com
+DOMAIN,huobicfg.s3.ap-northeast-1.amazonaws.com
