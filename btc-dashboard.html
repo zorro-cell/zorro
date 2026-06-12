@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BTC 多周期涨跌综合预判系统 · OKX</title>
+<style>
+  :root{
+    --bg:#0b0e14; --panel:#131823; --panel2:#1a2030; --border:#232b3d;
+    --txt:#e6ebf5; --muted:#8a94a8; --faint:#5b6577;
+    --long:#16c784; --long-bg:rgba(22,199,132,.12);
+    --short:#ea3943; --short-bg:rgba(234,57,67,.12);
+    --neutral:#8a94a8; --neutral-bg:rgba(138,148,168,.10);
+    --accent:#f0b90b; --blue:#3b82f6;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;font-size:14px;line-height:1.5}
+  .wrap{max-width:1500px;margin:0 auto;padding:18px}
+  header{display:flex;flex-wrap:wrap;align-items:center;gap:16px;padding:14px 18px;background:var(--panel);border:1px solid var(--border);border-radius:14px}
+  .brand{font-size:18px;font-weight:700;letter-spacing:.5px}
+  .brand small{display:block;font-size:11px;color:var(--muted);font-weight:400;letter-spacing:0}
+  .price-box{display:flex;align-items:center;gap:10px}
+  .price{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;transition:color .15s}
+  .chg{font-size:14px;font-weight:600;padding:2px 8px;border-radius:6px}
+  #spark{display:block;border-radius:4px;background:rgba(255,255,255,.02)}
+  .tick{font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums;min-width:96px}
+  .spacer{flex:1}
+  .ctrl{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px}
+  .btn{background:var(--panel2);border:1px solid var(--border);color:var(--txt);padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;transition:.15s}
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .switch{display:inline-flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--faint)}
+  .dot.live{background:var(--long);box-shadow:0 0 8px var(--long);animation:pulse 1.1s ease-in-out infinite}
+  @keyframes pulse{0%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.8)}100%{opacity:1;transform:scale(1)}}
+  .grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-top:16px}
+  @media(max-width:1100px){.grid{grid-template-columns:repeat(3,1fr)}}
+  @media(max-width:640px){.grid{grid-template-columns:repeat(2,1fr)}}
+  .tf-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px;cursor:pointer;transition:border-color .15s;position:relative;overflow:hidden}
+  .tf-card:hover{border-color:var(--faint)}
+  .tf-card.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+  .tf-head{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted)}
+  .tf-name{font-weight:700;font-size:15px;color:var(--txt)}
+  .dir{margin:12px 0 6px;font-size:22px;font-weight:800;display:flex;align-items:center;gap:8px}
+  .dir .arrow{font-size:24px}
+  .conf-label{font-size:11px;color:var(--muted);display:flex;justify-content:space-between;margin-top:8px}
+  .conf-label b{font-variant-numeric:tabular-nums}
+  .bar{height:7px;border-radius:4px;background:var(--panel2);overflow:hidden;margin-top:4px;position:relative}
+  .bar > span{position:absolute;top:0;bottom:0;border-radius:4px;transition:width .45s ease}
+  .score-bar{height:7px;border-radius:4px;background:linear-gradient(90deg,var(--short) 0%,#3a3f4d 50%,var(--long) 100%);position:relative;margin-top:10px}
+  .score-bar .mark{position:absolute;top:-3px;width:3px;height:13px;background:#fff;border-radius:2px;transform:translateX(-50%);transition:left .45s ease}
+  .mini-factors{margin-top:10px;display:flex;flex-direction:column;gap:3px}
+  .mini-factors .mf{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+  .mf b{font-weight:600;font-variant-numeric:tabular-nums}
+  .panels{display:grid;grid-template-columns:1.4fr 1fr;gap:14px;margin-top:16px}
+  @media(max-width:980px){.panels{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px}
+  .panel h3{margin:0 0 4px;font-size:15px}
+  .panel .sub{color:var(--muted);font-size:12px;margin-bottom:12px}
+  .cat{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;background:var(--panel2)}
+  .cat-head{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer}
+  .cat-head .ci{font-size:16px;width:22px;text-align:center}
+  .cat-head .cn{font-weight:600;flex:1}
+  .cat-head .cs{font-size:12px;font-variant-numeric:tabular-nums;padding:2px 8px;border-radius:6px}
+  .cat-head .wt{font-size:10px;color:var(--faint);margin-left:6px}
+  .cat-body{display:none;padding:4px 12px 10px;border-top:1px solid var(--border)}
+  .cat.open .cat-body{display:block}
+  .factor{display:grid;grid-template-columns:160px 70px 1fr;gap:8px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--border);font-size:12px}
+  .factor:last-child{border-bottom:none}
+  .factor .fn{color:var(--txt)}
+  .factor .fn small{display:block;color:var(--faint);font-size:10px}
+  .factor .fv{font-variant-numeric:tabular-nums;text-align:right;color:var(--muted)}
+  .fbar{height:6px;background:#2a3142;border-radius:3px;position:relative;margin-top:3px}
+  .fbar .center{position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--faint)}
+  .fbar > i{position:absolute;top:0;bottom:0;border-radius:3px}
+  .na{opacity:.5}
+  .pill{font-size:9px;padding:1px 6px;border-radius:4px;background:var(--neutral-bg);color:var(--muted);margin-left:6px;vertical-align:middle}
+  .pill.ok{background:var(--long-bg);color:var(--long)}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:14px}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .sw{width:11px;height:11px;border-radius:3px;display:inline-block}
+  .disclaimer{margin-top:16px;padding:12px 16px;background:rgba(240,185,11,.07);border:1px solid rgba(240,185,11,.25);border-radius:10px;font-size:12px;color:var(--muted)}
+  .err{color:var(--short);font-size:12px}
+  .gauge{display:flex;gap:14px;flex-wrap:wrap}
+  .g-item{flex:1;min-width:120px;background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+  .g-item .gl{font-size:11px;color:var(--muted)}
+  .g-item .gv{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:2px}
+  .g-item .gd{font-size:11px;margin-top:2px}
+  .global-section{margin-top:14px}
+  .gauge .global-section{flex:1 1 100%;width:100%}
+  .global-section h4{margin:0 0 8px;font-size:13px;color:var(--txt)}
+  .source-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  @media(max-width:520px){.source-grid{grid-template-columns:1fr}}
+  .source-item{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--border);border-radius:9px;padding:8px 10px;min-width:0}
+  .source-dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto;background:var(--faint)}
+  .source-dot.ok{background:var(--long);box-shadow:0 0 7px rgba(22,199,132,.35)}
+  .source-dot.warn{background:var(--accent)}
+  .source-dot.off{background:var(--faint)}
+  .source-name{font-size:12px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .source-note{margin-left:auto;font-size:10px;color:var(--muted);white-space:nowrap}
+  .empty-note{background:var(--panel2);border:1px dashed var(--border);border-radius:10px;padding:12px;color:var(--muted);font-size:12px}
+  .gauge .empty-note{flex:1 1 100%}
+  .hint-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+  .hint-item{display:flex;gap:8px;align-items:flex-start;color:var(--muted);font-size:12px}
+  .hint-item b{color:var(--txt);font-weight:600}
+  .summary-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .summary-chip{font-size:11px;color:var(--muted);background:var(--panel2);border:1px solid var(--border);border-radius:999px;padding:4px 8px}
+  .probe-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  @media(max-width:760px){.probe-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media(max-width:520px){.probe-grid{grid-template-columns:1fr}}
+  .probe-card{background:var(--panel2);border:1px solid var(--border);border-radius:9px;padding:9px 10px}
+  .probe-card .pt{font-size:11px;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+  .probe-card .pv{font-size:18px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
+  .probe-card .pd{font-size:10px;color:var(--muted);margin-top:2px}
+  .loading{text-align:center;color:var(--muted);padding:40px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">BTC 多周期涨跌综合预判系统<small>数据源:OKX(国内可直连)· 含 Deribit 期权 · 每秒实时 · 仅供研究,非投资建议</small></div>
+    <div class="price-box">
+      <span class="price" id="price">--</span>
+      <span class="chg" id="chg">--</span>
+      <canvas id="spark" width="130" height="36"></canvas>
+    </div>
+    <div class="spacer"></div>
+    <div class="ctrl">
+      <span class="switch" id="liveSwitch"><span class="dot" id="liveDot"></span><span id="liveText">未连接</span></span>
+      <span class="tick" id="updated">--:--:--</span>
+      <button class="btn" id="sourceBtn">数据源</button>
+      <button class="btn" id="refreshBtn">⟳ 刷新</button>
+    </div>
+  </header>
+  <div id="topErr"></div>
+  <div class="grid" id="tfGrid">
+    <div class="loading" style="grid-column:1/-1">正在加载 OKX 实时数据…</div>
+  </div>
+  <div class="panels">
+    <div class="panel">
+      <h3>判断依据 · 因子明细 <span id="selTf" style="color:var(--accent)"></span></h3>
+      <div class="sub">点击上方任一周期卡片查看完整因子拆解。每个因子方向分 -100 看空 ~ +100 看多。</div>
+      <div id="breakdown"><div class="loading">选择一个周期…</div></div>
+    </div>
+    <div class="panel">
+      <h3>全局市场状态</h3>
+      <div class="sub">跨周期共享的衍生品、期权、情绪、链上与资金流读数。</div>
+      <div class="gauge" id="globalGauge"></div>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--long)"></i>看多</span>
+        <span><i class="sw" style="background:var(--neutral)"></i>中性</span>
+        <span><i class="sw" style="background:var(--short)"></i>看空</span>
+      </div>
+    </div>
+  </div>
+  <div class="disclaimer">
+    <b>⚠ 风险与说明:</b> 数据源为 <b>OKX</b>(现货 + BTC-USDT-SWAP 永续,国内通常可直连),叠加 <b>金十快讯</b>、Deribit 期权、Alternative.me、CoinGecko、mempool.space。趋势主导加权评分给出方向与置信度,<b>不构成投资建议</b>。当前采用保守信号模式:弱分数或低置信度优先显示观望。新闻/事件从金十首页读取并按特朗普/宏观/币圈关键词监控; 特朗普原帖提供 X/Truth Social 人工打开入口。Coinglass 需点击右上角“数据源”配置官方 API Key,部分爆仓数据需要高阶套餐。杠杆合约风险极高,务必自设止损与仓位管理。
+  </div>
+</div>
+<script>
+"use strict";
+const TF=["5m","15m","30m","1h","4h","1d"];
+const TF_LABEL={"5m":"5 分钟","15m":"15 分钟","30m":"30 分钟","1h":"1 小时","4h":"4 小时","1d":"1 天"};
+const BAR={"5m":"5m","15m":"15m","30m":"30m","1h":"1H","4h":"4H","1d":"1D"};
+const CATS={
+  technicals:{icon:"📈",name:"技术指标"}, levels:{icon:"📐",name:"辅助线 / 支撑阻力"},
+  structure:{icon:"🧭",name:"市场结构 / 策略框架"}, price:{icon:"💹",name:"市场与价格动量"},
+  derivatives:{icon:"⚙️",name:"衍生品 / 期权数据"}, sentiment:{icon:"🎭",name:"情绪与另类数据"},
+  flows:{icon:"🏦",name:"资金流与宏观"}, onchain:{icon:"⛓️",name:"链上数据"},
+  overlooked:{icon:"🔍",name:"易被忽略的角度"}, news:{icon:"📰",name:"新闻 / 事件监控"}
+};
+const WEIGHTS={
+  "5m": {technicals:.34, levels:.12, structure:.14, price:.12, derivatives:.16, sentiment:.03, flows:.01, onchain:.01, overlooked:.06, news:.01},
+  "15m":{technicals:.34, levels:.12, structure:.15, price:.10, derivatives:.15, sentiment:.04, flows:.02, onchain:.02, overlooked:.05, news:.01},
+  "30m":{technicals:.33, levels:.11, structure:.16, price:.09, derivatives:.15, sentiment:.04, flows:.03, onchain:.03, overlooked:.05, news:.01},
+  "1h": {technicals:.30, levels:.10, structure:.18, price:.07, derivatives:.14, sentiment:.06, flows:.05, onchain:.05, overlooked:.04, news:.01},
+  "4h": {technicals:.28, levels:.09, structure:.18, price:.05, derivatives:.12, sentiment:.07, flows:.08, onchain:.09, overlooked:.03, news:.01},
+  "1d": {technicals:.24, levels:.08, structure:.16, price:.04, derivatives:.10, sentiment:.09, flows:.12, onchain:.13, overlooked:.03, news:.01}
+};
+const SCORE_GAIN=2.6;
+const MIN_ACTION_CONF=.42;
+const ACTION_BAND={"5m":.22,"15m":.20,"30m":.18,"1h":.16,"4h":.14,"1d":.12};
+const PROBE_HORIZON={"5m":3,"15m":3,"30m":3,"1h":3,"4h":2,"1d":2};
+/* ===== OKX 数据采集层 ===== */
+const OKX="https://www.okx.com";
+const DERIBIT="https://www.deribit.com/api/v2/public/get_book_summary_by_currency?currency=BTC&kind=option";
+const JIN10_HOME="https://www.jin10.com/";
+const COINGLASS="https://open-api-v4.coinglass.com";
+async function jget(url){ const r=await fetch(url,{cache:"no-store"}); if(!r.ok) throw new Error(url.split("?")[0]+" → "+r.status); return r.json(); }
+async function tget(url){ const r=await fetch(url,{cache:"no-store"}); if(!r.ok) throw new Error(url+" → "+r.status); return r.text(); }
+function safe(p){ return p.then(v=>({ok:true,v})).catch(e=>({ok:false,e:String(e)})); }
+function cgCfg(){ return {key:localStorage.getItem("coinglass_api_key")||"",proxy:localStorage.getItem("coinglass_proxy_url")||""}; }
+async function cgget(path){
+  const cfg=cgCfg(); if(!cfg.key) throw new Error("未配置 Coinglass API Key");
+  const target=`${COINGLASS}${path}`;
+  const url=cfg.proxy?cfg.proxy.replace(/\/$/,"")+"?url="+encodeURIComponent(target):target;
+  const r=await fetch(url,{cache:"no-store",headers:{"CG-API-KEY":cfg.key}});
+  if(!r.ok) throw new Error(`Coinglass → ${r.status}`);
+  return r.json();
+}
+async function fetchCoinglass(){
+  const cfg=cgCfg(); if(!cfg.key) return {ok:false,err:"未配置 API Key",needsKey:true};
+  const maxPain=await safe(cgget("/api/futures/liquidation/max-pain?range=24h"));
+  return {ok:maxPain.ok,maxPain:maxPain.ok?maxPain.v:null,err:maxPain.ok?"":maxPain.e,proxy:!!cfg.proxy};
+}
+async function okxCandles(tf){ const r=await safe(jget(`${OKX}/api/v5/market/candles?instId=BTC-USDT&bar=${BAR[tf]}&limit=210`));
+  if(!r.ok||!r.v||r.v.code!=="0"||!r.v.data) return null;
+  return r.v.data.slice().reverse().map(k=>({t:+k[0],o:+k[1],h:+k[2],l:+k[3],c:+k[4],v:+k[5],tbv:(+k[5])/2})); }
+/* 把 OKX 各接口归一化为引擎所需结构(与原 Binance 版字段兼容) */
+function normGlobals(R){
+  const out={oiNow:{ok:false}};
+  if(R.ticker.ok&&R.ticker.v.data&&R.ticker.v.data[0]){ const t=R.ticker.v.data[0]; const last=+t.last,op=+t.open24h; out.ticker={ok:true,v:{lastPrice:last,priceChangePercent:op?((last-op)/op*100):0}}; } else out.ticker={ok:false};
+  if(R.funding.ok&&R.funding.v.data&&R.funding.v.data[0]) out.premium={ok:true,v:{lastFundingRate:R.funding.v.data[0].fundingRate}}; else out.premium={ok:false};
+  if(R.oiv.ok&&R.oiv.v.data&&R.oiv.v.data.length){ out.oiHist={ok:true,v:R.oiv.v.data.slice(0,30).reverse().map(x=>({sumOpenInterest:x[1]}))}; } else out.oiHist={ok:false};
+  if(R.lsr.ok&&R.lsr.v.data&&R.lsr.v.data.length){ out.lsAcct={ok:true,v:[{longShortRatio:R.lsr.v.data[0][1]}]}; } else out.lsAcct={ok:false};
+  out.lsTop={ok:false};
+  if(R.tv.ok&&R.tv.v.data&&R.tv.v.data.length){ const row=R.tv.v.data[0]; const sell=+row[1],buy=+row[2]; out.taker={ok:true,v:[{buySellRatio:sell?buy/sell:1}]}; } else out.taker={ok:false};
+  if(R.books.ok&&R.books.v.data&&R.books.v.data[0]){ out.depth={ok:true,v:{bids:R.books.v.data[0].bids,asks:R.books.v.data[0].asks}}; } else out.depth={ok:false};
+  return out;
+}
+async function fetchGlobalsRaw(){ const [ticker,funding,oiv,lsr,tv,books,deribit,fng,cg,memFee,hashr]=await Promise.all([
+    safe(jget(`${OKX}/api/v5/market/ticker?instId=BTC-USDT`)),
+    safe(jget(`${OKX}/api/v5/public/funding-rate?instId=BTC-USDT-SWAP`)),
+    safe(jget(`${OKX}/api/v5/rubik/stat/contracts/open-interest-volume?ccy=BTC&period=5m`)),
+    safe(jget(`${OKX}/api/v5/rubik/stat/contracts/long-short-account-ratio?ccy=BTC&period=5m`)),
+    safe(jget(`${OKX}/api/v5/rubik/stat/taker-volume?ccy=BTC&instType=SPOT&period=5m`)),
+    safe(jget(`${OKX}/api/v5/market/books?instId=BTC-USDT&sz=50`)),
+    safe(jget(DERIBIT)), safe(jget(`https://api.alternative.me/fng/?limit=8`)),
+    safe(jget(`https://api.coingecko.com/api/v3/global`)), safe(jget(`https://mempool.space/api/v1/fees/recommended`)),
+    safe(jget(`https://mempool.space/api/v1/mining/hashrate/1m`))]);
+  return {ticker,funding,oiv,lsr,tv,books,deribit,fng,cg,memFee,hashr};
+}
+async function collectAll(){
+  const [c5,c15,c30,c1h,c4h,c1d,R,newsFeed,coinglass]=await Promise.all([
+    okxCandles("5m"),okxCandles("15m"),okxCandles("30m"),okxCandles("1h"),okxCandles("4h"),okxCandles("1d"),fetchGlobalsRaw(),fetchNewsFeed(),fetchCoinglass()]);
+  const klines={"5m":c5,"15m":c15,"30m":c30,"1h":c1h,"4h":c4h,"1d":c1d};
+  const g=normGlobals(R);
+  return {klines, ticker:g.ticker,premium:g.premium,oiNow:g.oiNow,oiHist:g.oiHist,lsAcct:g.lsAcct,lsTop:g.lsTop,taker:g.taker,depth:g.depth, deribit:R.deribit,fng:R.fng,cg:R.cg,memFee:R.memFee,hashr:R.hashr,newsFeed,coinglass};
+}
+/* ===== 指标计算 ===== */
+const closes=ks=>ks.map(k=>k.c);
+function emaSeries(a,p){ if(a.length<p) return null; const k=2/(p+1); let e=a.slice(0,p).reduce((x,y)=>x+y,0)/p; const out=[e]; for(let i=p;i<a.length;i++){ e=a[i]*k+e*(1-k); out.push(e);} return out; }
+function emaLast(a,p){ const s=emaSeries(a,p); return s?s[s.length-1]:null; }
+function rsi(a,p=14){ if(a.length<p+1) return null; let g=0,l=0; for(let i=a.length-p;i<a.length;i++){ const d=a[i]-a[i-1]; if(d>=0)g+=d; else l-=d; } if(l===0) return 100; const rs=(g/p)/(l/p); return 100-100/(1+rs); }
+function macd(a){ const f=emaSeries(a,12),s=emaSeries(a,26); if(!f||!s) return null; const off=f.length-s.length; const line=s.map((v,i)=>f[i+off]-v); const sig=emaSeries(line,9); if(!sig) return null; const o2=line.length-sig.length; const hist=sig.map((v,i)=>line[i+o2]-v); return {line:line[line.length-1],signal:sig[sig.length-1],hist:hist[hist.length-1],histPrev:hist[hist.length-2]}; }
+function boll(a,p=20,m=2){ if(a.length<p) return null; const sl=a.slice(-p); const ma=sl.reduce((x,y)=>x+y,0)/p; const sd=Math.sqrt(sl.reduce((x,y)=>x+(y-ma)**2,0)/p); return {ma,up:ma+m*sd,dn:ma-m*sd,width:(4*sd)/ma}; }
+function atr(ks,p=14){ if(ks.length<p+1) return null; let s=0; for(let i=ks.length-p;i<ks.length;i++){ const h=ks[i].h,l=ks[i].l,pc=ks[i-1].c; s+=Math.max(h-l,Math.abs(h-pc),Math.abs(l-pc)); } return s/p; }
+function stoch(ks,p=14){ if(ks.length<p) return null; const sl=ks.slice(-p); const hi=Math.max(...sl.map(k=>k.h)),lo=Math.min(...sl.map(k=>k.l)); const c=ks[ks.length-1].c; return hi===lo?50:(c-lo)/(hi-lo)*100; }
+function adx(ks,p=14){ if(ks.length<p*2) return null; let tr=[],pdm=[],ndm=[]; for(let i=1;i<ks.length;i++){ const up=ks[i].h-ks[i-1].h,dn=ks[i-1].l-ks[i].l; pdm.push(up>dn&&up>0?up:0); ndm.push(dn>up&&dn>0?dn:0); tr.push(Math.max(ks[i].h-ks[i].l,Math.abs(ks[i].h-ks[i-1].c),Math.abs(ks[i].l-ks[i-1].c))); }
+  const sm=arr=>{ let s=arr.slice(0,p).reduce((x,y)=>x+y,0); const o=[s]; for(let i=p;i<arr.length;i++){ s=s-s/p+arr[i]; o.push(s);} return o; };
+  const trs=sm(tr),pds=sm(pdm),nds=sm(ndm); const dx=[]; for(let i=0;i<trs.length;i++){ const pdi=100*pds[i]/trs[i],ndi=100*nds[i]/trs[i]; dx.push(100*Math.abs(pdi-ndi)/(pdi+ndi||1)); }
+  if(dx.length<p) return null; const a=dx.slice(-p).reduce((x,y)=>x+y,0)/p; const lastP=100*pds[pds.length-1]/trs[trs.length-1],lastN=100*nds[nds.length-1]/trs[trs.length-1]; return {adx:a,pdi:lastP,ndi:lastN}; }
+function obvSlope(ks,p=20){ if(ks.length<p+1) return null; let obv=0; const arr=[0]; for(let i=1;i<ks.length;i++){ obv+=ks[i].c>ks[i-1].c?ks[i].v:(ks[i].c<ks[i-1].c?-ks[i].v:0); arr.push(obv);} const recent=arr.slice(-p); const rng=Math.max(...arr.slice(-p*3).map(Math.abs))||1; return (recent[recent.length-1]-recent[0])/rng; }
+function vwap(ks,p=30){ if(ks.length<p) return null; let pv=0,vv=0; for(const k of ks.slice(-p)){ const tp=(k.h+k.l+k.c)/3; pv+=tp*k.v; vv+=k.v; } return vv?pv/vv:null; }
+function clamp(x,a=-1,b=1){ return Math.max(a,Math.min(b,x)); }
+function parseExpiry(s){ const m=s.match(/^(\d+)([A-Z]{3})(\d{2})$/); if(!m) return null;
+  const mons={JAN:0,FEB:1,MAR:2,APR:3,MAY:4,JUN:5,JUL:6,AUG:7,SEP:8,OCT:9,NOV:10,DEC:11};
+  return Date.UTC(2000+ +m[3], mons[m[2]], +m[1], 8, 0, 0); }
+function computeOptions(arr){
+  if(!arr||!arr.length) return null;
+  const now=Date.now(); let priceSum=0,pn=0; const opts=[];
+  for(const o of arr){ const p=(o.instrument_name||"").split("-"); if(p.length<4) continue;
+    const strike=+p[2], type=p[3], exp=parseExpiry(p[1]); if(!exp||!strike) continue;
+    const dte=(exp-now)/86400000; if(dte<=0) continue;
+    if(o.underlying_price){ priceSum+=o.underlying_price; pn++; }
+    opts.push({strike,type,dte,exp,oi:+o.open_interest||0,iv:+o.mark_iv||0}); }
+  if(!opts.length||!pn) return null;
+  const price=priceSum/pn;
+  let putOI=0,callOI=0; opts.forEach(o=>{ if(o.type==="P") putOI+=o.oi; else callOI+=o.oi; });
+  const pc=callOI>0?putOI/callOI:null;
+  let pIV=0,pW=0,cIV=0,cW=0;
+  opts.forEach(o=>{ if(o.dte>60||!o.iv) return; const mny=o.strike/price;
+    if(o.type==="P"&&mny>=0.85&&mny<=0.97){ pIV+=o.iv*(o.oi+0.01); pW+=o.oi+0.01; }
+    if(o.type==="C"&&mny>=1.03&&mny<=1.15){ cIV+=o.iv*(o.oi+0.01); cW+=o.oi+0.01; } });
+  const skew=(pW&&cW)?(pIV/pW - cIV/cW):null;
+  let aIV=0,aW=0; opts.forEach(o=>{ if(o.dte<1||o.dte>45||!o.iv) return; if(Math.abs(o.strike/price-1)<0.03){ aIV+=o.iv; aW++; } });
+  const atmIV=aW?aIV/aW:null;
+  const nextExp=Math.min(...opts.map(o=>o.exp)); const near=opts.filter(o=>o.exp===nextExp);
+  const strikes=[...new Set(near.map(o=>o.strike))].sort((a,b)=>a-b);
+  let maxPain=null,best=Infinity;
+  for(const S of strikes){ let pay=0; near.forEach(o=>{ pay += o.type==="C"? o.oi*Math.max(0,S-o.strike) : o.oi*Math.max(0,o.strike-S); }); if(pay<best){ best=pay; maxPain=S; } }
+  return {price,pc,skew,atmIV,maxPain,mpDte:(nextExp-now)/86400000};
+}
+function F(id,name,category,score,confidence,value,note,available=true){ return {id,name,category,score:clamp(score),confidence:clamp(confidence,0,1),value,note,available}; }
+async function fetchNewsFeed(){
+  const r=await safe(tget(JIN10_HOME));
+  if(!r.ok) return {ok:false,err:r.e||"金十首页不可达",items:[],updated:Date.now()};
+  return parseJin10(r.v);
+}
+function parseJin10(html){
+  let text="";
+  try{
+    const doc=new DOMParser().parseFromString(html,"text/html");
+    text=(doc.body&&doc.body.innerText)||doc.body.textContent||"";
+  }catch(_){
+    text=html.replace(/<script[\s\S]*?<\/script>/g," ").replace(/<style[\s\S]*?<\/style>/g," ").replace(/<[^>]+>/g,"\n");
+  }
+  const lines=text.split(/\n+/).map(x=>x.replace(/\s+/g," ").trim()).filter(Boolean);
+  const drop=/^(分享|收藏|复制|详情|登录|立即登录|推荐阅读|换一批|打开金十|扫码|分类|播报|设置|常规设置|夜间模式|字体大小|全选|恢复默认)$/;
+  const raw=[];
+  for(let i=0;i<lines.length;i++){
+    const line=lines[i];
+    if(drop.test(line)||line.length<10) continue;
+    if(/^\d{2}:\d{2}(:\d{2})?$/.test(line)){
+      const body=(lines[i+1]||"").trim();
+      if(body.length>12&&!drop.test(body)) raw.push({time:line,text:body});
+      continue;
+    }
+    if(i<120&&line.length>12&&!/^(重要事件|Important News|市场快讯|VIP快讯|金十数据APP)/.test(line)) raw.push({time:"置顶",text:line});
+  }
+  const seen=new Set();
+  const items=raw.filter(x=>{ const k=x.text.slice(0,60); if(seen.has(k)) return false; seen.add(k); return true; }).slice(0,40);
+  return {ok:true,source:"金十数据首页",items,updated:Date.now()};
+}
+function newsHits(feed,re){
+  if(!feed||!feed.ok) return [];
+  return feed.items.filter(x=>re.test(x.text)).slice(0,5);
+}
+function briefNews(items){
+  if(!items.length) return "暂无";
+  return items.slice(0,2).map(x=>`${x.time} ${x.text.slice(0,42)}${x.text.length>42?"...":""}`).join(" / ");
+}
+function newsRiskScore(items){
+  const txt=items.map(x=>x.text).join(" ");
+  let s=0;
+  if(/战争|打击|制裁|关闭|霍尔木兹|伊朗|中东|关税|威胁|冲突|黑客|暴雷/.test(txt)) s-=.16;
+  if(/ETF|降息|鸽派|流动性|批准|利好/.test(txt)) s+=.08;
+  if(/加息|通胀上升|鹰派|风险|下调|衰退/.test(txt)) s-=.08;
+  return clamp(s,-.3,.2);
+}
+function technicalFactors(ks){
+  const c=closes(ks),price=c[c.length-1],out=[];
+  const e21=emaLast(c,21),e50=emaLast(c,50),e200=emaLast(c,200);
+  if(e21&&e50){ let sc=0; sc+=price>e21?.4:-.4; sc+=e21>e50?.3:-.3; if(e200) sc+=price>e200?.3:-.3;
+    const algn=price>e21&&e21>e50&&(!e200||e50>e200)?"多头排列":(price<e21&&e21<e50?"空头排列":"交织");
+    out.push(F("ema","EMA 趋势排列","technicals",sc,.8,algn,`价${price>e21?">":"<"}EMA21,EMA21${e21>e50?">":"<"}EMA50`)); }
+  const m=macd(c);
+  if(m){ const lineSc=clamp(m.line/(price*0.004)); const histSc=clamp((m.hist-m.histPrev)/(price*0.0012)); const sc=lineSc*0.6+histSc*0.4;
+    out.push(F("macd","MACD","technicals",sc,.7,m.hist.toFixed(1),`${m.line>0?"零轴上方":"零轴下方"},${m.hist>m.histPrev?"动能增强":"动能减弱"}`)); }
+  const r=rsi(c);
+  if(r!=null){ let sc,note; if(r>80){sc=-0.3;note="极度超买,谨防回调";} else if(r<20){sc=0.3;note="极度超卖,谨防反弹";} else {sc=clamp((r-50)/30); note=r>55?"多头动量(顺势)":r<45?"空头动量(顺势)":"动量中性";}
+    out.push(F("rsi","RSI(14)","technicals",sc,.45,r.toFixed(1),note)); }
+  const st=stoch(ks);
+  if(st!=null){ let sc; if(st>90) sc=-0.25; else if(st<10) sc=0.25; else sc=(st-50)/55; out.push(F("stoch","随机指标 %K","technicals",sc,.35,st.toFixed(0),st>80?"高位":st<20?"低位":"中性")); }
+  const bb=boll(c);
+  if(bb){ const pos=(price-bb.ma)/((bb.up-bb.ma)||1); const squeeze=bb.width<0.025; let sc=clamp(-pos*0.3);
+    out.push(F("boll","布林带位置","technicals",sc,squeeze?.2:.3,(pos*100).toFixed(0)+"%",squeeze?"挤压,变盘临近":(pos>0.9?"触上轨":pos<-0.9?"触下轨":"带内"))); }
+  const ax=adx(ks);
+  if(ax){ const sc=clamp((ax.pdi-ax.ndi)/40); const conf=clamp(ax.adx/40,0,1); out.push(F("adx","ADX 趋势强度","technicals",sc,conf,ax.adx.toFixed(0),ax.adx>25?(ax.pdi>ax.ndi?"强势上行":"强势下行"):"趋势弱/震荡")); }
+  const ob=obvSlope(ks);
+  if(ob!=null) out.push(F("obv","OBV 量能斜率","technicals",clamp(ob),.5,(ob*100).toFixed(0),ob>0?"量价配合向上":"量能转弱"));
+  const vw=vwap(ks);
+  if(vw){ const d=(price-vw)/vw; out.push(F("vwap","VWAP 偏离","technicals",clamp(d*60),.55,(d*100).toFixed(2)+"%",price>vw?"价在 VWAP 上方(多方控盘)":"价在 VWAP 下方(空方控盘)")); }
+  return out;
+}
+function levelFactors(ks){
+  const c=closes(ks),price=c[c.length-1],out=[]; const a=atr(ks)||price*0.005;
+  const win=ks.slice(-60); const highs=win.map(k=>k.h),lows=win.map(k=>k.l);
+  const res=Math.max(...highs),sup=Math.min(...lows); const dRes=(res-price)/a,dSup=(price-sup)/a;
+  let sc=clamp((dRes-dSup)/8); let note=`阻力 ${res.toFixed(0)} / 支撑 ${sup.toFixed(0)}`;
+  if(dSup<1.2){sc=0.45;note="贴近支撑,易反弹";} if(dRes<1.2){sc=-0.45;note="贴近阻力,易回落";}
+  out.push(F("sr","支撑/阻力位置","levels",sc,.6,`${dSup.toFixed(1)}ATR↑`,note));
+  const sh=Math.max(...highs),sl=Math.min(...lows),rng=sh-sl||1; const fibPos=(price-sl)/rng; let fsc=0,fnote;
+  if(fibPos>=0.35&&fibPos<=0.5){fsc=0.35;fnote="处黄金回撤区(0.5-0.65),多方关注";}
+  else if(fibPos>0.9){fsc=-0.25;fnote="接近前高,阻力区";}
+  else if(fibPos<0.1){fsc=0.25;fnote="接近前低,支撑区";}
+  else fnote=`位于区间 ${(fibPos*100).toFixed(0)}%`;
+  out.push(F("fib","斐波那契回撤","levels",fsc,.45,(fibPos*100).toFixed(0)+"%",fnote));
+  return out;
+}
+function structureFactors(ks){
+  const out=[]; if(ks.length<40) return out; const recent=ks.slice(-30); const part=(arr,a,b)=>arr.slice(a,b);
+  const hi=arr=>Math.max(...arr.map(k=>k.h)),lo=arr=>Math.min(...arr.map(k=>k.l));
+  const h1=hi(part(recent,0,15)),h2=hi(part(recent,15,30)),l1=lo(part(recent,0,15)),l2=lo(part(recent,15,30));
+  let sc=0,label;
+  if(h2>h1&&l2>l1){sc=0.75;label="HH+HL 上升结构";}
+  else if(h2<h1&&l2<l1){sc=-0.75;label="LH+LL 下降结构";}
+  else if(h2>h1&&l2<l1){sc=0;label="扩张/震荡";}
+  else {sc=0;label="收敛/盘整";}
+  out.push(F("ms","市场结构(BOS/CHoCH)","structure",sc,.7,label.split(" ")[0],label));
+  const a=atr(ks)||1; const net=ks[ks.length-1].c-ks[ks.length-6].c;
+  out.push(F("mom","近 5 根净动量","structure",clamp(net/(a*2.2)),.55,net.toFixed(0),net>0?"短期推动向上":"短期推动向下"));
+  return out;
+}
+function priceFactors(ks){
+  const out=[]; const last=ks[ks.length-1]; const buyRatio=last.v?last.tbv/last.v:0.5;
+  out.push(F("takervol","当根主动买占比","price",clamp((buyRatio-0.5)*4),.08,(buyRatio*100).toFixed(0)+"%","OKX K线不含真实主动方向,仅作低权重参考"));
+  const vols=ks.slice(-21).map(k=>k.v); const avg=vols.slice(0,20).reduce((a,b)=>a+b,0)/20; const rel=avg?last.v/avg:1; const dir=last.c>=last.o?1:-1;
+  out.push(F("volexp","成交量相对均值","price",clamp(dir*(rel-1)),.45,rel.toFixed(2)+"x",rel>1.5?(dir>0?"放量上涨":"放量下跌"):"量能正常"));
+  return out;
+}
+function globalFactors(D){
+  const G={derivatives:[],sentiment:[],flows:[],onchain:[],overlooked:[],news:[]};
+  if(D.premium.ok){ const fr=+D.premium.v.lastFundingRate; let sc; if(fr>0.0005) sc=-0.5; else if(fr<-0.0005) sc=0.5; else sc=clamp(fr/0.0003*0.3);
+    G.derivatives.push(F("funding","资金费率","derivatives",sc,.7,(fr*100).toFixed(4)+"%",fr>0.0005?"多头过热,反向偏空":fr<-0.0005?"空头拥挤,反向偏多":"费率温和")); }
+  if(D.oiHist.ok&&D.oiHist.v.length>1){ const o=D.oiHist.v; const oiChg=(+o[o.length-1].sumOpenInterest-+o[0].sumOpenInterest)/(+o[0].sumOpenInterest); const pf=D.ticker.ok?+D.ticker.v.priceChangePercent:0; let sc,note;
+    if(oiChg>0.01&&pf>0){sc=0.45;note="OI 增+价涨:多头加仓(趋势)";}
+    else if(oiChg>0.01&&pf<0){sc=-0.45;note="OI 增+价跌:空头加仓(压力)";}
+    else if(oiChg<-0.01&&pf<0){sc=0.25;note="OI 减+价跌:空头平仓(企稳)";}
+    else if(oiChg<-0.01&&pf>0){sc=-0.2;note="OI 减+价涨:多头平仓(乏力)";}
+    else {sc=0;note="持仓变动平稳";}
+    G.derivatives.push(F("oi","持仓量(OI)动态","derivatives",sc,.6,(oiChg*100).toFixed(1)+"%",note)); }
+  if(D.lsAcct.ok&&D.lsAcct.v.length){ const r=+D.lsAcct.v[D.lsAcct.v.length-1].longShortRatio; let sc; if(r>2) sc=-0.4; else if(r<0.8) sc=0.4; else sc=clamp((1.2-r)*0.5);
+    G.derivatives.push(F("lsacct","散户多空比","derivatives",sc,.55,r.toFixed(2),r>1.5?"散户极度看多→反向偏空":r<0.9?"散户看空→反向偏多":"散户均衡")); }
+  if(D.lsTop.ok&&D.lsTop.v.length){ const r=+D.lsTop.v[D.lsTop.v.length-1].longShortRatio;
+    G.derivatives.push(F("lstop","大户持仓多空比","derivatives",clamp((r-1)*0.6),.6,r.toFixed(2),r>1.1?"大户净多":r<0.9?"大户净空":"大户中性")); }
+  if(D.taker.ok&&D.taker.v.length){ const r=+D.taker.v[D.taker.v.length-1].buySellRatio;
+    G.derivatives.push(F("takerg","主动买卖量比(全市场)","derivatives",clamp((r-1)*1.2),.5,r.toFixed(2),r>1.05?"主动买盘主导":r<0.95?"主动卖盘主导":"均衡")); }
+  if(D.deribit&&D.deribit.ok){ const op=computeOptions(D.deribit.v);
+    if(op){
+      if(op.pc!=null){ const sc=clamp((0.85-op.pc)*1.0); G.derivatives.push(F("pcr","期权 Put/Call 比(OI)","derivatives",sc,.5,op.pc.toFixed(2),op.pc>1?"看跌持仓占优,避险/偏空":op.pc<0.7?"看涨持仓占优,偏多":"中性")); }
+      if(op.skew!=null){ const sc=clamp(-op.skew/10); G.derivatives.push(F("skew","期权 25Δ 偏斜","derivatives",sc,.5,(op.skew>0?"+":"")+op.skew.toFixed(1)+"v",op.skew>2?"看跌更贵,下行恐惧(偏空)":op.skew<-2?"看涨更贵,上行追逐(偏多)":"偏斜中性")); }
+      if(op.maxPain!=null&&op.price){ const pull=(op.maxPain-op.price)/op.price; const sc=clamp(pull*15); const conf=op.mpDte<3?.5:.25;
+        G.overlooked.push(F("maxpain","期权最大痛点","overlooked",sc,conf,op.maxPain.toFixed(0),`最大痛点 ${op.maxPain.toFixed(0)}(${op.mpDte.toFixed(1)}天到期),价在其${op.price>op.maxPain?"上方→引力向下":"下方→引力向上"}`)); }
+      if(op.atmIV!=null){ G.sentiment.push(F("ivol","期权隐含波动率(ATM)","sentiment",0,0,op.atmIV.toFixed(0)+"%",op.atmIV>70?"高波动,市场恐慌/不确定":op.atmIV<40?"低波动,市场平静":"波动中等(信息项)")); }
+    } else { G.overlooked.push(F("options","期权数据","overlooked",0,0,"解析失败","Deribit 返回异常",false)); }
+  } else { G.overlooked.push(F("options","期权 Gamma / 最大痛点","overlooked",0,0,"不可达","Deribit 海外源国内可能不可达",false)); }
+  if(D.depth.ok){ const bid=D.depth.v.bids.reduce((s,b)=>s+ +b[0]* +b[1],0); const ask=D.depth.v.asks.reduce((s,a)=>s+ +a[0]* +a[1],0); const imb=(bid-ask)/(bid+ask);
+    G.overlooked.push(F("obi","订单簿买卖墙失衡","overlooked",clamp(imb*2),.4,(imb*100).toFixed(0)+"%",imb>0.1?"买盘墙更厚":imb<-0.1?"卖盘墙更厚":"盘口均衡")); }
+  if(D.premium.ok){ const fr=+D.premium.v.lastFundingRate; const crowd=Math.abs(fr)>0.0008;
+    G.overlooked.push(F("crowd","杠杆拥挤/反身性","overlooked",crowd?(fr>0?-0.5:0.5):0,crowd?.5:.2,crowd?"拥挤":"正常",crowd?"单边杠杆拥挤,警惕插针猎杀":"杠杆结构健康")); }
+  if(D.coinglass&&D.coinglass.ok&&D.coinglass.maxPain){
+    const rows=Array.isArray(D.coinglass.maxPain.data)?D.coinglass.maxPain.data:[];
+    const btc=rows.find(x=>String(x.symbol).toUpperCase()==="BTC");
+    if(btc){
+      const p=+btc.price,lp=+btc.long_max_pain_liq_price,sp=+btc.short_max_pain_liq_price;
+      const longDist=p&&lp?(lp-p)/p:0,shortDist=p&&sp?(p-sp)/p:0;
+      const closer=longDist&&shortDist?(longDist<shortDist?"上方多头痛点更近":"下方空头痛点更近"):"爆仓痛点";
+      const sc=longDist&&shortDist?clamp((shortDist-longDist)*10):0;
+      G.overlooked.push(F("cg-maxpain","Coinglass 爆仓最大痛点","overlooked",sc,.42,`↑${lp.toFixed(0)} / ↓${sp.toFixed(0)}`,closer));
+    }
+  } else if(D.coinglass){
+    const msg=D.coinglass.needsKey?"点击右上角“数据源”填写 Coinglass API Key":(D.coinglass.err||"Coinglass 不可用");
+    G.overlooked.push(F("cg-maxpain","Coinglass 爆仓最大痛点","overlooked",0,0,D.coinglass.needsKey?"需API Key":"不可用",msg,false));
+  }
+  if(D.fng.ok&&D.fng.v.data){ const v=+D.fng.v.data[0].value; let sc; if(v>75) sc=-0.4; else if(v<25) sc=0.4; else sc=clamp((50-v)/60);
+    G.sentiment.push(F("fng","恐惧贪婪指数","sentiment",sc,.5,v+" "+D.fng.v.data[0].value_classification,v>75?"极度贪婪→反向偏空":v<25?"极度恐惧→反向偏多":"情绪中性")); }
+  if(D.cg.ok&&D.cg.v.data){ const dom=D.cg.v.data.market_cap_percentage.btc; const mcChg=D.cg.v.data.market_cap_change_percentage_24h_usd;
+    G.flows.push(F("dom","BTC 市值占比","flows",clamp((mcChg||0)/5),.4,dom.toFixed(1)+"%","全市场市值 24h "+(mcChg>=0?"+":"")+(mcChg||0).toFixed(2)+"%")); }
+  if(D.memFee.ok){ const fast=D.memFee.v.fastestFee; const feeSc=fast>80?.18:fast>35?.10:fast<3?-.08:0;
+    G.onchain.push(F("mempool","链上活跃度(手续费)","onchain",feeSc,.32,fast+" sat/vB",fast>80?"链上拥堵明显,需求/转账活跃":fast>35?"链上偏活跃":"链上压力不高")); }
+  if(D.hashr.ok&&D.hashr.v.currentHashrate){ const eh=D.hashr.v.currentHashrate/1e18;
+    G.onchain.push(F("hash","全网算力","onchain",0,.18,eh.toFixed(0)+" EH/s","网络安全性信息项,不直接给方向")); }
+  G.onchain.push(F("publicchain","公开链上覆盖","onchain",0,.12,"轻量","当前使用 mempool 公开数据; MVRV/SOPR/净流入需专业源增强"));
+  G.onchain.push(F("mvrv","MVRV / 已实现盈亏","onchain",0,0,"需接入","Glassnode/CryptoQuant:估值顶底",false));
+  G.onchain.push(F("sopr","SOPR / 盈亏抛压","onchain",0,0,"需接入","链上盈亏抛压(STH-SOPR)",false));
+  G.onchain.push(F("netflow","交易所净流入/出","onchain",0,0,"需接入","流入=抛压 流出=囤币",false));
+  G.flows.push(F("etf","现货 ETF 净流入","flows",0,0,"需接入","机构增量资金(关键)",false));
+  G.flows.push(F("dxy","美元指数 / 美债收益率","flows",0,0,"需接入","流动性/宏观风险偏好",false));
+  G.overlooked.push(F("liqmap","爆仓热力图","overlooked",0,0,"需接入","Coinglass:流动性磁吸区",false));
+  const feed=D.newsFeed||{ok:false,items:[]};
+  const macroHits=newsHits(feed,/CPI|FOMC|非农|美联储|鲍威尔|利率|通胀|PCE|GDP|就业|初请|央行|美元|美债|国债/i);
+  const trumpHits=newsHits(feed,/特朗普|Trump|关税|伊朗|中东|霍尔木兹|制裁|白宫|美国总统/i);
+  const cryptoHits=newsHits(feed,/比特币|BTC|以太|ETH|加密|币安|Coinbase|ETF|SEC|黑客|交易所|稳定币/i);
+  const allRisk=[...trumpHits,...macroHits,...cryptoHits];
+  if(feed.ok){
+    G.news.push(F("jin10-flash","金十快讯监控","news",newsRiskScore(allRisk),.34,`${feed.items.length}条`,briefNews(allRisk.length?allRisk:feed.items),"金十首页快讯/重要事件"));
+    G.news.push(F("trump-watch","特朗普/地缘关键词","news",newsRiskScore(trumpHits),trumpHits.length?.36:.14,trumpHits.length?`${trumpHits.length}条命中`:"暂无命中",briefNews(trumpHits),"来自金十快讯关键词: 特朗普/Trump/关税/伊朗/中东"));
+    G.news.push(F("macro-watch","宏观日历/数据关键词","news",newsRiskScore(macroHits),macroHits.length?.30:.12,macroHits.length?`${macroHits.length}条命中`:"暂无命中",briefNews(macroHits),"来自金十快讯关键词: CPI/FOMC/非农/美联储/美元/美债"));
+    G.news.push(F("crypto-watch","币圈/ETF/交易所关键词","news",newsRiskScore(cryptoHits),cryptoHits.length?.28:.12,cryptoHits.length?`${cryptoHits.length}条命中`:"暂无命中",briefNews(cryptoHits),"来自金十快讯关键词: BTC/ETF/SEC/交易所/黑客"));
+  } else {
+    G.news.push(F("jin10-flash","金十快讯监控","news",0,0,"不可达",feed.err||"金十首页读取失败",false));
+  }
+  const er=eventRisk();
+  G.news.push(F("us-session","美盘/宏观时段风险","news",0,er.conf,er.value,er.note));
+  G.news.push(F("weekend","周末流动性","news",er.weekendScore,.16,er.weekendValue,er.weekendNote));
+  G.news.push(F("trump-links","特朗普原始帖源","news",0,.10,"人工关注",`<a href="https://x.com/realDonaldTrump" target="_blank" rel="noopener">X</a> / <a href="https://truthsocial.com/@realDonaldTrump" target="_blank" rel="noopener">Truth Social</a> 可用 VPN 打开; 自动监控先用金十关键词代理`));
+  G.news.push(F("manual-news","突发新闻确认","news",0,.10,"需人工确认","监管、黑客、交易所风险、ETF突发消息仍建议人工二次确认"));
+  G.news.push(F("macro","宏观日历(CPI/FOMC/非农)","news",0,0,"需接入","建议接入 TradingEconomics/Finnhub/自维护日历",false));
+  G.news.push(F("reg","监管/事件/黑天鹅","news",0,0,"需接入","SEC、暴雷、黑客、减半等需要新闻源或人工确认",false));
+  return G;
+}
+function eventRisk(){
+  const d=new Date(),day=d.getUTCDay(),h=d.getUTCHours(),m=d.getUTCMinutes(),mins=h*60+m;
+  const nearUsData=(mins>=12*60&&mins<=14*60+30),nearFed=(mins>=18*60&&mins<=20*60+30),weekend=day===0||day===6;
+  const high=nearUsData||nearFed;
+  return {
+    conf:high ? .28 : .14,
+    value:high?"高波动窗口":"常规",
+    note:nearFed?"接近美联储/美盘高波动时段,信号宜降杠杆":nearUsData?"接近美国数据/美盘开盘窗口,假突破概率上升":"未处于典型宏观公布时段",
+    weekendScore:weekend?-.06:0,
+    weekendValue:weekend?"周末":"工作日",
+    weekendNote:weekend?"周末流动性偏薄,插针和滑点风险更高":"常规流动性时段"
+  };
+}
+function emptyGlobalFactors(){ return {derivatives:[],sentiment:[],flows:[],onchain:[],overlooked:[],news:[]}; }
+function scoreTF(tf,perTF,glob){
+  const w=WEIGHTS[tf]; const byCat={}; for(const k in CATS) byCat[k]=[];
+  perTF.forEach(f=>byCat[f.category].push(f)); for(const cat in glob) glob[cat].forEach(f=>byCat[cat].push(f));
+  const catScores={}; let composite=0,wsum=0;
+  for(const cat in CATS){ const fs=byCat[cat].filter(f=>f.available&&f.confidence>0); let cs=null;
+    if(fs.length){ let s=0,c=0; fs.forEach(f=>{s+=f.score*f.confidence;c+=f.confidence;}); cs=c?s/c:0; composite+=cs*w[cat]; wsum+=w[cat]; }
+    catScores[cat]={score:cs,factors:byCat[cat],weight:w[cat]}; }
+  let raw=wsum?composite/wsum:0;
+  composite=clamp(Math.tanh(raw*SCORE_GAIN));
+  const allActive=Object.values(byCat).flat().filter(f=>f.available&&f.confidence>0);
+  const coverage=clamp(wsum/0.85,0,1);
+  const agree=allActive.length?Math.abs(allActive.reduce((s,f)=>s+Math.sign(f.score),0))/allActive.length:0;
+  const conf=clamp(Math.abs(composite)*0.55+agree*0.30+coverage*0.15);
+  const band=ACTION_BAND[tf]||.16;
+  const actionable=Math.abs(composite)>=band&&conf>=MIN_ACTION_CONF;
+  const signalScore=actionable?composite:0;
+  const signalNote=actionable?"方向信号成立":(Math.abs(composite)<band?"弱信号,优先观望":"置信度不足,优先观望");
+  return {tf,composite,signalScore,signalNote,raw,confidence:conf,catScores,coverage};
+}
+function dirOf(s){ if(s>0.05) return "long"; if(s<-0.05) return "short"; return "neutral"; }
+function dirText(s){ const d=dirOf(s); return d==="long"?"看多":d==="short"?"看空":"中性"; }
+function arrowOf(s){ const d=dirOf(s); return d==="long"?"▲":d==="short"?"▼":"●"; }
+function colorOf(s){ const d=dirOf(s); return d==="long"?"var(--long)":d==="short"?"var(--short)":"var(--neutral)"; }
+function fmt(n){ if(n==null) return "--"; n=+n; return n.toLocaleString("en-US",{minimumFractionDigits:n>=1000?1:0,maximumFractionDigits:n<10?2:1}); }
+function fmtP(n){ if(n==null) return "--"; return (+n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+let STATE={results:null,glob:null,sel:"1h",openCats:{technicals:true},probeCache:null,probeAt:0};
+function render(D){
+  if(D.ticker.ok){ const t=D.ticker.v; const ch=+t.priceChangePercent;
+    const ce=document.getElementById("chg"); ce.textContent=(ch>=0?"+":"")+ch.toFixed(2)+"%"; ce.style.color=ch>=0?"var(--long)":"var(--short)"; ce.style.background=ch>=0?"var(--long-bg)":"var(--short-bg)"; }
+  const glob=globalFactors(D); const results={};
+  TF.forEach(tf=>{ const ks=D.klines[tf]; let per=[]; if(ks){ per=[...technicalFactors(ks),...levelFactors(ks),...structureFactors(ks),...priceFactors(ks)]; } results[tf]=scoreTF(tf,per,JSON.parse(JSON.stringify(glob))); });
+  STATE.results=results; STATE.glob=glob; renderCards(results); renderGlobal(glob); renderBreakdown(STATE.sel);
+}
+function renderCards(results){
+  const grid=document.getElementById("tfGrid"); grid.innerHTML="";
+  TF.forEach(tf=>{ const r=results[tf]; const s=r.signalScore; const raw=r.composite; const col=colorOf(s); const top=topFactors(r,3); const pct=((raw+1)/2*100).toFixed(1);
+    const card=document.createElement("div"); card.className="tf-card"+(tf===STATE.sel?" sel":"");
+    card.onclick=()=>{STATE.sel=tf; document.querySelectorAll(".tf-card").forEach(c=>c.classList.remove("sel")); card.classList.add("sel"); renderBreakdown(tf);};
+    card.innerHTML=`
+      <div class="tf-head"><span class="tf-name">${TF_LABEL[tf]}</span><span>${r.coverage?(r.coverage*100).toFixed(0)+"% 覆盖":""}</span></div>
+      <div class="dir" style="color:${col}"><span class="arrow">${arrowOf(s)}</span>${dirText(s)}</div>
+      <div class="score-bar"><div class="mark" style="left:${pct}%"></div></div>
+      <div class="conf-label"><span>综合分 <b>${(raw*100).toFixed(1)}</b></span><span>置信度 <b>${(r.confidence*100).toFixed(0)}%</b></span></div>
+      <div class="bar"><span style="left:0;width:${(r.confidence*100).toFixed(0)}%;background:${col}"></span></div>
+      <div class="conf-label"><span>${r.signalNote}</span><span>阈值 ±${((ACTION_BAND[tf]||.16)*100).toFixed(0)}</span></div>
+      <div class="mini-factors">${top.map(f=>`<div class="mf"><span>${f.name}</span><b style="color:${colorOf(f.score)}">${f.score>0?"+":""}${(f.score*100).toFixed(0)}</b></div>`).join("")}</div>`;
+    grid.appendChild(card); });
+}
+function topFactors(r,n){ const all=[]; for(const cat in r.catScores) r.catScores[cat].factors.forEach(f=>{ if(f.available&&f.confidence>0) all.push(f); }); return all.sort((a,b)=>Math.abs(b.score*b.confidence)-Math.abs(a.score*a.confidence)).slice(0,n); }
+function renderBreakdown(tf){
+  STATE.sel=tf; document.getElementById("selTf").textContent="· "+TF_LABEL[tf];
+  const r=STATE.results[tf]; const box=document.getElementById("breakdown"); box.innerHTML="";
+  const cats=Object.keys(CATS).sort((a,b)=>WEIGHTS[tf][b]-WEIGHTS[tf][a]);
+  cats.forEach(cat=>{ const cinfo=CATS[cat]; const cd=r.catScores[cat]; const cs=cd.score;
+    const cEl=document.createElement("div"); cEl.className="cat"+(STATE.openCats[cat]?" open":"");
+    const csTxt=cs==null?"无数据":(cs>0?"+":"")+(cs*100).toFixed(0); const csCol=cs==null?"var(--faint)":colorOf(cs);
+    const csBg=cs==null?"var(--neutral-bg)":(dirOf(cs)==="long"?"var(--long-bg)":dirOf(cs)==="short"?"var(--short-bg)":"var(--neutral-bg)");
+    cEl.innerHTML=`<div class="cat-head"><span class="ci">${cinfo.icon}</span><span class="cn">${cinfo.name}<span class="wt">权重 ${(WEIGHTS[tf][cat]*100).toFixed(0)}%</span></span><span class="cs" style="color:${csCol};background:${csBg}">${csTxt}</span></div><div class="cat-body">${cd.factors.map(factorRow).join("")||'<div class="factor na">该分类暂无因子</div>'}</div>`;
+    cEl.querySelector(".cat-head").onclick=()=>{ STATE.openCats[cat]=!STATE.openCats[cat]; cEl.classList.toggle("open"); };
+    box.appendChild(cEl); });
+}
+function factorRow(f){ const col=colorOf(f.score); const na=f.available?"":"na"; const pill=f.available?"":'<span class="pill">需接入</span>';
+  return `<div class="factor ${na}"><div class="fn">${f.name}${pill}<small>${f.note}</small></div><div class="fv">${f.value}</div><div><div class="fbar"><div class="center"></div><i style="background:${col};${f.score>=0?`left:50%;width:${(f.score*50).toFixed(0)}%`:`right:50%;width:${(-f.score*50).toFixed(0)}%`}"></i></div></div></div>`; }
+function renderGlobal(glob){
+  const box=document.getElementById("globalGauge"); box.innerHTML=""; const find=(cat,id)=>(glob[cat]||[]).find(f=>f.id===id); const picks=[];
+  [["derivatives","funding","资金费率"],["derivatives","oi","持仓量"],["derivatives","lsacct","散户多空比"],["derivatives","pcr","Put/Call 比"],["derivatives","skew","25Δ 偏斜"],["overlooked","maxpain","最大痛点"],["overlooked","cg-maxpain","CG爆仓痛点"],["sentiment","ivol","隐含波动率"],["sentiment","fng","恐惧贪婪"],["overlooked","crowd","杠杆拥挤"],["flows","dom","BTC 市占率"],["onchain","mempool","链上手续费"],["onchain","hash","全网算力"],["news","jin10-flash","金十快讯"],["news","trump-watch","特朗普监控"],["news","trump-links","特朗普原帖"],["news","macro-watch","宏观关键词"],["news","crypto-watch","币圈关键词"],["news","us-session","事件时段"],["news","weekend","周末流动性"]].forEach(([c,id,lbl])=>{ const f=find(c,id); if(f&&(f.available||f.value)) picks.push([lbl,f]); });
+  picks.forEach(([lbl,f])=>{ const el=document.createElement("div"); el.className="g-item"; el.innerHTML=`<div class="gl">${lbl}</div><div class="gv">${f.value}</div><div class="gd" style="color:${f.confidence>0?colorOf(f.score):'var(--muted)'}">${f.confidence>0?dirText(f.score)+" · ":""}${f.note}</div>`; box.appendChild(el); });
+  if(!picks.length){
+    const el=document.createElement("div"); el.className="empty-note"; el.textContent="全局数据暂未返回。上方多周期技术面仍可工作；请检查网络是否能访问 OKX。"; box.appendChild(el);
+  }
+  renderDataHealth(glob, box);
+}
+function sourceState(glob,cat,id){ const f=(glob[cat]||[]).find(x=>x.id===id); return !!(f&&f.available&&f.confidence>0); }
+function sourceAny(glob,cat,ids){ return ids.some(id=>sourceState(glob,cat,id)); }
+function renderDataHealth(glob, box){
+  const r=STATE.results&&STATE.results[STATE.sel]; const activeFactors=r?Object.values(r.catScores).flatMap(c=>c.factors).filter(f=>f.available&&f.confidence>0):[];
+  const missingFactors=r?Object.values(r.catScores).flatMap(c=>c.factors).filter(f=>!f.available):[];
+  const sources=[
+    ["OKX K线/技术指标", activeFactors.some(f=>["technicals","levels","structure","price"].includes(f.category)), "主评分"],
+    ["OKX 资金费率", sourceState(glob,"derivatives","funding"), "永续"],
+    ["OKX 持仓/OI", sourceState(glob,"derivatives","oi"), "合约"],
+    ["OKX 多空/主动买卖", sourceAny(glob,"derivatives",["lsacct","takerg"]), "情绪"],
+    ["OKX 盘口深度", sourceState(glob,"overlooked","obi"), "买卖墙"],
+    ["Coinglass API", sourceState(glob,"overlooked","cg-maxpain"), cgCfg().key?"API":"需Key"],
+    ["Deribit 期权", sourceAny(glob,"derivatives",["pcr","skew"])||sourceState(glob,"overlooked","maxpain"), "海外源"],
+    ["恐惧贪婪指数", sourceState(glob,"sentiment","fng"), "海外源"],
+    ["CoinGecko 市场", sourceState(glob,"flows","dom"), "海外源"],
+    ["mempool 链上", sourceAny(glob,"onchain",["mempool","hash"]), "链上"],
+    ["金十快讯/日历", sourceState(glob,"news","jin10-flash"), "新闻"],
+    ["特朗普关键词", sourceState(glob,"news","trump-watch"), "金十代理"],
+    ["特朗普原始链接", sourceState(glob,"news","trump-links"), "人工"],
+    ["事件时段提示", sourceAny(glob,"news",["us-session","weekend","manual-news"]), "本地"],
+    ["ETF/Glassnode/宏观", false, "需接入"]
+  ];
+  const okCount=sources.filter(s=>s[1]).length;
+  const section=document.createElement("div"); section.className="global-section";
+  section.innerHTML=`<h4>数据覆盖状态</h4>
+    <div class="source-grid">${sources.map(([name,ok,note])=>`<div class="source-item"><span class="source-dot ${ok?"ok":note==="需接入"?"warn":"off"}"></span><span class="source-name">${name}</span><span class="source-note">${ok?"正常":note}</span></div>`).join("")}</div>
+    <div class="summary-row">
+      <span class="summary-chip">已参与评分: ${activeFactors.length} 个因子</span>
+      <span class="summary-chip">当前覆盖: ${okCount}/${sources.length} 类数据源</span>
+      <span class="summary-chip">未接入占位: ${missingFactors.length} 项</span>
+    </div>`;
+  box.appendChild(section);
+  renderProbe(box);
+  const hints=document.createElement("div"); hints.className="global-section";
+  hints.innerHTML=`<h4>空数据怎么处理</h4>
+    <div class="hint-list">
+      <div class="hint-item"><span>1.</span><span><b>金十已接入</b>，当前从金十首页读取快讯/重要事件，并按特朗普、宏观、币圈关键词做风险提示。</span></div>
+      <div class="hint-item"><span>2.</span><span><b>特朗普原帖用人工入口</b>，你开 VPN 后可直接点 X/Truth Social 链接查看; 自动化部分用金十“特朗普/Trump/关税/中东”等关键词做代理监控。</span></div>
+      <div class="hint-item"><span>3.</span><span><b>Coinglass 需要 API 权限</b>，点击右上角“数据源”填 API Key; 如果浏览器跨域拦截,还需要你自己的代理地址。</span></div>
+    </div>`;
+  box.appendChild(hints);
+}
+function historicalProbe(tf){
+  const ks=KLINES[tf],h=PROBE_HORIZON[tf]||3;
+  if(!ks||ks.length<90+h) return {tf,total:0,win:0,wait:0,wr:null,avg:0,longs:0,shorts:0,h};
+  let total=0,win=0,wait=0,sum=0,longs=0,shorts=0;
+  for(let i=70;i<ks.length-h;i++){
+    const slice=ks.slice(0,i+1);
+    const per=[...technicalFactors(slice),...levelFactors(slice),...structureFactors(slice),...priceFactors(slice)];
+    const r=scoreTF(tf,per,emptyGlobalFactors());
+    const sig=Math.sign(r.signalScore);
+    if(!sig){ wait++; continue; }
+    const ret=(ks[i+h].c-ks[i].c)/ks[i].c;
+    total++; sum+=sig*ret; if(sig>0) longs++; else shorts++;
+    if(sig*ret>0) win++;
+  }
+  return {tf,total,win,wait,wr:total?win/total:null,avg:total?sum/total:0,longs,shorts,h};
+}
+function renderProbe(box){
+  const section=document.createElement("div"); section.className="global-section";
+  const now=Date.now();
+  if(!STATE.probeCache||now-STATE.probeAt>30000){ STATE.probeCache=TF.map(historicalProbe); STATE.probeAt=now; }
+  const rows=STATE.probeCache;
+  section.innerHTML=`<h4>最近K线简易验证</h4>
+    <div class="probe-grid">${rows.map(p=>`<div class="probe-card">
+      <div class="pt"><span>${TF_LABEL[p.tf]}</span><span>${p.h}根后</span></div>
+      <div class="pv" style="color:${p.wr==null?"var(--muted)":p.wr>=.55?"var(--long)":p.wr<.45?"var(--short)":"var(--neutral)"}">${p.wr==null?"--":(p.wr*100).toFixed(0)+"%"}</div>
+      <div class="pd">信号 ${p.total} 次 · 观望 ${p.wait} 次 · 多${p.longs}/空${p.shorts}</div>
+    </div>`).join("")}</div>
+    <div class="summary-row"><span class="summary-chip">仅用本周期历史K线重算,不含未来函数</span><span class="summary-chip">用于校准信号强弱,不是保证胜率</span></div>`;
+  box.appendChild(section);
+}
+/* ===== 实时引擎:OKX REST 每秒轮询 + OKX WebSocket + 折线 + 心跳 ===== */
+const KLINES={}; let GDATA={}; let dirty=false,ws=null,wsAlive=false,lastPrice=null,restFallback=null,msgCount=0,pingT=null;
+const SPARK=[];
+function applyTickToKlines(p){ for(const tf of TF){ const a=KLINES[tf]; if(a&&a.length){ const b=a[a.length-1]; b.c=p; if(p>b.h)b.h=p; if(p<b.l)b.l=p; } } }
+function setStatus(on,txt){ document.getElementById("liveDot").className="dot"+(on?" live":""); document.getElementById("liveText").textContent=txt; }
+function buildD(){ const g=GDATA,no={ok:false}; return {klines:KLINES,ticker:g.ticker||no,premium:g.premium||no,oiNow:g.oiNow||no,oiHist:g.oiHist||no,lsAcct:g.lsAcct||no,lsTop:g.lsTop||no,taker:g.taker||no,depth:g.depth||no,fng:g.fng||no,cg:g.cg||no,memFee:g.memFee||no,hashr:g.hashr||no,deribit:g.deribit||no,newsFeed:g.newsFeed||{ok:false,items:[],err:"尚未加载金十"}}; }
+function drawSpark(){ const cv=document.getElementById("spark"); if(!cv||!cv.getContext) return; const ctx=cv.getContext("2d"); const w=cv.width,h=cv.height; ctx.clearRect(0,0,w,h); if(SPARK.length<2) return;
+  const mn=Math.min(...SPARK),mx=Math.max(...SPARK),rng=(mx-mn)||1; ctx.beginPath();
+  SPARK.forEach((v,i)=>{ const x=i/(SPARK.length-1)*w; const y=h-((v-mn)/rng)*(h-6)-3; i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+  const up=SPARK[SPARK.length-1]>=SPARK[0]; ctx.strokeStyle=up?"#16c784":"#ea3943"; ctx.lineWidth=1.6; ctx.lineJoin="round"; ctx.stroke();
+  const ly=h-((SPARK[SPARK.length-1]-mn)/rng)*(h-6)-3; ctx.beginPath(); ctx.arc(w-2,ly,2,0,7); ctx.fillStyle=up?"#16c784":"#ea3943"; ctx.fill(); }
+function pushSpark(p){ SPARK.push(p); if(SPARK.length>160) SPARK.shift(); drawSpark(); }
+function showPrice(p,pct){ const el=document.getElementById("price"); const prev=lastPrice; el.textContent="$"+fmtP(p);
+  if(prev!=null&&p!==prev){ el.style.color=p>prev?"var(--long)":"var(--short)"; setTimeout(()=>{el.style.color="";},200); }
+  if(pct!=null){ const ce=document.getElementById("chg"); ce.textContent=(pct>=0?"+":"")+(+pct).toFixed(2)+"%"; ce.style.color=pct>=0?"var(--long)":"var(--short)"; ce.style.background=pct>=0?"var(--long-bg)":"var(--short-bg)"; }
+  lastPrice=p; pushSpark(p); }
+async function seed(){ const D=await collectAll(); const anyK=Object.values(D.klines).some(v=>v);
+  if(anyK) TF.forEach(tf=>{ if(D.klines[tf]) KLINES[tf]=D.klines[tf]; });
+  GDATA={ticker:D.ticker,premium:D.premium,oiNow:D.oiNow,oiHist:D.oiHist,lsAcct:D.lsAcct,lsTop:D.lsTop,taker:D.taker,depth:D.depth,fng:D.fng,cg:D.cg,memFee:D.memFee,hashr:D.hashr,deribit:D.deribit,newsFeed:D.newsFeed,coinglass:D.coinglass};
+  if(KLINES["5m"]&&SPARK.length<5){ SPARK.length=0; KLINES["5m"].slice(-90).forEach(k=>SPARK.push(k.c)); drawSpark(); }
+  if(D.ticker.ok) showPrice(+D.ticker.v.lastPrice,+D.ticker.v.priceChangePercent);
+  if(anyK){ render(buildD()); } return anyK; }
+/* 每秒 REST 价格轮询(OKX ticker):不依赖 WS,保证价格/折线/判断每秒在动 */
+async function pricePoll(){ const r=await safe(jget(`${OKX}/api/v5/market/ticker?instId=BTC-USDT`));
+  if(r.ok&&r.v&&r.v.data&&r.v.data[0]){ const t=r.v.data[0]; const p=+t.last,op=+t.open24h,pct=op?((p-op)/op*100):null;
+    applyTickToKlines(p); GDATA.ticker={ok:true,v:{lastPrice:p,priceChangePercent:pct==null?0:pct}}; showPrice(p,pct); msgCount++; dirty=true; } }
+/* 12 秒刷新一次 K 线(指标基础),全局衍生品 20 秒一次 */
+async function refreshCandles(){ const cs=await Promise.all(TF.map(okxCandles)); TF.forEach((tf,i)=>{ if(cs[i]) KLINES[tf]=cs[i]; }); dirty=true; }
+async function pollGlobal(){ const R=await fetchGlobalsRaw(); const n=normGlobals(R);
+  if(n.ticker.ok)GDATA.ticker=n.ticker; GDATA.premium=n.premium; GDATA.oiHist=n.oiHist; GDATA.lsAcct=n.lsAcct; GDATA.lsTop=n.lsTop; GDATA.taker=n.taker; GDATA.depth=n.depth;
+  if(R.deribit.ok)GDATA.deribit=R.deribit; if(R.fng.ok)GDATA.fng=R.fng; if(R.cg.ok)GDATA.cg=R.cg; if(R.memFee.ok)GDATA.memFee=R.memFee; if(R.hashr.ok)GDATA.hashr=R.hashr; dirty=true; }
+async function pollNews(){ const n=await fetchNewsFeed(); GDATA.newsFeed=n; dirty=true; }
+async function pollCoinglass(){ const cg=await fetchCoinglass(); GDATA.coinglass=cg; dirty=true; }
+/* OKX WebSocket:trades 逐笔价 + tickers 24h%,需 ping 保活 */
+function connectWS(){
+  setStatus(false,"实时连接中…");
+  try{ ws=new WebSocket("wss://ws.okx.com:8443/ws/v5/public"); }catch(e){ startRestFallback(); return; }
+  ws.onopen=()=>{ wsAlive=true; setStatus(true,"实时 · LIVE");
+    try{ ws.send(JSON.stringify({op:"subscribe",args:[{channel:"trades",instId:"BTC-USDT"},{channel:"tickers",instId:"BTC-USDT"}]})); }catch(_){}
+    if(pingT)clearInterval(pingT); pingT=setInterval(()=>{ try{ws.send("ping");}catch(_){}} ,20000);
+    if(restFallback){clearInterval(restFallback);restFallback=null;} };
+  ws.onmessage=(ev)=>{ if(ev.data==="pong") return; let m; try{ m=JSON.parse(ev.data); }catch(_){ return; }
+    if(!m.arg||!m.data||!m.data.length) return; const ch=m.arg.channel;
+    if(ch==="trades"){ const p=+m.data[m.data.length-1].px; applyTickToKlines(p); showPrice(p,null); msgCount++; dirty=true; }
+    else if(ch==="tickers"){ const t=m.data[0]; const p=+t.last,op=+t.open24h,pct=op?((p-op)/op*100):null; applyTickToKlines(p); GDATA.ticker={ok:true,v:{lastPrice:p,priceChangePercent:pct==null?0:pct}}; showPrice(p,pct); dirty=true; } };
+  ws.onclose=()=>{ if(pingT){clearInterval(pingT);pingT=null;} if(wsAlive){ wsAlive=false; setStatus(false,"断开 · 3s 重连"); setTimeout(connectWS,3000);} };
+  ws.onerror=()=>{ try{ws.close();}catch(_){}; if(!wsAlive) startRestFallback(); };
+}
+function startRestFallback(){ if(restFallback) return; setStatus(false,"WS 不可用 · REST 兜底"); restFallback=setInterval(pricePoll,1500); }
+setInterval(()=>{ if(dirty){ try{ render(buildD()); }catch(_){} dirty=false; } },300);
+setInterval(pricePoll,1000);
+setInterval(refreshCandles,12000);
+setInterval(pollNews,60000);
+setInterval(pollCoinglass,120000);
+setInterval(()=>{ const rate=msgCount; msgCount=0;
+  document.getElementById("updated").textContent=new Date().toLocaleTimeString("zh-CN")+" · "+rate+"笔/s";
+  dirty=true; drawSpark(); },1000);
+document.getElementById("refreshBtn").onclick=()=>{ pollGlobal(); pollNews(); pollCoinglass(); pricePoll(); };
+document.getElementById("sourceBtn").onclick=()=>{
+  const cur=cgCfg();
+  const key=prompt("Coinglass API Key（没有就留空）",cur.key);
+  if(key===null) return;
+  localStorage.setItem("coinglass_api_key",key.trim());
+  const proxy=prompt("Coinglass 代理地址（可选；浏览器跨域被拦截时才需要）",cur.proxy);
+  if(proxy!==null) localStorage.setItem("coinglass_proxy_url",proxy.trim());
+  pollCoinglass();
+};
+document.getElementById("liveSwitch").onclick=()=>{ if(!wsAlive) connectWS(); };
+(async function start(){ setStatus(false,"加载历史数据…"); const ok=await seed(); setInterval(pollGlobal,20000); pricePoll();
+  if(ok){ connectWS(); } else { document.getElementById("topErr").innerHTML=`<div class="disclaimer" style="border-color:rgba(234,57,67,.4);background:rgba(234,57,67,.07);margin-top:14px"><b class="err">无法连接 OKX:</b> 当前网络可能也无法访问 OKX。请检查网络,或在代码中把 <code>OKX</code> 域名换成可用镜像。</div>`; startRestFallback(); }
+})();
+</script>
+</body>
+</html>
