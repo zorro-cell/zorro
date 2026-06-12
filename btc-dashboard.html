@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BTC 多周期涨跌综合预判系统 · OKX</title>
+<title>Binance 永续合约多周期预判系统</title>
 <style>
   :root{
     --bg:#0b0e14; --panel:#131823; --panel2:#1a2030; --border:#232b3d;
@@ -22,6 +22,9 @@
   .price-box{display:flex;align-items:center;gap:10px}
   .price{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;transition:color .15s}
   .chg{font-size:14px;font-weight:600;padding:2px 8px;border-radius:6px}
+  .asset-tabs{display:flex;gap:6px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:9px;padding:4px}
+  .asset-tab{border:0;background:transparent;color:var(--muted);padding:6px 10px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:700}
+  .asset-tab.active{background:var(--accent);color:#111827}
   #spark{display:block;border-radius:4px;background:rgba(255,255,255,.02)}
   .tick{font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums;min-width:96px}
   .spacer{flex:1}
@@ -119,7 +122,11 @@
 <body>
 <div class="wrap">
   <header>
-    <div class="brand">BTC 多周期涨跌综合预判系统<small>数据源:OKX(国内可直连)· 含 Deribit 期权 · 每秒实时 · 仅供研究,非投资建议</small></div>
+    <div class="brand"><span id="brandTitle">BTC/USDT 永续合约多周期预判系统</span><small id="brandSub">数据源:Binance USDⓈ-M Futures · 含 Deribit 期权 · 每秒实时 · 仅供研究,非投资建议</small></div>
+    <div class="asset-tabs" id="assetTabs">
+      <button class="asset-tab active" data-asset="BTC">BTC 永续</button>
+      <button class="asset-tab" data-asset="ETH">ETH 永续</button>
+    </div>
     <div class="price-box">
       <span class="price" id="price">--</span>
       <span class="chg" id="chg">--</span>
@@ -135,7 +142,7 @@
   </header>
   <div id="topErr"></div>
   <div class="grid" id="tfGrid">
-    <div class="loading" style="grid-column:1/-1">正在加载 OKX 实时数据…</div>
+    <div class="loading" style="grid-column:1/-1">正在加载 Binance 合约实时数据…</div>
   </div>
   <div class="panels">
     <div class="panel">
@@ -155,7 +162,7 @@
     </div>
   </div>
   <div class="disclaimer">
-    <b>⚠ 风险与说明:</b> 数据源为 <b>OKX</b>(现货 + BTC-USDT-SWAP 永续,国内通常可直连),叠加 <b>金十快讯</b>、Deribit 期权、Alternative.me、CoinGecko、mempool.space。趋势主导加权评分给出方向与置信度,<b>不构成投资建议</b>。当前采用保守信号模式:弱分数或低置信度优先显示观望。新闻/事件从金十首页读取并按特朗普/宏观/币圈关键词监控; 特朗普原帖提供 X/Truth Social 人工打开入口。Coinglass 需点击右上角“数据源”配置官方 API Key,部分爆仓数据需要高阶套餐。杠杆合约风险极高,务必自设止损与仓位管理。
+    <b>⚠ 风险与说明:</b> 数据源为 <b>Binance USDⓈ-M 永续合约</b>(BTCUSDT / ETHUSDT),叠加 <b>金十快讯</b>、Deribit 期权、Alternative.me、CoinGecko、mempool.space。趋势主导加权评分给出方向与置信度,<b>不构成投资建议</b>。当前采用保守信号模式:弱分数或低置信度优先显示观望。新闻/事件从金十首页读取并按特朗普/宏观/币圈关键词监控; 特朗普原帖提供 X/Truth Social 人工打开入口。Coinglass 需点击右上角“数据源”配置官方 API Key,部分爆仓数据需要高阶套餐。杠杆合约风险极高,务必自设止损与仓位管理。
   </div>
 </div>
 <script>
@@ -182,9 +189,14 @@ const SCORE_GAIN=2.6;
 const MIN_ACTION_CONF=.42;
 const ACTION_BAND={"5m":.22,"15m":.20,"30m":.18,"1h":.16,"4h":.14,"1d":.12};
 const PROBE_HORIZON={"5m":3,"15m":3,"30m":3,"1h":3,"4h":2,"1d":2};
-/* ===== OKX 数据采集层 ===== */
-const OKX="https://www.okx.com";
-const DERIBIT="https://www.deribit.com/api/v2/public/get_book_summary_by_currency?currency=BTC&kind=option";
+const ASSETS={
+  BTC:{symbol:"BTC",name:"BTC",binance:"BTCUSDT",deribit:"BTC"},
+  ETH:{symbol:"ETH",name:"ETH",binance:"ETHUSDT",deribit:"ETH"}
+};
+let CURRENT_ASSET=localStorage.getItem("dashboard_asset")||"BTC";
+function asset(){ return ASSETS[CURRENT_ASSET]||ASSETS.BTC; }
+/* ===== Binance Futures 数据采集层 ===== */
+const BINANCE="https://fapi.binance.com";
 const JIN10_HOME="https://www.jin10.com/";
 const COINGLASS="https://open-api-v4.coinglass.com";
 async function jget(url){ const r=await fetch(url,{cache:"no-store"}); if(!r.ok) throw new Error(url.split("?")[0]+" → "+r.status); return r.json(); }
@@ -204,39 +216,41 @@ async function fetchCoinglass(){
   const maxPain=await safe(cgget("/api/futures/liquidation/max-pain?range=24h"));
   return {ok:maxPain.ok,maxPain:maxPain.ok?maxPain.v:null,err:maxPain.ok?"":maxPain.e,proxy:!!cfg.proxy};
 }
-async function okxCandles(tf){ const r=await safe(jget(`${OKX}/api/v5/market/candles?instId=BTC-USDT&bar=${BAR[tf]}&limit=210`));
-  if(!r.ok||!r.v||r.v.code!=="0"||!r.v.data) return null;
-  return r.v.data.slice().reverse().map(k=>({t:+k[0],o:+k[1],h:+k[2],l:+k[3],c:+k[4],v:+k[5],tbv:(+k[5])/2})); }
-/* 把 OKX 各接口归一化为引擎所需结构(与原 Binance 版字段兼容) */
+function deribitUrl(){ return `https://www.deribit.com/api/v2/public/get_book_summary_by_currency?currency=${asset().deribit}&kind=option`; }
+async function binanceCandles(tf){ const r=await safe(jget(`${BINANCE}/fapi/v1/klines?symbol=${asset().binance}&interval=${BAR[tf]}&limit=210`));
+  if(!r.ok||!Array.isArray(r.v)) return null;
+  return r.v.map(k=>({t:+k[0],o:+k[1],h:+k[2],l:+k[3],c:+k[4],v:+k[5],tbv:+k[9]||0})); }
+/* 把 Binance 各接口归一化为引擎字段 */
 function normGlobals(R){
   const out={oiNow:{ok:false}};
-  if(R.ticker.ok&&R.ticker.v.data&&R.ticker.v.data[0]){ const t=R.ticker.v.data[0]; const last=+t.last,op=+t.open24h; out.ticker={ok:true,v:{lastPrice:last,priceChangePercent:op?((last-op)/op*100):0}}; } else out.ticker={ok:false};
-  if(R.funding.ok&&R.funding.v.data&&R.funding.v.data[0]) out.premium={ok:true,v:{lastFundingRate:R.funding.v.data[0].fundingRate}}; else out.premium={ok:false};
-  if(R.oiv.ok&&R.oiv.v.data&&R.oiv.v.data.length){ out.oiHist={ok:true,v:R.oiv.v.data.slice(0,30).reverse().map(x=>({sumOpenInterest:x[1]}))}; } else out.oiHist={ok:false};
-  if(R.lsr.ok&&R.lsr.v.data&&R.lsr.v.data.length){ out.lsAcct={ok:true,v:[{longShortRatio:R.lsr.v.data[0][1]}]}; } else out.lsAcct={ok:false};
-  out.lsTop={ok:false};
-  if(R.tv.ok&&R.tv.v.data&&R.tv.v.data.length){ const row=R.tv.v.data[0]; const sell=+row[1],buy=+row[2]; out.taker={ok:true,v:[{buySellRatio:sell?buy/sell:1}]}; } else out.taker={ok:false};
-  if(R.books.ok&&R.books.v.data&&R.books.v.data[0]){ out.depth={ok:true,v:{bids:R.books.v.data[0].bids,asks:R.books.v.data[0].asks}}; } else out.depth={ok:false};
+  if(R.ticker.ok){ const t=R.ticker.v; out.ticker={ok:true,v:{lastPrice:+t.lastPrice,priceChangePercent:+t.priceChangePercent||0}}; } else out.ticker={ok:false};
+  if(R.funding.ok) out.premium={ok:true,v:{lastFundingRate:R.funding.v.lastFundingRate}}; else out.premium={ok:false};
+  if(R.oiv.ok&&Array.isArray(R.oiv.v)&&R.oiv.v.length){ out.oiHist={ok:true,v:R.oiv.v.map(x=>({sumOpenInterest:x.sumOpenInterest}))}; } else out.oiHist={ok:false};
+  if(R.lsr.ok&&Array.isArray(R.lsr.v)&&R.lsr.v.length){ out.lsAcct={ok:true,v:R.lsr.v.map(x=>({longShortRatio:x.longShortRatio}))}; } else out.lsAcct={ok:false};
+  if(R.lsTop.ok&&Array.isArray(R.lsTop.v)&&R.lsTop.v.length){ out.lsTop={ok:true,v:R.lsTop.v.map(x=>({longShortRatio:x.longShortRatio}))}; } else out.lsTop={ok:false};
+  if(R.tv.ok&&Array.isArray(R.tv.v)&&R.tv.v.length){ out.taker={ok:true,v:R.tv.v.map(x=>({buySellRatio:x.buySellRatio}))}; } else out.taker={ok:false};
+  if(R.books.ok){ out.depth={ok:true,v:{bids:R.books.v.bids||[],asks:R.books.v.asks||[]}}; } else out.depth={ok:false};
   return out;
 }
-async function fetchGlobalsRaw(){ const [ticker,funding,oiv,lsr,tv,books,deribit,fng,cg,memFee,hashr]=await Promise.all([
-    safe(jget(`${OKX}/api/v5/market/ticker?instId=BTC-USDT`)),
-    safe(jget(`${OKX}/api/v5/public/funding-rate?instId=BTC-USDT-SWAP`)),
-    safe(jget(`${OKX}/api/v5/rubik/stat/contracts/open-interest-volume?ccy=BTC&period=5m`)),
-    safe(jget(`${OKX}/api/v5/rubik/stat/contracts/long-short-account-ratio?ccy=BTC&period=5m`)),
-    safe(jget(`${OKX}/api/v5/rubik/stat/taker-volume?ccy=BTC&instType=SPOT&period=5m`)),
-    safe(jget(`${OKX}/api/v5/market/books?instId=BTC-USDT&sz=50`)),
-    safe(jget(DERIBIT)), safe(jget(`https://api.alternative.me/fng/?limit=8`)),
+async function fetchGlobalsRaw(){ const [ticker,funding,oiv,lsr,lsTop,tv,books,deribit,fng,cg,memFee,hashr]=await Promise.all([
+    safe(jget(`${BINANCE}/fapi/v1/ticker/24hr?symbol=${asset().binance}`)),
+    safe(jget(`${BINANCE}/fapi/v1/premiumIndex?symbol=${asset().binance}`)),
+    safe(jget(`${BINANCE}/futures/data/openInterestHist?symbol=${asset().binance}&period=5m&limit=30`)),
+    safe(jget(`${BINANCE}/futures/data/globalLongShortAccountRatio?symbol=${asset().binance}&period=5m&limit=1`)),
+    safe(jget(`${BINANCE}/futures/data/topLongShortAccountRatio?symbol=${asset().binance}&period=5m&limit=1`)),
+    safe(jget(`${BINANCE}/futures/data/takerlongshortRatio?symbol=${asset().binance}&period=5m&limit=1`)),
+    safe(jget(`${BINANCE}/fapi/v1/depth?symbol=${asset().binance}&limit=50`)),
+    safe(jget(deribitUrl())), safe(jget(`https://api.alternative.me/fng/?limit=8`)),
     safe(jget(`https://api.coingecko.com/api/v3/global`)), safe(jget(`https://mempool.space/api/v1/fees/recommended`)),
     safe(jget(`https://mempool.space/api/v1/mining/hashrate/1m`))]);
-  return {ticker,funding,oiv,lsr,tv,books,deribit,fng,cg,memFee,hashr};
+  return {ticker,funding,oiv,lsr,lsTop,tv,books,deribit,fng,cg,memFee,hashr};
 }
 async function collectAll(){
   const [c5,c15,c30,c1h,c4h,c1d,R,newsFeed,coinglass]=await Promise.all([
-    okxCandles("5m"),okxCandles("15m"),okxCandles("30m"),okxCandles("1h"),okxCandles("4h"),okxCandles("1d"),fetchGlobalsRaw(),fetchNewsFeed(),fetchCoinglass()]);
+    binanceCandles("5m"),binanceCandles("15m"),binanceCandles("30m"),binanceCandles("1h"),binanceCandles("4h"),binanceCandles("1d"),fetchGlobalsRaw(),fetchNewsFeed(),fetchCoinglass()]);
   const klines={"5m":c5,"15m":c15,"30m":c30,"1h":c1h,"4h":c4h,"1d":c1d};
   const g=normGlobals(R);
-  return {klines, ticker:g.ticker,premium:g.premium,oiNow:g.oiNow,oiHist:g.oiHist,lsAcct:g.lsAcct,lsTop:g.lsTop,taker:g.taker,depth:g.depth, deribit:R.deribit,fng:R.fng,cg:R.cg,memFee:R.memFee,hashr:R.hashr,newsFeed,coinglass};
+  return {asset:asset(),klines, ticker:g.ticker,premium:g.premium,oiNow:g.oiNow,oiHist:g.oiHist,lsAcct:g.lsAcct,lsTop:g.lsTop,taker:g.taker,depth:g.depth, deribit:R.deribit,fng:R.fng,cg:R.cg,memFee:R.memFee,hashr:R.hashr,newsFeed,coinglass};
 }
 /* ===== 指标计算 ===== */
 const closes=ks=>ks.map(k=>k.c);
@@ -385,12 +399,13 @@ function structureFactors(ks){
 }
 function priceFactors(ks){
   const out=[]; const last=ks[ks.length-1]; const buyRatio=last.v?last.tbv/last.v:0.5;
-  out.push(F("takervol","当根主动买占比","price",clamp((buyRatio-0.5)*4),.08,(buyRatio*100).toFixed(0)+"%","OKX K线不含真实主动方向,仅作低权重参考"));
+  out.push(F("takervol","当根主动买占比","price",clamp((buyRatio-0.5)*4),.42,(buyRatio*100).toFixed(0)+"%",buyRatio>0.55?"Binance 合约主动买盘占优":buyRatio<0.45?"Binance 合约主动卖盘占优":"主动买卖均衡"));
   const vols=ks.slice(-21).map(k=>k.v); const avg=vols.slice(0,20).reduce((a,b)=>a+b,0)/20; const rel=avg?last.v/avg:1; const dir=last.c>=last.o?1:-1;
   out.push(F("volexp","成交量相对均值","price",clamp(dir*(rel-1)),.45,rel.toFixed(2)+"x",rel>1.5?(dir>0?"放量上涨":"放量下跌"):"量能正常"));
   return out;
 }
 function globalFactors(D){
+  const A=D.asset||asset();
   const G={derivatives:[],sentiment:[],flows:[],onchain:[],overlooked:[],news:[]};
   if(D.premium.ok){ const fr=+D.premium.v.lastFundingRate; let sc; if(fr>0.0005) sc=-0.5; else if(fr<-0.0005) sc=0.5; else sc=clamp(fr/0.0003*0.3);
     G.derivatives.push(F("funding","资金费率","derivatives",sc,.7,(fr*100).toFixed(4)+"%",fr>0.0005?"多头过热,反向偏空":fr<-0.0005?"空头拥挤,反向偏多":"费率温和")); }
@@ -422,9 +437,9 @@ function globalFactors(D){
     G.overlooked.push(F("crowd","杠杆拥挤/反身性","overlooked",crowd?(fr>0?-0.5:0.5):0,crowd?.5:.2,crowd?"拥挤":"正常",crowd?"单边杠杆拥挤,警惕插针猎杀":"杠杆结构健康")); }
   if(D.coinglass&&D.coinglass.ok&&D.coinglass.maxPain){
     const rows=Array.isArray(D.coinglass.maxPain.data)?D.coinglass.maxPain.data:[];
-    const btc=rows.find(x=>String(x.symbol).toUpperCase()==="BTC");
-    if(btc){
-      const p=+btc.price,lp=+btc.long_max_pain_liq_price,sp=+btc.short_max_pain_liq_price;
+    const cgRow=rows.find(x=>String(x.symbol).toUpperCase()===A.symbol);
+    if(cgRow){
+      const p=+cgRow.price,lp=+cgRow.long_max_pain_liq_price,sp=+cgRow.short_max_pain_liq_price;
       const longDist=p&&lp?(lp-p)/p:0,shortDist=p&&sp?(p-sp)/p:0;
       const closer=longDist&&shortDist?(longDist<shortDist?"上方多头痛点更近":"下方空头痛点更近"):"爆仓痛点";
       const sc=longDist&&shortDist?clamp((shortDist-longDist)*10):0;
@@ -436,13 +451,14 @@ function globalFactors(D){
   }
   if(D.fng.ok&&D.fng.v.data){ const v=+D.fng.v.data[0].value; let sc; if(v>75) sc=-0.4; else if(v<25) sc=0.4; else sc=clamp((50-v)/60);
     G.sentiment.push(F("fng","恐惧贪婪指数","sentiment",sc,.5,v+" "+D.fng.v.data[0].value_classification,v>75?"极度贪婪→反向偏空":v<25?"极度恐惧→反向偏多":"情绪中性")); }
-  if(D.cg.ok&&D.cg.v.data){ const dom=D.cg.v.data.market_cap_percentage.btc; const mcChg=D.cg.v.data.market_cap_change_percentage_24h_usd;
-    G.flows.push(F("dom","BTC 市值占比","flows",clamp((mcChg||0)/5),.4,dom.toFixed(1)+"%","全市场市值 24h "+(mcChg>=0?"+":"")+(mcChg||0).toFixed(2)+"%")); }
-  if(D.memFee.ok){ const fast=D.memFee.v.fastestFee; const feeSc=fast>80?.18:fast>35?.10:fast<3?-.08:0;
+  if(D.cg.ok&&D.cg.v.data){ const dom=D.cg.v.data.market_cap_percentage[A.symbol.toLowerCase()]; const mcChg=D.cg.v.data.market_cap_change_percentage_24h_usd;
+    if(dom!=null) G.flows.push(F("dom",`${A.symbol} 市值占比`,"flows",clamp((mcChg||0)/5),.4,dom.toFixed(1)+"%","全市场市值 24h "+(mcChg>=0?"+":"")+(mcChg||0).toFixed(2)+"%")); }
+  if(A.symbol==="BTC"&&D.memFee.ok){ const fast=D.memFee.v.fastestFee; const feeSc=fast>80?.18:fast>35?.10:fast<3?-.08:0;
     G.onchain.push(F("mempool","链上活跃度(手续费)","onchain",feeSc,.32,fast+" sat/vB",fast>80?"链上拥堵明显,需求/转账活跃":fast>35?"链上偏活跃":"链上压力不高")); }
-  if(D.hashr.ok&&D.hashr.v.currentHashrate){ const eh=D.hashr.v.currentHashrate/1e18;
+  if(A.symbol==="BTC"&&D.hashr.ok&&D.hashr.v.currentHashrate){ const eh=D.hashr.v.currentHashrate/1e18;
     G.onchain.push(F("hash","全网算力","onchain",0,.18,eh.toFixed(0)+" EH/s","网络安全性信息项,不直接给方向")); }
-  G.onchain.push(F("publicchain","公开链上覆盖","onchain",0,.12,"轻量","当前使用 mempool 公开数据; MVRV/SOPR/净流入需专业源增强"));
+  if(A.symbol==="BTC") G.onchain.push(F("publicchain","公开链上覆盖","onchain",0,.12,"轻量","当前使用 mempool 公开数据; MVRV/SOPR/净流入需专业源增强"));
+  else G.onchain.push(F("ethchain","ETH 链上覆盖","onchain",0,0,"需接入","建议接入 Etherscan/Blocknative Gas API 或链上专业源",false));
   G.onchain.push(F("mvrv","MVRV / 已实现盈亏","onchain",0,0,"需接入","Glassnode/CryptoQuant:估值顶底",false));
   G.onchain.push(F("sopr","SOPR / 盈亏抛压","onchain",0,0,"需接入","链上盈亏抛压(STH-SOPR)",false));
   G.onchain.push(F("netflow","交易所净流入/出","onchain",0,0,"需接入","流入=抛压 流出=囤币",false));
@@ -452,13 +468,14 @@ function globalFactors(D){
   const feed=D.newsFeed||{ok:false,items:[]};
   const macroHits=newsHits(feed,/CPI|FOMC|非农|美联储|鲍威尔|利率|通胀|PCE|GDP|就业|初请|央行|美元|美债|国债/i);
   const trumpHits=newsHits(feed,/特朗普|Trump|关税|伊朗|中东|霍尔木兹|制裁|白宫|美国总统/i);
-  const cryptoHits=newsHits(feed,/比特币|BTC|以太|ETH|加密|币安|Coinbase|ETF|SEC|黑客|交易所|稳定币/i);
+  const cryptoRe=A.symbol==="ETH"?/以太|以太坊|ETH|Ethereum|加密|币安|Coinbase|ETF|SEC|黑客|交易所|稳定币/i:/比特币|BTC|Bitcoin|加密|币安|Coinbase|ETF|SEC|黑客|交易所|稳定币/i;
+  const cryptoHits=newsHits(feed,cryptoRe);
   const allRisk=[...trumpHits,...macroHits,...cryptoHits];
   if(feed.ok){
     G.news.push(F("jin10-flash","金十快讯监控","news",newsRiskScore(allRisk),.34,`${feed.items.length}条`,briefNews(allRisk.length?allRisk:feed.items),"金十首页快讯/重要事件"));
     G.news.push(F("trump-watch","特朗普/地缘关键词","news",newsRiskScore(trumpHits),trumpHits.length?.36:.14,trumpHits.length?`${trumpHits.length}条命中`:"暂无命中",briefNews(trumpHits),"来自金十快讯关键词: 特朗普/Trump/关税/伊朗/中东"));
     G.news.push(F("macro-watch","宏观日历/数据关键词","news",newsRiskScore(macroHits),macroHits.length?.30:.12,macroHits.length?`${macroHits.length}条命中`:"暂无命中",briefNews(macroHits),"来自金十快讯关键词: CPI/FOMC/非农/美联储/美元/美债"));
-    G.news.push(F("crypto-watch","币圈/ETF/交易所关键词","news",newsRiskScore(cryptoHits),cryptoHits.length?.28:.12,cryptoHits.length?`${cryptoHits.length}条命中`:"暂无命中",briefNews(cryptoHits),"来自金十快讯关键词: BTC/ETF/SEC/交易所/黑客"));
+    G.news.push(F("crypto-watch",`${A.symbol}/ETF/交易所关键词`,"news",newsRiskScore(cryptoHits),cryptoHits.length?.28:.12,cryptoHits.length?`${cryptoHits.length}条命中`:"暂无命中",briefNews(cryptoHits),`来自金十快讯关键词: ${A.symbol}/ETF/SEC/交易所/黑客`));
   } else {
     G.news.push(F("jin10-flash","金十快讯监控","news",0,0,"不可达",feed.err||"金十首页读取失败",false));
   }
@@ -511,6 +528,13 @@ function colorOf(s){ const d=dirOf(s); return d==="long"?"var(--long)":d==="shor
 function fmt(n){ if(n==null) return "--"; n=+n; return n.toLocaleString("en-US",{minimumFractionDigits:n>=1000?1:0,maximumFractionDigits:n<10?2:1}); }
 function fmtP(n){ if(n==null) return "--"; return (+n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}); }
 let STATE={results:null,glob:null,sel:"1h",openCats:{technicals:true},probeCache:null,probeAt:0};
+function updateAssetUI(){
+  const A=asset();
+  document.title=`${A.symbol} 永续多周期预判系统 · Binance`;
+  document.getElementById("brandTitle").textContent=`${A.symbol}/USDT 永续合约多周期预判系统`;
+  document.getElementById("brandSub").textContent=`数据源:Binance ${A.binance} USDⓈ-M · 含 Deribit ${A.symbol} 期权 · 每秒实时 · 仅供研究,非投资建议`;
+  document.querySelectorAll(".asset-tab").forEach(btn=>btn.classList.toggle("active",btn.dataset.asset===A.symbol));
+}
 function render(D){
   if(D.ticker.ok){ const t=D.ticker.v; const ch=+t.priceChangePercent;
     const ce=document.getElementById("chg"); ce.textContent=(ch>=0?"+":"")+ch.toFixed(2)+"%"; ce.style.color=ch>=0?"var(--long)":"var(--short)"; ce.style.background=ch>=0?"var(--long-bg)":"var(--short-bg)"; }
@@ -553,7 +577,7 @@ function renderGlobal(glob){
   [["derivatives","funding","资金费率"],["derivatives","oi","持仓量"],["derivatives","lsacct","散户多空比"],["derivatives","pcr","Put/Call 比"],["derivatives","skew","25Δ 偏斜"],["overlooked","maxpain","最大痛点"],["overlooked","cg-maxpain","CG爆仓痛点"],["sentiment","ivol","隐含波动率"],["sentiment","fng","恐惧贪婪"],["overlooked","crowd","杠杆拥挤"],["flows","dom","BTC 市占率"],["onchain","mempool","链上手续费"],["onchain","hash","全网算力"],["news","jin10-flash","金十快讯"],["news","trump-watch","特朗普监控"],["news","trump-links","特朗普原帖"],["news","macro-watch","宏观关键词"],["news","crypto-watch","币圈关键词"],["news","us-session","事件时段"],["news","weekend","周末流动性"]].forEach(([c,id,lbl])=>{ const f=find(c,id); if(f&&(f.available||f.value)) picks.push([lbl,f]); });
   picks.forEach(([lbl,f])=>{ const el=document.createElement("div"); el.className="g-item"; el.innerHTML=`<div class="gl">${lbl}</div><div class="gv">${f.value}</div><div class="gd" style="color:${f.confidence>0?colorOf(f.score):'var(--muted)'}">${f.confidence>0?dirText(f.score)+" · ":""}${f.note}</div>`; box.appendChild(el); });
   if(!picks.length){
-    const el=document.createElement("div"); el.className="empty-note"; el.textContent="全局数据暂未返回。上方多周期技术面仍可工作；请检查网络是否能访问 OKX。"; box.appendChild(el);
+    const el=document.createElement("div"); el.className="empty-note"; el.textContent="全局数据暂未返回。上方多周期技术面仍可工作；请检查网络是否能访问 Binance Futures。"; box.appendChild(el);
   }
   renderDataHealth(glob, box);
 }
@@ -563,11 +587,11 @@ function renderDataHealth(glob, box){
   const r=STATE.results&&STATE.results[STATE.sel]; const activeFactors=r?Object.values(r.catScores).flatMap(c=>c.factors).filter(f=>f.available&&f.confidence>0):[];
   const missingFactors=r?Object.values(r.catScores).flatMap(c=>c.factors).filter(f=>!f.available):[];
   const sources=[
-    ["OKX K线/技术指标", activeFactors.some(f=>["technicals","levels","structure","price"].includes(f.category)), "主评分"],
-    ["OKX 资金费率", sourceState(glob,"derivatives","funding"), "永续"],
-    ["OKX 持仓/OI", sourceState(glob,"derivatives","oi"), "合约"],
-    ["OKX 多空/主动买卖", sourceAny(glob,"derivatives",["lsacct","takerg"]), "情绪"],
-    ["OKX 盘口深度", sourceState(glob,"overlooked","obi"), "买卖墙"],
+    ["Binance K线/技术指标", activeFactors.some(f=>["technicals","levels","structure","price"].includes(f.category)), "主评分"],
+    ["Binance 资金费率", sourceState(glob,"derivatives","funding"), "永续"],
+    ["Binance 持仓/OI", sourceState(glob,"derivatives","oi"), "合约"],
+    ["Binance 多空/主动买卖", sourceAny(glob,"derivatives",["lsacct","takerg"]), "情绪"],
+    ["Binance 盘口深度", sourceState(glob,"overlooked","obi"), "买卖墙"],
     ["Coinglass API", sourceState(glob,"overlooked","cg-maxpain"), cgCfg().key?"API":"需Key"],
     ["Deribit 期权", sourceAny(glob,"derivatives",["pcr","skew"])||sourceState(glob,"overlooked","maxpain"), "海外源"],
     ["恐惧贪婪指数", sourceState(glob,"sentiment","fng"), "海外源"],
@@ -629,12 +653,12 @@ function renderProbe(box){
     <div class="summary-row"><span class="summary-chip">仅用本周期历史K线重算,不含未来函数</span><span class="summary-chip">用于校准信号强弱,不是保证胜率</span></div>`;
   box.appendChild(section);
 }
-/* ===== 实时引擎:OKX REST 每秒轮询 + OKX WebSocket + 折线 + 心跳 ===== */
+/* ===== 实时引擎:Binance REST 每秒轮询 + Binance WebSocket + 折线 + 心跳 ===== */
 const KLINES={}; let GDATA={}; let dirty=false,ws=null,wsAlive=false,lastPrice=null,restFallback=null,msgCount=0,pingT=null;
 const SPARK=[];
 function applyTickToKlines(p){ for(const tf of TF){ const a=KLINES[tf]; if(a&&a.length){ const b=a[a.length-1]; b.c=p; if(p>b.h)b.h=p; if(p<b.l)b.l=p; } } }
 function setStatus(on,txt){ document.getElementById("liveDot").className="dot"+(on?" live":""); document.getElementById("liveText").textContent=txt; }
-function buildD(){ const g=GDATA,no={ok:false}; return {klines:KLINES,ticker:g.ticker||no,premium:g.premium||no,oiNow:g.oiNow||no,oiHist:g.oiHist||no,lsAcct:g.lsAcct||no,lsTop:g.lsTop||no,taker:g.taker||no,depth:g.depth||no,fng:g.fng||no,cg:g.cg||no,memFee:g.memFee||no,hashr:g.hashr||no,deribit:g.deribit||no,newsFeed:g.newsFeed||{ok:false,items:[],err:"尚未加载金十"}}; }
+function buildD(){ const g=GDATA,no={ok:false}; return {asset:asset(),klines:KLINES,ticker:g.ticker||no,premium:g.premium||no,oiNow:g.oiNow||no,oiHist:g.oiHist||no,lsAcct:g.lsAcct||no,lsTop:g.lsTop||no,taker:g.taker||no,depth:g.depth||no,fng:g.fng||no,cg:g.cg||no,memFee:g.memFee||no,hashr:g.hashr||no,deribit:g.deribit||no,coinglass:g.coinglass||{ok:false,err:"尚未加载 Coinglass"},newsFeed:g.newsFeed||{ok:false,items:[],err:"尚未加载金十"}}; }
 function drawSpark(){ const cv=document.getElementById("spark"); if(!cv||!cv.getContext) return; const ctx=cv.getContext("2d"); const w=cv.width,h=cv.height; ctx.clearRect(0,0,w,h); if(SPARK.length<2) return;
   const mn=Math.min(...SPARK),mx=Math.max(...SPARK),rng=(mx-mn)||1; ctx.beginPath();
   SPARK.forEach((v,i)=>{ const x=i/(SPARK.length-1)*w; const y=h-((v-mn)/rng)*(h-6)-3; i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
@@ -651,33 +675,46 @@ async function seed(){ const D=await collectAll(); const anyK=Object.values(D.kl
   if(KLINES["5m"]&&SPARK.length<5){ SPARK.length=0; KLINES["5m"].slice(-90).forEach(k=>SPARK.push(k.c)); drawSpark(); }
   if(D.ticker.ok) showPrice(+D.ticker.v.lastPrice,+D.ticker.v.priceChangePercent);
   if(anyK){ render(buildD()); } return anyK; }
-/* 每秒 REST 价格轮询(OKX ticker):不依赖 WS,保证价格/折线/判断每秒在动 */
-async function pricePoll(){ const r=await safe(jget(`${OKX}/api/v5/market/ticker?instId=BTC-USDT`));
-  if(r.ok&&r.v&&r.v.data&&r.v.data[0]){ const t=r.v.data[0]; const p=+t.last,op=+t.open24h,pct=op?((p-op)/op*100):null;
+/* 每秒 REST 价格轮询(Binance ticker):不依赖 WS,保证价格/折线/判断每秒在动 */
+async function pricePoll(){ const r=await safe(jget(`${BINANCE}/fapi/v1/ticker/24hr?symbol=${asset().binance}`));
+  if(r.ok&&r.v){ const t=r.v; const p=+t.lastPrice,pct=+t.priceChangePercent||0;
     applyTickToKlines(p); GDATA.ticker={ok:true,v:{lastPrice:p,priceChangePercent:pct==null?0:pct}}; showPrice(p,pct); msgCount++; dirty=true; } }
 /* 12 秒刷新一次 K 线(指标基础),全局衍生品 20 秒一次 */
-async function refreshCandles(){ const cs=await Promise.all(TF.map(okxCandles)); TF.forEach((tf,i)=>{ if(cs[i]) KLINES[tf]=cs[i]; }); dirty=true; }
+async function refreshCandles(){ const cs=await Promise.all(TF.map(binanceCandles)); TF.forEach((tf,i)=>{ if(cs[i]) KLINES[tf]=cs[i]; }); dirty=true; }
 async function pollGlobal(){ const R=await fetchGlobalsRaw(); const n=normGlobals(R);
   if(n.ticker.ok)GDATA.ticker=n.ticker; GDATA.premium=n.premium; GDATA.oiHist=n.oiHist; GDATA.lsAcct=n.lsAcct; GDATA.lsTop=n.lsTop; GDATA.taker=n.taker; GDATA.depth=n.depth;
   if(R.deribit.ok)GDATA.deribit=R.deribit; if(R.fng.ok)GDATA.fng=R.fng; if(R.cg.ok)GDATA.cg=R.cg; if(R.memFee.ok)GDATA.memFee=R.memFee; if(R.hashr.ok)GDATA.hashr=R.hashr; dirty=true; }
 async function pollNews(){ const n=await fetchNewsFeed(); GDATA.newsFeed=n; dirty=true; }
 async function pollCoinglass(){ const cg=await fetchCoinglass(); GDATA.coinglass=cg; dirty=true; }
-/* OKX WebSocket:trades 逐笔价 + tickers 24h%,需 ping 保活 */
+/* Binance WebSocket:trade 逐笔价 + 24h ticker */
 function connectWS(){
   setStatus(false,"实时连接中…");
-  try{ ws=new WebSocket("wss://ws.okx.com:8443/ws/v5/public"); }catch(e){ startRestFallback(); return; }
+  try{ ws=new WebSocket("wss://fstream.binance.com/ws"); }catch(e){ startRestFallback(); return; }
+  const sym=asset().binance.toLowerCase();
   ws.onopen=()=>{ wsAlive=true; setStatus(true,"实时 · LIVE");
-    try{ ws.send(JSON.stringify({op:"subscribe",args:[{channel:"trades",instId:"BTC-USDT"},{channel:"tickers",instId:"BTC-USDT"}]})); }catch(_){}
-    if(pingT)clearInterval(pingT); pingT=setInterval(()=>{ try{ws.send("ping");}catch(_){}} ,20000);
+    try{ ws.send(JSON.stringify({method:"SUBSCRIBE",params:[`${sym}@trade`,`${sym}@ticker`],id:1})); }catch(_){}
+    if(pingT)clearInterval(pingT);
     if(restFallback){clearInterval(restFallback);restFallback=null;} };
-  ws.onmessage=(ev)=>{ if(ev.data==="pong") return; let m; try{ m=JSON.parse(ev.data); }catch(_){ return; }
-    if(!m.arg||!m.data||!m.data.length) return; const ch=m.arg.channel;
-    if(ch==="trades"){ const p=+m.data[m.data.length-1].px; applyTickToKlines(p); showPrice(p,null); msgCount++; dirty=true; }
-    else if(ch==="tickers"){ const t=m.data[0]; const p=+t.last,op=+t.open24h,pct=op?((p-op)/op*100):null; applyTickToKlines(p); GDATA.ticker={ok:true,v:{lastPrice:p,priceChangePercent:pct==null?0:pct}}; showPrice(p,pct); dirty=true; } };
+  ws.onmessage=(ev)=>{ let m; try{ m=JSON.parse(ev.data); }catch(_){ return; }
+    if(m.e==="trade"){ const p=+m.p; applyTickToKlines(p); showPrice(p,null); msgCount++; dirty=true; }
+    else if(m.e==="24hrTicker"){ const p=+m.c,pct=+m.P||0; applyTickToKlines(p); GDATA.ticker={ok:true,v:{lastPrice:p,priceChangePercent:pct}}; showPrice(p,pct); dirty=true; } };
   ws.onclose=()=>{ if(pingT){clearInterval(pingT);pingT=null;} if(wsAlive){ wsAlive=false; setStatus(false,"断开 · 3s 重连"); setTimeout(connectWS,3000);} };
   ws.onerror=()=>{ try{ws.close();}catch(_){}; if(!wsAlive) startRestFallback(); };
 }
 function startRestFallback(){ if(restFallback) return; setStatus(false,"WS 不可用 · REST 兜底"); restFallback=setInterval(pricePoll,1500); }
+async function switchAsset(sym){
+  if(!ASSETS[sym]||sym===CURRENT_ASSET) return;
+  CURRENT_ASSET=sym; localStorage.setItem("dashboard_asset",sym);
+  if(ws){ wsAlive=false; try{ws.close();}catch(_){} ws=null; }
+  if(restFallback){ clearInterval(restFallback); restFallback=null; }
+  for(const k in KLINES) delete KLINES[k];
+  GDATA={}; SPARK.length=0; lastPrice=null; STATE.probeCache=null; STATE.probeAt=0;
+  updateAssetUI(); drawSpark(); setStatus(false,"切换合约中…");
+  document.getElementById("price").textContent="--"; document.getElementById("chg").textContent="--";
+  document.getElementById("tfGrid").innerHTML='<div class="loading" style="grid-column:1/-1">正在加载 Binance 合约数据…</div>';
+  document.getElementById("breakdown").innerHTML='<div class="loading">选择一个周期…</div>';
+  const ok=await seed(); if(ok) connectWS(); else startRestFallback();
+}
 setInterval(()=>{ if(dirty){ try{ render(buildD()); }catch(_){} dirty=false; } },300);
 setInterval(pricePoll,1000);
 setInterval(refreshCandles,12000);
@@ -696,9 +733,10 @@ document.getElementById("sourceBtn").onclick=()=>{
   if(proxy!==null) localStorage.setItem("coinglass_proxy_url",proxy.trim());
   pollCoinglass();
 };
+document.querySelectorAll(".asset-tab").forEach(btn=>btn.onclick=()=>switchAsset(btn.dataset.asset));
 document.getElementById("liveSwitch").onclick=()=>{ if(!wsAlive) connectWS(); };
-(async function start(){ setStatus(false,"加载历史数据…"); const ok=await seed(); setInterval(pollGlobal,20000); pricePoll();
-  if(ok){ connectWS(); } else { document.getElementById("topErr").innerHTML=`<div class="disclaimer" style="border-color:rgba(234,57,67,.4);background:rgba(234,57,67,.07);margin-top:14px"><b class="err">无法连接 OKX:</b> 当前网络可能也无法访问 OKX。请检查网络,或在代码中把 <code>OKX</code> 域名换成可用镜像。</div>`; startRestFallback(); }
+(async function start(){ updateAssetUI(); setStatus(false,"加载历史数据…"); const ok=await seed(); setInterval(pollGlobal,20000); pricePoll();
+  if(ok){ connectWS(); } else { document.getElementById("topErr").innerHTML=`<div class="disclaimer" style="border-color:rgba(234,57,67,.4);background:rgba(234,57,67,.07);margin-top:14px"><b class="err">无法连接 Binance Futures:</b> 当前网络可能无法访问 Binance。请检查网络/VPN,或稍后重试。</div>`; startRestFallback(); }
 })();
 </script>
 </body>
