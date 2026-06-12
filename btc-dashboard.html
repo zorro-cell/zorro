@@ -162,7 +162,7 @@
     </div>
   </div>
   <div class="disclaimer">
-    <b>⚠ 风险与说明:</b> 数据源为 <b>Binance USDⓈ-M 永续合约</b>(BTCUSDT / ETHUSDT),叠加 <b>金十快讯</b>、Deribit 期权、Alternative.me、CoinGecko、mempool.space。趋势主导加权评分给出方向与置信度,<b>不构成投资建议</b>。当前采用分层信号模式:5m/15m 更灵敏用于短线监控,30m 用于趋势确认,1h/4h/1d 主要显示偏多/偏空背景。新闻/事件从金十首页读取并按特朗普/宏观/币圈关键词监控; 特朗普原帖提供 X/Truth Social 人工打开入口。Coinglass 需点击右上角“数据源”配置官方 API Key,部分爆仓数据需要高阶套餐。杠杆合约风险极高,务必自设止损与仓位管理。
+    <b>⚠ 风险与说明:</b> 数据源为 <b>Binance USDⓈ-M 永续合约</b>(BTCUSDT / ETHUSDT),叠加 <b>金十快讯</b>、Deribit 期权、Alternative.me、CoinGecko、mempool.space。趋势主导加权评分给出方向与置信度,<b>不构成投资建议</b>。当前采用分层信号模式:5m/15m 更灵敏用于短线监控,30m 用于趋势确认,1h/4h/1d 主要显示偏多/偏空背景。新闻/事件从金十首页读取并按特朗普/宏观/币圈关键词监控; 特朗普相关内容保留 @TrumpChinese1 中文转发入口。Coinglass 需点击右上角“数据源”配置官方 API Key,部分爆仓数据需要高阶套餐。杠杆合约风险极高,务必自设止损与仓位管理。
   </div>
 </div>
 <script>
@@ -204,7 +204,10 @@ let CURRENT_ASSET=localStorage.getItem("dashboard_asset")||"BTC";
 function asset(){ return ASSETS[CURRENT_ASSET]||ASSETS.BTC; }
 /* ===== Binance Futures 数据采集层 ===== */
 const BINANCE="https://fapi.binance.com";
+const BINANCE_NEWS="https://www.binance.com/bapi/composite/v1/public/cms/article/list/query?type=1&pageNo=1&pageSize=12";
 const JIN10_HOME="https://www.jin10.com/";
+const JIN10_OPEN="https://open-data-api.jin10.com/data-api/flash?category=1";
+const JIN10_EMBED="https://south.jin10.com/example/websiteiframe.html";
 const COINGLASS="https://open-api-v4.coinglass.com";
 async function jget(url){ const r=await fetch(url,{cache:"no-store"}); if(!r.ok) throw new Error(url.split("?")[0]+" → "+r.status); return r.json(); }
 async function tget(url){ const r=await fetch(url,{cache:"no-store"}); if(!r.ok) throw new Error(url+" → "+r.status); return r.text(); }
@@ -305,11 +308,57 @@ function computeOptions(arr){
 }
 function F(id,name,category,score,confidence,value,note,available=true){ return {id,name,category,score:clamp(score),confidence:clamp(confidence,0,1),value,note,available}; }
 async function fetchNewsFeed(){
-  const r=await safe(tget(JIN10_HOME));
-  if(!r.ok) return {ok:false,err:r.e||"金十首页不可达",items:[],updated:Date.now()};
-  return parseJin10(r.v);
+  const [open,home,binance]=await Promise.all([
+    safe(jget(JIN10_OPEN)),
+    safe(tget(JIN10_HOME)),
+    safe(jget(BINANCE_NEWS))
+  ]);
+  let jin={ok:false,err:"金十不可达",items:[],updated:Date.now(),source:"金十"};
+  if(open.ok) jin=parseJin10Open(open.v);
+  if(!jin.ok&&home.ok) jin=parseJin10(home.v);
+  if(!jin.ok&&!home.ok) jin.err=home.e||open.e||"金十不可达";
+  const bn=binance.ok?parseBinanceNews(binance.v):{ok:false,err:binance.e||"Binance 公告不可达",items:[]};
+  const items=[...(jin.ok?jin.items:[]),...(bn.ok?bn.items:[])];
+  return {
+    ok:items.length>0,
+    source:[jin.ok?jin.source:"金十不可用",bn.ok?"Binance公告":""].filter(Boolean).join(" + "),
+    items,
+    updated:Date.now(),
+    jin10Ok:jin.ok,
+    jin10Err:jin.ok?"":jin.err,
+    jin10Count:jin.items.length,
+    jin10Items:jin.items,
+    binanceOk:bn.ok,
+    binanceErr:bn.ok?"":bn.err,
+    binanceCount:bn.items.length,
+    binanceItems:bn.items
+  };
+}
+function textOfNewsPayload(x){
+  const d=x&&typeof x.data==="object"?x.data:x;
+  return String((d&&(d.content||d.title||d.name||d.text||d.remark))||x.content||x.title||"").replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim();
+}
+function parseJin10Open(json){
+  const rows=Array.isArray(json&&json.data)?json.data:(Array.isArray(json&&json.data&&json.data.list)?json.data.list:[]);
+  const items=rows.map(x=>({time:String(x.time||x.created_at||x.datetime||"金十"),text:textOfNewsPayload(x)})).filter(x=>x.text.length>8).slice(0,40);
+  if(!items.length) return {ok:false,err:"金十开放接口未返回有效快讯",items:[],updated:Date.now(),source:"金十开放接口"};
+  return {ok:true,source:"金十开放接口",items,updated:Date.now()};
+}
+function parseBinanceNews(json){
+  const catalogs=((json&&json.data&&json.data.catalogs)||[]);
+  const articles=[];
+  catalogs.forEach(c=>(c.articles||[]).forEach(a=>articles.push(a)));
+  const items=articles
+    .filter(a=>a&&a.title)
+    .map(a=>({time:a.releaseDate?new Date(a.releaseDate).toLocaleString("zh-CN",{hour12:false}).slice(5,16):"Binance",text:"Binance公告: "+a.title}))
+    .slice(0,20);
+  if(!items.length) return {ok:false,err:"Binance 公告未返回有效内容",items:[]};
+  return {ok:true,source:"Binance公告",items};
 }
 function parseJin10(html){
+  if(/We're sorry but client doesn't work properly|client doesn't work properly|Please enable JavaScript|Access denied|Cloudflare/i.test(html)){
+    return {ok:false,err:"金十网页返回保护页/脚本错误,本次不参与评分",items:[],updated:Date.now()};
+  }
   let text="";
   try{
     const doc=new DOMParser().parseFromString(html,"text/html");
@@ -318,20 +367,22 @@ function parseJin10(html){
     text=html.replace(/<script[\s\S]*?<\/script>/g," ").replace(/<style[\s\S]*?<\/style>/g," ").replace(/<[^>]+>/g,"\n");
   }
   const lines=text.split(/\n+/).map(x=>x.replace(/\s+/g," ").trim()).filter(Boolean);
+  const bad=/We're sorry but client doesn't work properly|client doesn't work properly|Please enable JavaScript|Access denied|Cloudflare|您的浏览器版本过低|请升级浏览器/i;
   const drop=/^(分享|收藏|复制|详情|登录|立即登录|推荐阅读|换一批|打开金十|扫码|分类|播报|设置|常规设置|夜间模式|字体大小|全选|恢复默认)$/;
   const raw=[];
   for(let i=0;i<lines.length;i++){
     const line=lines[i];
-    if(drop.test(line)||line.length<10) continue;
+    if(drop.test(line)||bad.test(line)||line.length<10) continue;
     if(/^\d{2}:\d{2}(:\d{2})?$/.test(line)){
       const body=(lines[i+1]||"").trim();
-      if(body.length>12&&!drop.test(body)) raw.push({time:line,text:body});
+      if(body.length>12&&!drop.test(body)&&!bad.test(body)) raw.push({time:line,text:body});
       continue;
     }
     if(i<120&&line.length>12&&!/^(重要事件|Important News|市场快讯|VIP快讯|金十数据APP)/.test(line)) raw.push({time:"置顶",text:line});
   }
   const seen=new Set();
   const items=raw.filter(x=>{ const k=x.text.slice(0,60); if(seen.has(k)) return false; seen.add(k); return true; }).slice(0,40);
+  if(!items.length) return {ok:false,err:"金十页面未解析到有效快讯",items:[],updated:Date.now()};
   return {ok:true,source:"金十数据首页",items,updated:Date.now()};
 }
 function newsHits(feed,re){
@@ -472,24 +523,31 @@ function globalFactors(D){
   G.flows.push(F("etf","现货 ETF 净流入","flows",0,0,"需接入","机构增量资金(关键)",false));
   G.flows.push(F("dxy","美元指数 / 美债收益率","flows",0,0,"需接入","流动性/宏观风险偏好",false));
   G.overlooked.push(F("liqmap","爆仓热力图","overlooked",0,0,"需接入","Coinglass:流动性磁吸区",false));
-  const feed=D.newsFeed||{ok:false,items:[]};
+  const feed=D.newsFeed||{ok:false,items:[],jin10Ok:false,binanceOk:false};
+  const jinFeed={ok:!!feed.jin10Ok,items:feed.jin10Items||[]};
+  const bnFeed={ok:!!feed.binanceOk,items:feed.binanceItems||[]};
   const macroHits=newsHits(feed,/CPI|FOMC|非农|美联储|鲍威尔|利率|通胀|PCE|GDP|就业|初请|央行|美元|美债|国债/i);
   const trumpHits=newsHits(feed,/特朗普|Trump|关税|伊朗|中东|霍尔木兹|制裁|白宫|美国总统/i);
   const cryptoRe=A.symbol==="ETH"?/以太|以太坊|ETH|Ethereum|加密|币安|Coinbase|ETF|SEC|黑客|交易所|稳定币/i:/比特币|BTC|Bitcoin|加密|币安|Coinbase|ETF|SEC|黑客|交易所|稳定币/i;
   const cryptoHits=newsHits(feed,cryptoRe);
+  const jinHits=newsHits(jinFeed,/./);
+  const binanceHits=newsHits(bnFeed,cryptoRe);
   const allRisk=[...trumpHits,...macroHits,...cryptoHits];
-  if(feed.ok){
-    G.news.push(F("jin10-flash","金十快讯监控","news",newsRiskScore(allRisk),.34,`${feed.items.length}条`,briefNews(allRisk.length?allRisk:feed.items),"金十首页快讯/重要事件"));
+  if(feed.jin10Ok){
+    G.news.push(F("jin10-flash","金十快讯监控","news",newsRiskScore(allRisk),.34,`${feed.jin10Count||jinHits.length}条`,briefNews(allRisk.length?allRisk:jinHits),"金十开放接口/首页快讯"));
     G.news.push(F("trump-watch","特朗普/地缘关键词","news",newsRiskScore(trumpHits),trumpHits.length?.36:.14,trumpHits.length?`${trumpHits.length}条命中`:"暂无命中",briefNews(trumpHits),"来自金十快讯关键词: 特朗普/Trump/关税/伊朗/中东"));
     G.news.push(F("macro-watch","宏观日历/数据关键词","news",newsRiskScore(macroHits),macroHits.length?.30:.12,macroHits.length?`${macroHits.length}条命中`:"暂无命中",briefNews(macroHits),"来自金十快讯关键词: CPI/FOMC/非农/美联储/美元/美债"));
     G.news.push(F("crypto-watch",`${A.symbol}/ETF/交易所关键词`,"news",newsRiskScore(cryptoHits),cryptoHits.length?.28:.12,cryptoHits.length?`${cryptoHits.length}条命中`:"暂无命中",briefNews(cryptoHits),`来自金十快讯关键词: ${A.symbol}/ETF/SEC/交易所/黑客`));
   } else {
-    G.news.push(F("jin10-flash","金十快讯监控","news",0,0,"不可达",feed.err||"金十首页读取失败",false));
+    G.news.push(F("jin10-flash","金十快讯监控","news",0,0,"不可达",feed.jin10Err||feed.err||"金十读取失败",true));
   }
+  if(feed.binanceOk) G.news.push(F("binance-news","Binance 公告","news",newsRiskScore(binanceHits),binanceHits.length?.24:.10,`${feed.binanceCount||binanceHits.length}条`,briefNews(binanceHits.length?binanceHits:bnFeed.items),"免费替代源: 币安公告/上新/合约变更"));
+  else G.news.push(F("binance-news","Binance 公告","news",0,0,"不可达",feed.binanceErr||"Binance 公告读取失败",true));
+  G.news.push(F("news-alt","备用新闻入口","news",0,0,"备用入口",`金十免费嵌入页 / CryptoPanic / TradingView 新闻可作备用`,false));
   const er=eventRisk();
   G.news.push(F("us-session","美盘/宏观时段风险","news",0,er.conf,er.value,er.note));
   G.news.push(F("weekend","周末流动性","news",er.weekendScore,.16,er.weekendValue,er.weekendNote));
-  G.news.push(F("trump-links","特朗普原始帖源","news",0,.10,"人工关注",`<a href="https://x.com/realDonaldTrump" target="_blank" rel="noopener">X</a> / <a href="https://truthsocial.com/@realDonaldTrump" target="_blank" rel="noopener">Truth Social</a> 可用 VPN 打开; 自动监控先用金十关键词代理`));
+  G.news.push(F("trump-links","特朗普中文推文","news",0,.16,"中文转发",`<a href="https://x.com/TrumpChinese1" target="_blank" rel="noopener">@TrumpChinese1</a> 快速转发特朗普相关内容`));
   G.news.push(F("manual-news","突发新闻确认","news",0,.10,"需人工确认","监管、黑客、交易所风险、ETF突发消息仍建议人工二次确认"));
   G.news.push(F("macro","宏观日历(CPI/FOMC/非农)","news",0,0,"需接入","建议接入 TradingEconomics/Finnhub/自维护日历",false));
   G.news.push(F("reg","监管/事件/黑天鹅","news",0,0,"需接入","SEC、暴雷、黑客、减半等需要新闻源或人工确认",false));
@@ -602,7 +660,7 @@ function factorRow(f){ const col=colorOf(f.score); const na=f.available?"":"na";
   return `<div class="factor ${na}"><div class="fn">${f.name}${pill}<small>${f.note}</small></div><div class="fv">${f.value}</div><div><div class="fbar"><div class="center"></div><i style="background:${col};${f.score>=0?`left:50%;width:${(f.score*50).toFixed(0)}%`:`right:50%;width:${(-f.score*50).toFixed(0)}%`}"></i></div></div></div>`; }
 function renderGlobal(glob){
   const box=document.getElementById("globalGauge"); box.innerHTML=""; const find=(cat,id)=>(glob[cat]||[]).find(f=>f.id===id); const picks=[];
-  [["derivatives","funding","资金费率"],["derivatives","oi","持仓量"],["derivatives","lsacct","散户多空比"],["derivatives","pcr","Put/Call 比"],["derivatives","skew","25Δ 偏斜"],["overlooked","maxpain","最大痛点"],["overlooked","cg-maxpain","CG爆仓痛点"],["sentiment","ivol","隐含波动率"],["sentiment","fng","恐惧贪婪"],["overlooked","crowd","杠杆拥挤"],["flows","dom","BTC 市占率"],["onchain","mempool","链上手续费"],["onchain","hash","全网算力"],["news","jin10-flash","金十快讯"],["news","trump-watch","特朗普监控"],["news","trump-links","特朗普原帖"],["news","macro-watch","宏观关键词"],["news","crypto-watch","币圈关键词"],["news","us-session","事件时段"],["news","weekend","周末流动性"]].forEach(([c,id,lbl])=>{ const f=find(c,id); if(f&&(f.available||f.value)) picks.push([lbl,f]); });
+  [["derivatives","funding","资金费率"],["derivatives","oi","持仓量"],["derivatives","lsacct","散户多空比"],["derivatives","pcr","Put/Call 比"],["derivatives","skew","25Δ 偏斜"],["overlooked","maxpain","最大痛点"],["overlooked","cg-maxpain","CG爆仓痛点"],["sentiment","ivol","隐含波动率"],["sentiment","fng","恐惧贪婪"],["overlooked","crowd","杠杆拥挤"],["flows","dom","BTC 市占率"],["onchain","mempool","链上手续费"],["onchain","hash","全网算力"],["news","jin10-flash","金十快讯"],["news","binance-news","Binance公告"],["news","trump-watch","特朗普监控"],["news","trump-links","特朗普中文"],["news","macro-watch","宏观关键词"],["news","crypto-watch","币圈关键词"],["news","us-session","事件时段"],["news","weekend","周末流动性"]].forEach(([c,id,lbl])=>{ const f=find(c,id); if(f&&f.available&&(f.confidence>0||id==="jin10-flash"||id==="binance-news")) picks.push([lbl,f]); });
   picks.forEach(([lbl,f])=>{ const el=document.createElement("div"); el.className="g-item"; el.innerHTML=`<div class="gl">${lbl}</div><div class="gv">${f.value}</div><div class="gd" style="color:${f.confidence>0?colorOf(f.score):'var(--muted)'}">${f.confidence>0?dirText(f.score)+" · ":""}${f.note}</div>`; box.appendChild(el); });
   if(!picks.length){
     const el=document.createElement("div"); el.className="empty-note"; el.textContent="全局数据暂未返回。上方多周期技术面仍可工作；请检查网络是否能访问 Binance Futures。"; box.appendChild(el);
@@ -626,8 +684,9 @@ function renderDataHealth(glob, box){
     ["CoinGecko 市场", sourceState(glob,"flows","dom"), "海外源"],
     ["mempool 链上", sourceAny(glob,"onchain",["mempool","hash"]), "链上"],
     ["金十快讯/日历", sourceState(glob,"news","jin10-flash"), "新闻"],
-    ["特朗普关键词", sourceState(glob,"news","trump-watch"), "金十代理"],
-    ["特朗普原始链接", sourceState(glob,"news","trump-links"), "人工"],
+    ["Binance 公告", sourceState(glob,"news","binance-news"), "免费"],
+    ["特朗普关键词", sourceState(glob,"news","trump-watch"), "新闻"],
+    ["特朗普中文推文", sourceState(glob,"news","trump-links"), "入口"],
     ["事件时段提示", sourceAny(glob,"news",["us-session","weekend","manual-news"]), "本地"],
     ["ETF/Glassnode/宏观", false, "需接入"]
   ];
@@ -646,8 +705,9 @@ function renderDataHealth(glob, box){
   hints.innerHTML=`<h4>空数据怎么处理</h4>
     <div class="hint-list">
       <div class="hint-item"><span>1.</span><span><b>金十已接入</b>，当前从金十首页读取快讯/重要事件，并按特朗普、宏观、币圈关键词做风险提示。</span></div>
-      <div class="hint-item"><span>2.</span><span><b>特朗普原帖用人工入口</b>，你开 VPN 后可直接点 X/Truth Social 链接查看; 自动化部分用金十“特朗普/Trump/关税/中东”等关键词做代理监控。</span></div>
-      <div class="hint-item"><span>3.</span><span><b>Coinglass 需要 API 权限</b>，点击右上角“数据源”填 API Key; 如果浏览器跨域拦截,还需要你自己的代理地址。</span></div>
+      <div class="hint-item"><span>2.</span><span><b>特朗普中文入口</b>，保留 @TrumpChinese1 作为快速中文转发入口; 自动关键词仍由可用新闻源提供，避免把 X 登录页或报错页当新闻。</span></div>
+      <div class="hint-item"><span>3.</span><span><b>金十替代源</b>，已接入免费 Binance 公告作为币圈事件补充; 宏观日历类 Trading Economics / Finnhub / FMP 通常需要 API Key 或订阅。</span></div>
+      <div class="hint-item"><span>4.</span><span><b>Coinglass 需要 API 权限</b>，点击右上角“数据源”填 API Key; 网页版能看不等于本页面能稳定自动读取。</span></div>
     </div>`;
   box.appendChild(hints);
 }
