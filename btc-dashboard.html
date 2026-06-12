@@ -162,14 +162,14 @@
     </div>
   </div>
   <div class="disclaimer">
-    <b>⚠ 风险与说明:</b> 数据源为 <b>Binance USDⓈ-M 永续合约</b>(BTCUSDT / ETHUSDT),叠加 <b>金十快讯</b>、Deribit 期权、Alternative.me、CoinGecko、mempool.space。趋势主导加权评分给出方向与置信度,<b>不构成投资建议</b>。当前采用保守信号模式:弱分数或低置信度优先显示观望。新闻/事件从金十首页读取并按特朗普/宏观/币圈关键词监控; 特朗普原帖提供 X/Truth Social 人工打开入口。Coinglass 需点击右上角“数据源”配置官方 API Key,部分爆仓数据需要高阶套餐。杠杆合约风险极高,务必自设止损与仓位管理。
+    <b>⚠ 风险与说明:</b> 数据源为 <b>Binance USDⓈ-M 永续合约</b>(BTCUSDT / ETHUSDT),叠加 <b>金十快讯</b>、Deribit 期权、Alternative.me、CoinGecko、mempool.space。趋势主导加权评分给出方向与置信度,<b>不构成投资建议</b>。当前采用分层信号模式:5m/15m 更灵敏用于短线监控,30m 用于趋势确认,1h/4h/1d 主要显示偏多/偏空背景。新闻/事件从金十首页读取并按特朗普/宏观/币圈关键词监控; 特朗普原帖提供 X/Truth Social 人工打开入口。Coinglass 需点击右上角“数据源”配置官方 API Key,部分爆仓数据需要高阶套餐。杠杆合约风险极高,务必自设止损与仓位管理。
   </div>
 </div>
 <script>
 "use strict";
 const TF=["5m","15m","30m","1h","4h","1d"];
 const TF_LABEL={"5m":"5 分钟","15m":"15 分钟","30m":"30 分钟","1h":"1 小时","4h":"4 小时","1d":"1 天"};
-const BAR={"5m":"5m","15m":"15m","30m":"30m","1h":"1H","4h":"4H","1d":"1D"};
+const BAR={"5m":"5m","15m":"15m","30m":"30m","1h":"1h","4h":"4h","1d":"1d"};
 const CATS={
   technicals:{icon:"📈",name:"技术指标"}, levels:{icon:"📐",name:"辅助线 / 支撑阻力"},
   structure:{icon:"🧭",name:"市场结构 / 策略框架"}, price:{icon:"💹",name:"市场与价格动量"},
@@ -178,16 +178,23 @@ const CATS={
   overlooked:{icon:"🔍",name:"易被忽略的角度"}, news:{icon:"📰",name:"新闻 / 事件监控"}
 };
 const WEIGHTS={
-  "5m": {technicals:.34, levels:.12, structure:.14, price:.12, derivatives:.16, sentiment:.03, flows:.01, onchain:.01, overlooked:.06, news:.01},
-  "15m":{technicals:.34, levels:.12, structure:.15, price:.10, derivatives:.15, sentiment:.04, flows:.02, onchain:.02, overlooked:.05, news:.01},
-  "30m":{technicals:.33, levels:.11, structure:.16, price:.09, derivatives:.15, sentiment:.04, flows:.03, onchain:.03, overlooked:.05, news:.01},
+  "5m": {technicals:.34, levels:.06, structure:.18, price:.20, derivatives:.10, sentiment:.03, flows:.01, onchain:.01, overlooked:.05, news:.02},
+  "15m":{technicals:.34, levels:.07, structure:.18, price:.16, derivatives:.11, sentiment:.04, flows:.02, onchain:.01, overlooked:.05, news:.02},
+  "30m":{technicals:.33, levels:.09, structure:.18, price:.12, derivatives:.13, sentiment:.04, flows:.03, onchain:.02, overlooked:.05, news:.01},
   "1h": {technicals:.30, levels:.10, structure:.18, price:.07, derivatives:.14, sentiment:.06, flows:.05, onchain:.05, overlooked:.04, news:.01},
   "4h": {technicals:.28, levels:.09, structure:.18, price:.05, derivatives:.12, sentiment:.07, flows:.08, onchain:.09, overlooked:.03, news:.01},
   "1d": {technicals:.24, levels:.08, structure:.16, price:.04, derivatives:.10, sentiment:.09, flows:.12, onchain:.13, overlooked:.03, news:.01}
 };
 const SCORE_GAIN=2.6;
 const MIN_ACTION_CONF=.42;
-const ACTION_BAND={"5m":.22,"15m":.20,"30m":.18,"1h":.16,"4h":.14,"1d":.12};
+const TF_PROFILE={
+  "5m": {mode:"fast", actionBand:.10, biasBand:.05, minConf:.30, bandLabel:"触发", actionLong:"短线看多", actionShort:"短线看空", biasLong:"短线偏多", biasShort:"短线偏空", neutral:"短线中性", actionNote:"短线信号成立,轻仓快进快出", biasNote:"短线有方向,等待下一根确认"},
+  "15m":{mode:"fast", actionBand:.12, biasBand:.06, minConf:.32, bandLabel:"触发", actionLong:"短线看多", actionShort:"短线看空", biasLong:"短线偏多", biasShort:"短线偏空", neutral:"短线中性", actionNote:"短线信号成立,留意回踩确认", biasNote:"短线倾向出现,等待量价继续"},
+  "30m":{mode:"confirm", actionBand:.16, biasBand:.08, minConf:.36, bandLabel:"确认", actionLong:"多头确认", actionShort:"空头确认", biasLong:"偏多确认中", biasShort:"偏空确认中", neutral:"确认中性", actionNote:"30m 趋势确认成立", biasNote:"方向正在确认,观察是否延续"},
+  "1h": {mode:"context", actionBand:.22, biasBand:.10, minConf:.42, bandLabel:"背景", contextLong:"背景偏多", contextShort:"背景偏空", biasLong:"偏多观察", biasShort:"偏空观察", neutral:"背景中性", contextNote:"1h 背景转向,辅助小周期顺势", biasNote:"1h 有倾向,暂作背景参考"},
+  "4h": {mode:"context", actionBand:.24, biasBand:.10, minConf:.45, bandLabel:"背景", contextLong:"背景偏多", contextShort:"背景偏空", biasLong:"偏多观察", biasShort:"偏空观察", neutral:"背景中性", contextNote:"4h 背景较强,优先顺大方向", biasNote:"4h 有倾向,不作短线触发"},
+  "1d": {mode:"context", actionBand:.26, biasBand:.12, minConf:.48, bandLabel:"背景", contextLong:"大势偏多", contextShort:"大势偏空", biasLong:"偏多观察", biasShort:"偏空观察", neutral:"大势中性", contextNote:"日线背景较强,只作为方向底色", biasNote:"日线有倾向,等待更明确确认"}
+};
 const PROBE_HORIZON={"5m":3,"15m":3,"30m":3,"1h":3,"4h":2,"1d":2};
 const ASSETS={
   BTC:{symbol:"BTC",name:"BTC",binance:"BTCUSDT",deribit:"BTC"},
@@ -515,11 +522,32 @@ function scoreTF(tf,perTF,glob){
   const coverage=clamp(wsum/0.85,0,1);
   const agree=allActive.length?Math.abs(allActive.reduce((s,f)=>s+Math.sign(f.score),0))/allActive.length:0;
   const conf=clamp(Math.abs(composite)*0.55+agree*0.30+coverage*0.15);
-  const band=ACTION_BAND[tf]||.16;
-  const actionable=Math.abs(composite)>=band&&conf>=MIN_ACTION_CONF;
+  const profile=TF_PROFILE[tf]||TF_PROFILE["1h"];
+  const band=profile.actionBand||.16;
+  const minConf=profile.minConf||MIN_ACTION_CONF;
+  const biasBand=profile.biasBand||.10;
+  const actionable=profile.mode!=="context"&&Math.abs(composite)>=band&&conf>=minConf;
+  const strongContext=profile.mode==="context"&&Math.abs(composite)>=band&&conf>=minConf;
+  const hasBias=Math.abs(composite)>=biasBand;
   const signalScore=actionable?composite:0;
-  const signalNote=actionable?"方向信号成立":(Math.abs(composite)<band?"弱信号,优先观望":"置信度不足,优先观望");
-  return {tf,composite,signalScore,signalNote,raw,confidence:conf,catScores,coverage};
+  const biasScore=(actionable||strongContext||hasBias)?composite:0;
+  const up=composite>0;
+  const displayText=actionable
+    ? (up?profile.actionLong:profile.actionShort)
+    : strongContext
+      ? (up?profile.contextLong:profile.contextShort)
+      : hasBias
+        ? (up?profile.biasLong:profile.biasShort)
+        : (profile.neutral||"中性");
+  const signalNote=actionable
+    ? (profile.actionNote||"方向信号成立")
+    : strongContext
+      ? (profile.contextNote||"大级别背景成立")
+      : hasBias
+        ? (profile.biasNote||"有方向倾向,等待确认")
+        : "方向不明显,优先观望";
+  const bandText=`${profile.bandLabel||"阈值"} ±${(band*100).toFixed(0)}`;
+  return {tf,composite,signalScore,biasScore,displayText,actionable,strongContext,signalNote,raw,confidence:conf,catScores,coverage,bandText};
 }
 function dirOf(s){ if(s>0.05) return "long"; if(s<-0.05) return "short"; return "neutral"; }
 function dirText(s){ const d=dirOf(s); return d==="long"?"看多":d==="short"?"看空":"中性"; }
@@ -544,16 +572,16 @@ function render(D){
 }
 function renderCards(results){
   const grid=document.getElementById("tfGrid"); grid.innerHTML="";
-  TF.forEach(tf=>{ const r=results[tf]; const s=r.signalScore; const raw=r.composite; const col=colorOf(s); const top=topFactors(r,3); const pct=((raw+1)/2*100).toFixed(1);
+  TF.forEach(tf=>{ const r=results[tf]; const s=r.actionable?r.signalScore:r.biasScore; const raw=r.composite; const col=colorOf(s); const top=topFactors(r,3); const pct=((raw+1)/2*100).toFixed(1);
     const card=document.createElement("div"); card.className="tf-card"+(tf===STATE.sel?" sel":"");
     card.onclick=()=>{STATE.sel=tf; document.querySelectorAll(".tf-card").forEach(c=>c.classList.remove("sel")); card.classList.add("sel"); renderBreakdown(tf);};
     card.innerHTML=`
       <div class="tf-head"><span class="tf-name">${TF_LABEL[tf]}</span><span>${r.coverage?(r.coverage*100).toFixed(0)+"% 覆盖":""}</span></div>
-      <div class="dir" style="color:${col}"><span class="arrow">${arrowOf(s)}</span>${dirText(s)}</div>
+      <div class="dir" style="color:${col}"><span class="arrow">${arrowOf(s)}</span>${r.displayText||dirText(s)}</div>
       <div class="score-bar"><div class="mark" style="left:${pct}%"></div></div>
       <div class="conf-label"><span>综合分 <b>${(raw*100).toFixed(1)}</b></span><span>置信度 <b>${(r.confidence*100).toFixed(0)}%</b></span></div>
       <div class="bar"><span style="left:0;width:${(r.confidence*100).toFixed(0)}%;background:${col}"></span></div>
-      <div class="conf-label"><span>${r.signalNote}</span><span>阈值 ±${((ACTION_BAND[tf]||.16)*100).toFixed(0)}</span></div>
+      <div class="conf-label"><span>${r.signalNote}</span><span>${r.bandText||"阈值"}</span></div>
       <div class="mini-factors">${top.map(f=>`<div class="mf"><span>${f.name}</span><b style="color:${colorOf(f.score)}">${f.score>0?"+":""}${(f.score*100).toFixed(0)}</b></div>`).join("")}</div>`;
     grid.appendChild(card); });
 }
