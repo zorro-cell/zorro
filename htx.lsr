@@ -1,15 +1,13 @@
 # =========================
 # Huobi / HTX / 火币 (优化提速版)
 # =========================
-# 核心主域名与关键字兜底
+# 核心主域名
 DOMAIN-SUFFIX,htx.com
 DOMAIN-SUFFIX,huobi.com
 DOMAIN-SUFFIX,huobi.pro
 DOMAIN-SUFFIX,huobi.me
 DOMAIN-SUFFIX,huobitoken.com
 DOMAIN-SUFFIX,hbfile.net
-DOMAIN-KEYWORD,htx
-DOMAIN-KEYWORD,huobi
 
 # 备用防屏蔽域名 (官方保留的镜像站，加速 App 连通率)
 DOMAIN-SUFFIX,htx.com.am
