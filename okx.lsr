@@ -1,14 +1,13 @@
 # =========================
 # OKX / 欧易 (优化提速版)
 # =========================
-# 核心主域名与关键字兜底
+# 核心主域名
 DOMAIN-SUFFIX,okx.com
 DOMAIN-SUFFIX,okex.com
 DOMAIN-SUFFIX,okx-dns.com
 DOMAIN-SUFFIX,okx-dns1.com
 DOMAIN-SUFFIX,okx-dns2.com
 DOMAIN-SUFFIX,coinall.ltd
-DOMAIN-KEYWORD,okx
 
 # 核心风控与依赖 (极度重要：不走代理会导致无法登录、滑块验证码刷不出、App假死)
 DOMAIN-SUFFIX,online-metrix.net
